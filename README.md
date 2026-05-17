@@ -185,3 +185,31 @@ pm2 status
 pm2 restart step-bot --update-env
 pm2 logs step-bot --lines 50
 ```
+
+---
+
+## Сборка APK (Android)
+
+**Требования:**
+- Android Studio установлен в `C:\Program Files\Android\Android Studio`
+- Android SDK: `C:\Users\Saartr\AppData\Local\Android\Sdk`
+- Gradle: 8.13 (прописан в `android/gradle/wrapper/gradle-wrapper.properties`)
+
+**Первый раз — генерация нативной папки:**
+```powershell
+cd C:\haba
+npx expo prebuild --platform android --clean
+```
+
+**Сборка и установка на телефон (одна команда):**
+```powershell
+cd C:\haba\android
+$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
+$env:ANDROID_HOME="C:\Users\Saartr\AppData\Local\Android\Sdk"
+.\gradlew assembleDebug
+adb install app\build\outputs\apk\debug\app-debug.apk
+```
+
+APK находится по пути: `android/app/build/outputs/apk/debug/app-debug.apk`
+
+> Первая сборка ~7 минут (скачивает зависимости). Повторные — 1-2 минуты.
