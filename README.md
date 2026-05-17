@@ -201,6 +201,11 @@ cd C:\haba
 npx expo prebuild --platform android --clean
 ```
 
+После prebuild обязательно обновить версию Gradle в `android/gradle/wrapper/gradle-wrapper.properties`:
+```
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip
+```
+
 **Сборка и установка на телефон (одна команда):**
 ```powershell
 cd C:\haba\android
