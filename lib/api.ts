@@ -41,21 +41,43 @@ async function request<T>(
   return res.json();
 }
 
-export async function sendCode(username: string): Promise<void> {
-  await request('/auth/send-code', {
+export type TelegramUser = {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date: number;
+  hash: string;
+};
+
+export type AuthResult = {
+  accessToken: string;
+  refreshToken: string;
+  user: {
+    username: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    avatar_url: string | null;
+  };
+};
+
+export async function telegramAuth(data: TelegramUser): Promise<AuthResult> {
+  return request('/auth/telegram', {
     method: 'POST',
-    body: JSON.stringify({ username }),
+    body: JSON.stringify(data),
   });
 }
 
-export async function verifyCode(
-  username: string,
-  code: string,
-): Promise<{ accessToken: string; refreshToken: string }> {
-  return request('/auth/verify-code', {
-    method: 'POST',
-    body: JSON.stringify({ username, code }),
-  });
+export type UserProfile = {
+  username: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+};
+
+export async function getMe(): Promise<UserProfile> {
+  return request('/auth/me', {}, true);
 }
 
 async function refreshTokens(): Promise<{ accessToken: string; refreshToken: string } | null> {

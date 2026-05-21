@@ -11,6 +11,7 @@
 - NativeWind v4 (Tailwind CSS для RN)
 - expo-secure-store (хранение JWT)
 - react-native-svg (SVG-иконки и иллюстрации)
+- react-native-webview (Telegram Login Widget)
 
 **Бэкенд** — сервер `bot.mihmih.pro`, путь `/var/www/step-bot`
 - Node.js v22, Express 5
@@ -48,23 +49,31 @@ app/
 ├── dev.tsx                  # Галерея компонентов (только __DEV__, в проде редирект на /)
 ├── (auth)/                  # Флоу авторизации (не требует токена)
 │   ├── _layout.tsx          # Stack-навигатор без хедера
-│   ├── welcome.tsx          # Экран приветствия с SVG-иллюстрацией и кнопкой входа
-│   ├── enter-username.tsx   # Ввод @username → POST /api/v1/auth/send-code
-│   ├── verify-code.tsx      # Ввод 6-значного кода → POST /api/v1/auth/verify-code
-│   │                        # Кнопка активна только при 6 символах
-│   └── success.tsx          # Заглушка (не используется в основном флоу)
+│   └── welcome.tsx          # Экран приветствия. Кнопка «Войти через Telegram» открывает
+│                            # Modal с WebView → Telegram Login Widget.
+│                            # После успешного входа: POST /api/v1/auth/telegram → JWT.
+│                            # tg:// deeplinks перехватываются через Linking.openURL().
 └── (tabs)/                  # Основное приложение (требует токена)
-    ├── _layout.tsx          # Tab-навигатор: Привычки / Профиль
-    ├── index.tsx            # Главный экран привычек (заглушка)
+    ├── _layout.tsx          # Stack-навигатор (без таб-бара): index + two
+    ├── index.tsx            # Главный экран привычек.
+    │                        # Верхняя шторка: «Привет, {displayName}» + аватар.
+    │                        # Аватар: фото из Telegram или инициал First Name.
+    │                        # Тап по аватару → two (профиль).
+    │                        # Username/First Name обрезается до 12 символов + «…».
+    │                        # Empty state: маскот tapa_quest.png + кнопка «Добавить».
     └── two.tsx              # Профиль (заглушка)
 
 lib/
 ├── api.ts                   # Fetch-клиент. BASE_URL = https://bot.mihmih.pro/api/v1
 │                            # Автоматический refresh токена при 401.
-│                            # Экспортирует: sendCode(username), verifyCode(username, code)
+│                            # Экспортирует: telegramAuth(data), getMe()
+│                            # Типы: TelegramUser, UserProfile
 ├── auth.ts                  # Работа с токенами через expo-secure-store.
 │                            # Экспортирует: saveTokens, getTokens, clearTokens, isAuthenticated
-├── auth-context.tsx         # React Context: { authed, setAuthed }. Обёртка в _layout.tsx
+├── auth-context.tsx         # React Context: { authed, checked, user, setAuthed, refreshUser }
+│                            # user: UserProfile | null — профиль из /auth/me
+│                            # При логине: user устанавливается сразу из ответа сервера
+│                            # При старте: isAuthenticated() → refreshUser() если ok
 ├── colors.ts                # Цветовые константы и хук useColors() для dark/light темы.
 │                            # useColors() возвращает SemanticColors — темо-зависимые токены.
 │                            # Используется во всех компонентах вместо хардкода цветов.
@@ -83,8 +92,8 @@ components/
 └── useColorScheme.web.ts    # Web-версия хука
 
 assets/
-├── icons/                   # SVG-иконки: Mail, Pin, Telegram, Loading, arrow_back
-└── images/                  # tapa_welcome.svg (welcome-экран), иконки приложения
+├── icons/                   # SVG-иконки: Plus, Telegram, Mail, Pin, Loading, arrow_back
+└── images/                  # tapa_welcome.svg (welcome-экран), tapa_quest.png (empty state)
 
 global.css                   # Tailwind-директивы + CSS custom properties для семантических
                              # токенов цвета (light/dark через @media prefers-color-scheme)
@@ -103,7 +112,7 @@ metro.config.js              # withNativeWind(config, { input: './global.css' })
 - `c.brand.primary / c.brand.pressed` — фон кнопок
 - `c.surface.default / c.surface.input / c.surface.disabled` — фоны экранов и инпутов
 - `c.text.primary / secondary / label / placeholder / onPrimary / link` — текст
-- `c.icon.onPrimary / placeholder / error` — иконки
+- `c.icon.onPrimary / placeholder / pressed / error` — иконки (pressed = белый в обеих темах)
 - `c.border.input / error` — рамки инпута
 - `c.semantic.error` — цвет ошибки
 
@@ -116,43 +125,30 @@ src/
 ├── index.js                 # Точка входа. Express + grammy + роутинг.
 │                            # Middleware: req.bot = bot (доступ к боту из роутеров)
 │                            # Маунтит: /api/v1/auth → authRouter
-│                            # Статика: /avatars → /public/avatars (фото профилей)
 │                            # Маршруты: /webhook, /miniapp/*, /health
 │
 ├── api/
-│   └── auth.js              # REST API авторизации (JWT)
-│                            # POST /api/v1/auth/send-code
-│                            #   body: { username }
-│                            #   → ищет юзера по username в БД
-│                            #   → генерирует 6-значный OTP (TTL 5 мин)
-│                            #   → шлёт через бота в Telegram
-│                            # POST /api/v1/auth/verify-code
-│                            #   body: { username, code }
-│                            #   → проверяет код (макс 5 попыток)
+│   └── auth.js              # REST API авторизации (JWT + Telegram Login Widget)
+│                            # GET  /api/v1/auth/telegram-login
+│                            #   → HTML-страница с кнопкой «Открыть Telegram»
+│                            #   → редирект на oauth.telegram.org
+│                            # GET  /api/v1/auth/telegram-callback
+│                            #   → пустая HTML-страница; приложение читает tgAuthResult из URL
+│                            # POST /api/v1/auth/telegram
+│                            #   body: { id, hash, auth_date, username, first_name, ... }
+│                            #   → верифицирует HMAC-подпись Telegram
+│                            #   → upsert пользователя в БД
+│                            #   → скачивает аватар (photo_url или Bot API), сохраняет в /public/avatars/
 │                            #   → возвращает { accessToken, refreshToken, user }
 │                            #     user: { username, first_name, last_name, avatar_url }
 │                            # POST /api/v1/auth/refresh
 │                            #   body: { refreshToken }
 │                            #   → ротирует refresh-токен, выдаёт новую пару
-│                            # GET /api/v1/auth/me  (Bearer token)
+│                            # GET  /api/v1/auth/me  (Bearer token)
 │                            #   → { username, first_name, last_name, avatar_url }
 │
 ├── handlers/
 │   └── commands.js          # Все команды и callback-хендлеры бота.
-│                            # upsertUser(bot, tgFrom) — вспомогательная функция:
-│                            #   сохраняет username/first_name/last_name в БД,
-│                            #   при первом входе скачивает аватар из Telegram
-│                            #   и сохраняет в /public/avatars/{userId}.jpg
-│                            # /start — upsertUser + приветствие + join по invite-ссылке
-│                            # /steps <число> — записать шаги за сегодня
-│                            # /status — прогресс + таблица лидеров
-│                            # /members — список участников (создатель может кикать)
-│                            # /goal — задать цель группы (шаги/день + период)
-│                            # /deletegroup — удалить свою группу
-│                            # /help — список команд
-│                            # /app — кнопка Mini App для записи шагов
-│                            # Callback: create_group, join_group, kick_*,
-│                            #           goal_steps_*, goal_period_*, new_challenge_*
 │
 ├── jobs/
 │   └── digest.js            # Cron-задачи (timezone: Europe/Moscow)
@@ -162,18 +158,24 @@ src/
 │
 ├── db/
 │   ├── client.js            # Подключение к PostgreSQL через DATABASE_URL (SSL)
-│   │                        # Pool: max 10 соединений, idle_timeout 20s
 │   └── migrate.js           # CREATE TABLE IF NOT EXISTS + ALTER TABLE IF NOT EXISTS.
-│                            # Запускается при старте сервера.
 │
-└── utils.js                 # progressBar(percent) — текстовый прогресс-бар █░░
-                             # fmt(n) — форматирование числа (ru-RU локаль)
-                             # dayLabel(days) — "день/дня/дней"
+└── utils.js                 # progressBar, fmt, dayLabel
 
 public/
 └── avatars/                 # Фото профилей пользователей. Файлы: {userId}.jpg
                              # Доступны по https://bot.mihmih.pro/avatars/{userId}.jpg
+                             # Nginx: location /avatars/ { alias /var/www/step-bot/public/avatars/; }
 ```
+
+### Аватары — как работает
+
+1. При POST `/auth/telegram` сервер пробует скачать аватар:
+   - Сначала из `photo_url` виджета (с redirect-следованием)
+   - Если не вышло — через Bot API (`getUserProfilePhotos`)
+2. Файл сохраняется как `/var/www/step-bot/public/avatars/{userId}.jpg`
+3. Nginx отдаёт файл напрямую по `https://bot.mihmih.pro/avatars/{userId}.jpg`
+4. Если файл уже есть (size > 0) — повторная загрузка не происходит
 
 ### Переменные окружения сервера (`.env`)
 
@@ -185,8 +187,6 @@ public/
 | `WEBHOOK_URL` | `https://bot.mihmih.pro/webhook` |
 | `DATABASE_URL` | PostgreSQL connection string |
 | `JWT_SECRET` | Секрет для подписи JWT токенов |
-| `GOOGLE_CLIENT_ID` | Google OAuth (для Mini App шагомера) |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth secret |
 
 ---
 
@@ -199,28 +199,27 @@ group_members   — user_id → users, group_id → groups, joined_at
 goals           — id, group_id → groups, steps_per_day, period_days, starts_at, deadline
 steps           — id, user_id → users, goal_id → goals, count, recorded_at
                   UNIQUE(user_id, goal_id, recorded_at)
-auth_codes      — user_id PK → users, code, expires_at, attempts
 refresh_tokens  — id, user_id → users, token UNIQUE, expires_at, created_at
 ```
 
-`avatar_url` — полный URL вида `https://bot.mihmih.pro/avatars/{userId}.jpg`. `null` если у пользователя нет аватара или он скрыт. Аватар скачивается один раз при первом `/start`.
+`avatar_url` — полный URL вида `https://bot.mihmih.pro/avatars/{userId}.jpg`. `null` если аватар недоступен.
 
 ---
 
-## Авторизация (флоу)
+## Авторизация (флоу — Telegram Login Widget)
 
-1. Пользователь пишет `/start` боту `@Step_Challenges_Bot` — бот сохраняет профиль (`tg_id`, `username`, `first_name`, `last_name`) и аватар
-2. В приложении вводит `@username` → `POST /api/v1/auth/send-code`
-3. Бот присылает 6-значный код в Telegram (TTL 5 минут, макс 5 попыток)
-4. Вводит код → `POST /api/v1/auth/verify-code` → получает `{ accessToken (15м), refreshToken (30д), user }`
-5. Токены хранятся в `expo-secure-store`
-6. При 401 — автоматический refresh через `POST /api/v1/auth/refresh`
-7. При перезапуске приложения профиль можно получить через `GET /api/v1/auth/me`
+1. Пользователь нажимает «Войти через Telegram» — открывается Modal с WebView
+2. WebView загружает `/api/v1/auth/telegram-login` — страница с кнопкой-ссылкой на `oauth.telegram.org`
+3. WebView перехватывает `tg://` deep links и открывает Telegram через `Linking.openURL()`
+4. После подтверждения в Telegram — редирект на `/api/v1/auth/telegram-callback#tgAuthResult=...`
+5. Фронт парсит `tgAuthResult` из URL fragment, декодирует base64, отправляет `POST /api/v1/auth/telegram`
+6. Сервер верифицирует HMAC-подпись, upsert пользователя, скачивает аватар, возвращает JWT
+7. Токены сохраняются в `expo-secure-store`, профиль сразу доступен через `AuthContext`
 
 ### JWT
 
 - `accessToken` — `{ sub: userId }`, TTL 15 минут
-- `refreshToken` — `{ sub: userId, type: 'refresh' }`, TTL 30 дней, хранится в таблице `refresh_tokens`, при использовании ротируется
+- `refreshToken` — `{ sub: userId, type: 'refresh' }`, TTL 30 дней, ротируется при использовании
 
 ---
 
@@ -236,6 +235,14 @@ ssh root@147.45.134.216
 pm2 status
 pm2 restart step-bot --update-env
 pm2 logs step-bot --lines 50
+```
+
+Редактирование файлов сервера: скачать через `scp`, отредактировать локально, загрузить обратно:
+```powershell
+# Скачать
+scp -i /tmp/haba_deploy root@147.45.134.216:/var/www/step-bot/src/api/auth.js C:\tmp\auth.js
+# Загрузить
+scp -i /tmp/haba_deploy C:\tmp\auth.js root@147.45.134.216:/var/www/step-bot/src/api/auth.js
 ```
 
 ---
@@ -258,7 +265,7 @@ npx expo prebuild --platform android --clean
 distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip
 ```
 
-**Сборка и установка на телефон (одна команда):**
+**Сборка и установка на телефон:**
 ```powershell
 cd C:\haba\android
 $env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
@@ -267,6 +274,6 @@ $env:ANDROID_HOME="C:\Users\Saartr\AppData\Local\Android\Sdk"
 adb install app\build\outputs\apk\debug\app-debug.apk
 ```
 
-APK находится по пути: `android/app/build/outputs/apk/debug/app-debug.apk`
+APK: `android/app/build/outputs/apk/debug/app-debug.apk`
 
-> Первая сборка ~7 минут (скачивает зависимости). Повторные — 1-2 минуты.
+> Первая сборка ~7 минут. Повторные — 1-2 минуты.

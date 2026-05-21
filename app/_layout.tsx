@@ -16,7 +16,7 @@ export const unstable_settings = {
 };
 
 function RootLayoutNav() {
-  const { authed } = useAuth();
+  const { authed, checked } = useAuth();
   const [ready, setReady] = useState(false);
   const router = useRouter();
   const segments = useSegments();
@@ -28,20 +28,21 @@ function RootLayoutNav() {
   }, []);
 
   useEffect(() => {
-    if (ready && fontsLoaded) {
+    if (ready && fontsLoaded && checked) {
       SplashScreen.hideAsync();
     }
-  }, [ready, fontsLoaded]);
+  }, [ready, fontsLoaded, checked]);
 
   useEffect(() => {
-    if (!ready || !fontsLoaded) return;
+    if (!ready || !fontsLoaded || !checked) return;
     const inAuth = segments[0] === '(auth)';
-    if (authed && inAuth) {
+    const inTabs = segments[0] === '(tabs)';
+    if (authed && !inTabs) {
       router.replace('/(tabs)');
     } else if (!authed && !inAuth) {
       router.replace('/(auth)/welcome');
     }
-  }, [ready, fontsLoaded, authed, segments]);
+  }, [ready, fontsLoaded, checked, authed, segments]);
 
   if (!ready || !fontsLoaded) return null;
 
