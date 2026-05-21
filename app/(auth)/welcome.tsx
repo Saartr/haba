@@ -1,33 +1,38 @@
-import { View, Text, Pressable, Image } from 'react-native';
+import { View, useWindowDimensions } from 'react-native';
+import Text from '@/components/Text';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import TelegramIcon from '@/assets/icons/Telegram.svg';
+import TapaWelcome from '@/assets/images/tapa_welcome.svg';
+import Button from '@/components/Button';
+import { useColors } from '@/lib/colors';
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const c = useColors();
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-1 items-center justify-center px-8">
-        <Image
-          source={require('../../assets/images/splash-icon.png')}
-          className="w-40 h-40 mb-8"
-          resizeMode="contain"
-        />
-        <Text className="text-3xl font-bold text-gray-900 mb-3 text-center">
-          Хаба
-        </Text>
-        <Text className="text-base text-gray-500 text-center mb-16 leading-6">
-          Социальный трекер привычек.{'\n'}Достигай целей вместе с друзьями.
-        </Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }}>
+      <TapaWelcome width={width} height={width} />
 
-        <Pressable
+      <View className="px-6 mt-4">
+        <Text weight="bold" className="text-h2 mb-2" style={{ color: c.text.primary }}>
+          О, привет!
+        </Text>
+        <Text className="text-body-16" style={{ color: c.text.secondary }}>
+          Меня зовут Тапа, давай вместе начнем лежать в направлении твоих целей.
+        </Text>
+      </View>
+
+      <View className="flex-1" />
+
+      <View className="px-6 pb-8">
+        <Button
+          label="Войти через Telegram"
           onPress={() => router.push('/(auth)/enter-username')}
-          className="w-full bg-[#00C9A7] rounded-2xl py-4 items-center active:opacity-80"
-        >
-          <Text className="text-white text-base font-semibold">
-            Войти через Telegram
-          </Text>
-        </Pressable>
+          icon={<TelegramIcon width={20} height={20} color={c.text.onPrimary} />}
+        />
       </View>
     </SafeAreaView>
   );

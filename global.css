@@ -1,3 +1,57 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --color-brand-primary:          #6047ff;
+    --color-brand-primary-pressed:  #381aff;
+
+    --color-surface-default:        #ffffff;
+    --color-surface-input:          #ffffff;
+    --color-surface-input-disabled: #e0e0e0;
+
+    --color-text-primary:           #212121;
+    --color-text-secondary:         #757575;
+    --color-text-label:             #424242;
+    --color-text-placeholder:       #9e9e9e;
+    --color-text-on-primary:        #ffffff;
+    --color-text-link:              #6047ff;
+
+    --color-icon-on-primary:        #ffffff;
+    --color-icon-placeholder:       #9e9e9e;
+    --color-icon-error:             #f44336;
+
+    --color-border-input-default:   #9e9e9e;
+    --color-border-input-error:     #f44336;
+
+    --color-semantic-error:         #f44336;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-brand-primary:          #8370ff;
+      --color-brand-primary-pressed:  #6047ff;
+
+      --color-surface-default:        #121212;
+      --color-surface-input:          #212121;
+      --color-surface-input-disabled: #323232;
+
+      --color-text-primary:           #ffffff;
+      --color-text-secondary:         #b5b5b5;
+      --color-text-label:             #c9c9c9;
+      --color-text-placeholder:       #757575;
+      --color-text-on-primary:        #ffffff;
+      --color-text-link:              #8370ff;
+
+      --color-icon-on-primary:        #ffffff;
+      --color-icon-placeholder:       #757575;
+      --color-icon-error:             #f76e64;
+
+      --color-border-input-default:   #757575;
+      --color-border-input-error:     #f76e64;
+
+      --color-semantic-error:         #f76e64;
+    }
+  }
+}

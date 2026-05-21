@@ -10,6 +10,7 @@
 - React Native + Expo SDK 55 (Expo Router, TypeScript)
 - NativeWind v4 (Tailwind CSS для RN)
 - expo-secure-store (хранение JWT)
+- react-native-svg (SVG-иконки и иллюстрации)
 
 **Бэкенд** — сервер `bot.mihmih.pro`, путь `/var/www/step-bot`
 - Node.js v22, Express 5
@@ -44,13 +45,14 @@ app/
 ├── _layout.tsx              # Root layout. Проверяет JWT при старте,
 │                            # редиректит: есть токен → (tabs), нет → (auth)/welcome
 ├── +not-found.tsx
+├── dev.tsx                  # Галерея компонентов (только __DEV__, в проде редирект на /)
 ├── (auth)/                  # Флоу авторизации (не требует токена)
 │   ├── _layout.tsx          # Stack-навигатор без хедера
-│   ├── welcome.tsx          # Сплэш-экран с кнопкой «Войти через Telegram»
+│   ├── welcome.tsx          # Экран приветствия с SVG-иллюстрацией и кнопкой входа
 │   ├── enter-username.tsx   # Ввод @username → POST /api/v1/auth/send-code
 │   ├── verify-code.tsx      # Ввод 6-значного кода → POST /api/v1/auth/verify-code
-│   │                        # Состояния: ввод, неверный код, повторная отправка
-│   └── success.tsx          # Экран успешной авторизации (временный)
+│   │                        # Кнопка активна только при 6 символах
+│   └── success.tsx          # Заглушка (не используется в основном флоу)
 └── (tabs)/                  # Основное приложение (требует токена)
     ├── _layout.tsx          # Tab-навигатор: Привычки / Профиль
     ├── index.tsx            # Главный экран привычек (заглушка)
@@ -60,20 +62,50 @@ lib/
 ├── api.ts                   # Fetch-клиент. BASE_URL = https://bot.mihmih.pro/api/v1
 │                            # Автоматический refresh токена при 401.
 │                            # Экспортирует: sendCode(username), verifyCode(username, code)
-└── auth.ts                  # Работа с токенами через expo-secure-store.
-                             # Экспортирует: saveTokens, getTokens, clearTokens, isAuthenticated
+├── auth.ts                  # Работа с токенами через expo-secure-store.
+│                            # Экспортирует: saveTokens, getTokens, clearTokens, isAuthenticated
+├── auth-context.tsx         # React Context: { authed, setAuthed }. Обёртка в _layout.tsx
+├── colors.ts                # Цветовые константы и хук useColors() для dark/light темы.
+│                            # useColors() возвращает SemanticColors — темо-зависимые токены.
+│                            # Используется во всех компонентах вместо хардкода цветов.
+└── design.md                # Спецификация дизайн-системы TapaDS (типографика, токены,
+                             # компоненты Button/Input, отступы, радиусы)
 
 components/
-├── useColorScheme.ts        # Хук для определения light/dark темы
+├── Button.tsx               # Кнопка. variant: 'main' | 'text'. Поддерживает icon, loading,
+│                            # disabled. borderRadius=12 (radius/3 по TapaDS).
+│                            # borderCurve: 'continuous' на iOS (нативный суперэллипс).
+├── Input.tsx                # Поле ввода. Поддерживает icon, error, disabled.
+│                            # Цвета полностью через useColors() — dark-mode-aware.
+├── Text.tsx                 # Обёртка над RN Text. Prop weight: 'medium'|'semibold'|'bold'
+│                            # подставляет нужный font-family (Manrope). Default: 'medium'.
+├── useColorScheme.ts        # Хук определения light/dark темы
 └── useColorScheme.web.ts    # Web-версия хука
 
-assets/images/               # Иконки приложения (icon, splash, android adaptive)
-global.css                   # @tailwind base/components/utilities
-tailwind.config.js           # Контент: app/**/*.tsx, components/**/*.tsx
-                             # Кастомные цвета: primary #00C9A7, error #FF4D4F
+assets/
+├── icons/                   # SVG-иконки: Mail, Pin, Telegram, Loading, arrow_back
+└── images/                  # tapa_welcome.svg (welcome-экран), иконки приложения
+
+global.css                   # Tailwind-директивы + CSS custom properties для семантических
+                             # токенов цвета (light/dark через @media prefers-color-scheme)
+tailwind.config.js           # Палитра TapaDS (purple, neutral, red, green, yellow) +
+                             # семантические токены (brand, surface, text, icon, border, semantic)
+                             # через CSS-переменные. Типографика: h1-h5, body-16/14/12.
 babel.config.js              # babel-preset-expo + nativewind/babel
 metro.config.js              # withNativeWind(config, { input: './global.css' })
 ```
+
+### Дизайн-система (TapaDS)
+
+Все цвета, отступы, радиусы и типографика описаны в `lib/design.md`.
+
+**Семантические цвета** — использовать `useColors()` из `lib/colors.ts`, не хардкодить hex:
+- `c.brand.primary / c.brand.pressed` — фон кнопок
+- `c.surface.default / c.surface.input / c.surface.disabled` — фоны экранов и инпутов
+- `c.text.primary / secondary / label / placeholder / onPrimary / link` — текст
+- `c.icon.onPrimary / placeholder / error` — иконки
+- `c.border.input / error` — рамки инпута
+- `c.semantic.error` — цвет ошибки
 
 ---
 
@@ -84,7 +116,8 @@ src/
 ├── index.js                 # Точка входа. Express + grammy + роутинг.
 │                            # Middleware: req.bot = bot (доступ к боту из роутеров)
 │                            # Маунтит: /api/v1/auth → authRouter
-│                            # Старые маршруты: /webhook, /miniapp/*, /health
+│                            # Статика: /avatars → /public/avatars (фото профилей)
+│                            # Маршруты: /webhook, /miniapp/*, /health
 │
 ├── api/
 │   └── auth.js              # REST API авторизации (JWT)
@@ -96,14 +129,21 @@ src/
 │                            # POST /api/v1/auth/verify-code
 │                            #   body: { username, code }
 │                            #   → проверяет код (макс 5 попыток)
-│                            #   → возвращает { accessToken, refreshToken }
+│                            #   → возвращает { accessToken, refreshToken, user }
+│                            #     user: { username, first_name, last_name, avatar_url }
 │                            # POST /api/v1/auth/refresh
 │                            #   body: { refreshToken }
 │                            #   → ротирует refresh-токен, выдаёт новую пару
+│                            # GET /api/v1/auth/me  (Bearer token)
+│                            #   → { username, first_name, last_name, avatar_url }
 │
 ├── handlers/
 │   └── commands.js          # Все команды и callback-хендлеры бота.
-│                            # /start — приветствие + join по invite-ссылке
+│                            # upsertUser(bot, tgFrom) — вспомогательная функция:
+│                            #   сохраняет username/first_name/last_name в БД,
+│                            #   при первом входе скачивает аватар из Telegram
+│                            #   и сохраняет в /public/avatars/{userId}.jpg
+│                            # /start — upsertUser + приветствие + join по invite-ссылке
 │                            # /steps <число> — записать шаги за сегодня
 │                            # /status — прогресс + таблица лидеров
 │                            # /members — список участников (создатель может кикать)
@@ -111,7 +151,7 @@ src/
 │                            # /deletegroup — удалить свою группу
 │                            # /help — список команд
 │                            # /app — кнопка Mini App для записи шагов
-│                            # Callback: create_group, join_group, kick_*, 
+│                            # Callback: create_group, join_group, kick_*,
 │                            #           goal_steps_*, goal_period_*, new_challenge_*
 │
 ├── jobs/
@@ -123,12 +163,16 @@ src/
 ├── db/
 │   ├── client.js            # Подключение к PostgreSQL через DATABASE_URL (SSL)
 │   │                        # Pool: max 10 соединений, idle_timeout 20s
-│   └── migrate.js           # CREATE TABLE IF NOT EXISTS для всех таблиц.
+│   └── migrate.js           # CREATE TABLE IF NOT EXISTS + ALTER TABLE IF NOT EXISTS.
 │                            # Запускается при старте сервера.
 │
 └── utils.js                 # progressBar(percent) — текстовый прогресс-бар █░░
                              # fmt(n) — форматирование числа (ru-RU локаль)
                              # dayLabel(days) — "день/дня/дней"
+
+public/
+└── avatars/                 # Фото профилей пользователей. Файлы: {userId}.jpg
+                             # Доступны по https://bot.mihmih.pro/avatars/{userId}.jpg
 ```
 
 ### Переменные окружения сервера (`.env`)
@@ -149,7 +193,7 @@ src/
 ## База данных (PostgreSQL)
 
 ```sql
-users           — id, tg_id, username, created_at
+users           — id, tg_id, username, first_name, last_name, avatar_url, created_at
 groups          — id, name, invite_code, creator_id → users, created_at
 group_members   — user_id → users, group_id → groups, joined_at
 goals           — id, group_id → groups, steps_per_day, period_days, starts_at, deadline
@@ -159,16 +203,24 @@ auth_codes      — user_id PK → users, code, expires_at, attempts
 refresh_tokens  — id, user_id → users, token UNIQUE, expires_at, created_at
 ```
 
+`avatar_url` — полный URL вида `https://bot.mihmih.pro/avatars/{userId}.jpg`. `null` если у пользователя нет аватара или он скрыт. Аватар скачивается один раз при первом `/start`.
+
 ---
 
 ## Авторизация (флоу)
 
-1. Пользователь пишет `/start` боту `@Step_Challenges_Bot` — бот сохраняет `tg_id` + `username` в таблицу `users`
+1. Пользователь пишет `/start` боту `@Step_Challenges_Bot` — бот сохраняет профиль (`tg_id`, `username`, `first_name`, `last_name`) и аватар
 2. В приложении вводит `@username` → `POST /api/v1/auth/send-code`
-3. Бот присылает 6-значный код в Telegram (TTL 5 минут)
-4. Вводит код → `POST /api/v1/auth/verify-code` → получает `accessToken` (15м) + `refreshToken` (30д)
+3. Бот присылает 6-значный код в Telegram (TTL 5 минут, макс 5 попыток)
+4. Вводит код → `POST /api/v1/auth/verify-code` → получает `{ accessToken (15м), refreshToken (30д), user }`
 5. Токены хранятся в `expo-secure-store`
 6. При 401 — автоматический refresh через `POST /api/v1/auth/refresh`
+7. При перезапуске приложения профиль можно получить через `GET /api/v1/auth/me`
+
+### JWT
+
+- `accessToken` — `{ sub: userId }`, TTL 15 минут
+- `refreshToken` — `{ sub: userId, type: 'refresh' }`, TTL 30 дней, хранится в таблице `refresh_tokens`, при использовании ротируется
 
 ---
 

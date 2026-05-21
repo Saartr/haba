@@ -8,7 +8,7 @@
     "scheme": "haba",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/images/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -16,6 +16,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "pro.mihmih.haba",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

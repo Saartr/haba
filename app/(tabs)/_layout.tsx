@@ -1,9 +1,10 @@
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
+import { colors } from '@/lib/colors';
 
 export default function TabLayout() {
   return (
-    <Tabs screenOptions={{ headerShown: false, tabBarActiveTintColor: '#00C9A7' }}>
+    <Tabs screenOptions={{ headerShown: false, tabBarActiveTintColor: colors.primary }}>
       <Tabs.Screen
         name="index"
         options={{
