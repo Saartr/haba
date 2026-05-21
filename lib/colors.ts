@@ -2,12 +2,15 @@ import { useColorScheme } from 'react-native';
 
 export const colors = {
   purple: {
+    50:  '#f2f0ff',
     400: '#8370ff',
     500: '#6047ff',
     600: '#381aff',
   },
   neutral: {
     0:   '#ffffff',
+    50:  '#fafafa',
+    100: '#efefef',
     200: '#e0e0e0',
     300: '#c9c9c9',
     400: '#b5b5b5',
@@ -18,9 +21,16 @@ export const colors = {
     900: '#212121',
     950: '#121212',
   },
+  green: {
+    500: '#22c55e',
+    600: '#16a34a',
+    800: '#166534',
+  },
   red: {
     400: '#f76e64',
     500: '#f44336',
+    600: '#e41b0c',
+    800: '#790e06',
   },
   primary: '#6047ff',
   error:   '#f44336',

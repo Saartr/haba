@@ -80,6 +80,86 @@ export async function getMe(): Promise<UserProfile> {
   return request('/auth/me', {}, true);
 }
 
+// ── Habits ────────────────────────────────────────────────────────────────────
+
+export type Habit = {
+  id: number;
+  creator_id: number;
+  name: string;
+  category: string;
+  type: 'solo' | 'group';
+  goal_value: number | null;
+  goal_unit: string | null;
+  notifications: boolean;
+  invite_code: string;
+  closed_at: string | null;
+  created_at: string;
+  is_creator: boolean;
+};
+
+export type HabitMember = {
+  id: number;
+  username: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+  is_self: boolean;
+  is_creator: boolean;
+};
+
+export type HabitLog = {
+  user_id: number;
+  date: string;
+  value: number;
+};
+
+export type HabitDetail = Habit & {
+  members: HabitMember[];
+  week_logs: HabitLog[];
+  streak: { current: number; max: number };
+};
+
+export async function createHabit(data: {
+  name: string;
+  category?: string;
+  type?: 'solo' | 'group';
+  goal_value?: number;
+  goal_unit?: string;
+  notifications?: boolean;
+}): Promise<Habit> {
+  return request('/habits', { method: 'POST', body: JSON.stringify(data) }, true);
+}
+
+export async function getHabits(): Promise<Habit[]> {
+  return request('/habits', {}, true);
+}
+
+export async function getHabit(id: number): Promise<HabitDetail> {
+  return request(`/habits/${id}`, {}, true);
+}
+
+export async function joinHabit(invite_code: string): Promise<Habit> {
+  return request('/habits/join', { method: 'POST', body: JSON.stringify({ invite_code }) }, true);
+}
+
+export async function logHabit(id: number, value: number, date?: string): Promise<HabitLog> {
+  return request(`/habits/${id}/logs`, { method: 'POST', body: JSON.stringify({ value, date }) }, true);
+}
+
+export async function excludeMember(habitId: number, userId: number): Promise<void> {
+  return request(`/habits/${habitId}/members/${userId}`, { method: 'DELETE' }, true);
+}
+
+export async function transferHabit(habitId: number, userId: number): Promise<void> {
+  return request(`/habits/${habitId}/transfer`, { method: 'POST', body: JSON.stringify({ user_id: userId }) }, true);
+}
+
+export async function closeHabit(habitId: number): Promise<void> {
+  return request(`/habits/${habitId}`, { method: 'DELETE' }, true);
+}
+
+// ── Internal ──────────────────────────────────────────────────────────────────
+
 async function refreshTokens(): Promise<{ accessToken: string; refreshToken: string } | null> {
   try {
     const tokens = await getTokens();
