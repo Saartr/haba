@@ -1,1 +1,10 @@
 @AGENTS.md
+@.claude/memory/MEMORY.md
+@.claude/memory/project_stack.md
+@.claude/memory/project_dev_env.md
+@.claude/memory/project_database.md
+@.claude/memory/project_auth_refactor.md
+@.claude/memory/project_main_screen.md
+@.claude/memory/project_ios_plan.md
+@.claude/memory/feedback_ssh_file_edit.md
+@.claude/memory/feedback_figma_source_of_truth.md
