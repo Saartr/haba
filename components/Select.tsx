@@ -1,4 +1,4 @@
-import { View, Pressable, ActionSheetIOS, Platform, Modal, TouchableOpacity, FlatList } from 'react-native';
+import { View, Pressable, Modal, TouchableOpacity, FlatList } from 'react-native';
 import Text from '@/components/Text';
 import { useColors } from '@/lib/colors';
 import ChevronDownIcon from '@/assets/icons/ChevronDown.svg';
@@ -11,81 +11,111 @@ type Props = {
   options: Option[];
   value: string;
   onChange: (value: string) => void;
+  placeholder?: string;
   disabled?: boolean;
+  error?: string;
 };
 
-export default function Select({ label, options, value, onChange, disabled = false }: Props) {
+export default function Select({ label, options, value, onChange, placeholder, disabled = false, error }: Props) {
   const c = useColors();
-  const [androidOpen, setAndroidOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const selected = options.find(o => o.value === value);
 
   function handlePress() {
     if (disabled) return;
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options: [...options.map(o => o.label), 'Отмена'], cancelButtonIndex: options.length },
-        index => { if (index < options.length) onChange(options[index].value); },
-      );
-    } else {
-      setAndroidOpen(true);
-    }
+    setOpen(true);
   }
+
+  function handleSelect(val: string) {
+    onChange(val);
+    setOpen(false);
+  }
+
+  const borderColor = disabled
+    ? c.border.input
+    : error
+    ? c.border.error
+    : open
+    ? c.brand.primary
+    : c.border.input;
+
+  const bgColor = disabled ? c.surface.disabled : c.surface.input;
+  const textColor = selected ? c.text.primary : c.text.placeholder;
+  const chevronColor = disabled ? c.text.placeholder : c.text.secondary;
 
   return (
     <View style={{ gap: 8 }}>
       <Text weight="bold" style={{ fontSize: 14, color: c.text.label, letterSpacing: 0.2, lineHeight: 14 * 1.4 }}>
         {label}
       </Text>
-      <Pressable
-        onPress={handlePress}
-        style={({ pressed }) => ({
-          height: 56,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: 20,
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: c.border.input,
-          backgroundColor: disabled
-            ? c.surface.disabled
-            : pressed
-            ? c.surface.disabled
-            : c.surface.input,
-        })}
-      >
-        <Text
-          weight="semibold"
-          style={{ fontSize: 16, letterSpacing: 0.2, color: disabled ? c.text.placeholder : c.text.primary }}
-        >
-          {selected?.label ?? ''}
-        </Text>
-        <ChevronDownIcon width={20} height={20} color={disabled ? c.text.placeholder : c.text.secondary} />
-      </Pressable>
 
-      {/* Android fallback modal */}
-      <Modal visible={androidOpen} transparent animationType="fade" onRequestClose={() => setAndroidOpen(false)}>
+      <View style={{ borderRadius: 12, borderWidth: 1, borderColor, overflow: 'hidden' }}>
+        <Pressable
+          onPress={handlePress}
+          android_ripple={{ color: 'rgba(0,0,0,0.06)', borderless: false }}
+          style={{
+            height: 56,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            paddingHorizontal: 20,
+            backgroundColor: bgColor,
+          }}
+        >
+          <Text weight="semibold" style={{ flex: 1, fontSize: 16, letterSpacing: 0.2, color: disabled ? c.text.placeholder : textColor }}>
+            {selected?.label ?? placeholder ?? ''}
+          </Text>
+          <View style={{ transform: [{ rotate: open ? '180deg' : '0deg' }] }}>
+            <ChevronDownIcon width={24} height={24} color={chevronColor} />
+          </View>
+        </Pressable>
+      </View>
+
+      {error ? (
+        <Text weight="semibold" style={{ fontSize: 14, color: c.semantic.error, letterSpacing: 0.2 }}>
+          {error}
+        </Text>
+      ) : null}
+
+      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <TouchableOpacity
           style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
           activeOpacity={1}
-          onPress={() => setAndroidOpen(false)}
+          onPress={() => setOpen(false)}
         >
-          <View style={{ backgroundColor: c.surface.input, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 32, paddingTop: 16 }}>
-            <FlatList
-              data={options}
-              keyExtractor={o => o.value}
-              renderItem={({ item }) => (
-                <Pressable
-                  onPress={() => { onChange(item.value); setAndroidOpen(false); }}
-                  style={({ pressed }) => ({ paddingVertical: 16, paddingHorizontal: 24, backgroundColor: pressed ? c.surface.disabled : 'transparent' })}
-                >
-                  <Text weight="semibold" style={{ fontSize: 16, color: item.value === value ? c.text.link : c.text.primary }}>
-                    {item.label}
-                  </Text>
-                </Pressable>
-              )}
-            />
-          </View>
+          <TouchableOpacity activeOpacity={1}>
+            <View style={{
+              backgroundColor: c.surface.input,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              paddingTop: 12,
+              paddingBottom: 32,
+            }}>
+              <View style={{ alignItems: 'center', paddingBottom: 12 }}>
+                <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: c.surface.disabled }} />
+              </View>
+              <FlatList
+                data={options}
+                keyExtractor={o => o.value}
+                scrollEnabled={false}
+                renderItem={({ item }) => (
+                  <Pressable
+                    onPress={() => handleSelect(item.value)}
+                    android_ripple={{ color: 'rgba(0,0,0,0.06)' }}
+                    style={{
+                      paddingVertical: 16,
+                      paddingHorizontal: 24,
+                      backgroundColor: item.value === value ? c.surface.disabled : 'transparent',
+                    }}
+                  >
+                    <Text weight="semibold" style={{ fontSize: 16, letterSpacing: 0.2, color: item.value === value ? c.text.link : c.text.primary }}>
+                      {item.label}
+                    </Text>
+                  </Pressable>
+                )}
+              />
+            </View>
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
     </View>

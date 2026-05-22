@@ -8,6 +8,7 @@ type AuthContextType = {
   user: UserProfile | null;
   setAuthed: (value: boolean, profile?: UserProfile) => void;
   refreshUser: () => Promise<void>;
+  updateUser: (updates: Partial<UserProfile>) => void;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   setAuthed: () => { },
   refreshUser: async () => {},
+  updateUser: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -57,8 +59,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setChecked(true));
   }, []);
 
+  const updateUser = useCallback((updates: Partial<UserProfile>) => {
+    setUser(prev => prev ? { ...prev, ...updates } : null);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ authed, checked, user, setAuthed, refreshUser }}>
+    <AuthContext.Provider value={{ authed, checked, user, setAuthed, refreshUser, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

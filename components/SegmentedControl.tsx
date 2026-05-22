@@ -1,6 +1,7 @@
 import { View, Pressable } from 'react-native';
 import Text from '@/components/Text';
-import { useColors, colors } from '@/lib/colors';
+import { useColors } from '@/lib/colors';
+import CheckIcon from '@/assets/icons/Check.svg';
 
 type Option = { label: string; value: string };
 
@@ -20,54 +21,44 @@ export default function SegmentedControl({ label, options, value, onChange, disa
       <Text weight="bold" style={{ fontSize: 14, color: c.text.label, letterSpacing: 0.2, lineHeight: 14 * 1.4 }}>
         {label}
       </Text>
-      <View
-        style={{
-          flexDirection: 'row',
-          height: 56,
-          borderRadius: 12,
-          backgroundColor: c.surface.disabled,
-          padding: 8,
-          gap: 8,
-        }}
-      >
+      <View style={{
+        flexDirection: 'row',
+        borderRadius: 12,
+        backgroundColor: c.surface.disabled,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        gap: 8,
+      }}>
         {options.map(opt => {
-          const selected = opt.value === value;
+          const selected = opt.value === value && !disabled;
           return (
-            <Pressable
-              key={opt.value}
-              onPress={() => !disabled && onChange(opt.value)}
-              style={({ pressed }) => ({
-                flex: 1,
-                height: 40,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 8,
-                backgroundColor: selected && !disabled
-                  ? colors.neutral[0]
-                  : pressed && !disabled
-                  ? colors.neutral[200]
-                  : 'transparent',
-                shadowColor: selected && !disabled ? '#11182703' : 'transparent',
-                shadowOffset: { width: 1, height: 2 },
-                shadowOpacity: 1,
-                shadowRadius: 6,
-                elevation: selected && !disabled ? 1 : 0,
-              })}
-            >
-              <Text
-                weight="semibold"
+            <View key={opt.value} style={{ flex: 1, height: 40, borderRadius: 8, overflow: 'hidden' }}>
+              <Pressable
+                onPress={() => !disabled && onChange(opt.value)}
+                android_ripple={{ color: 'rgba(0,0,0,0.08)', borderless: false }}
                 style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
+                  paddingHorizontal: 8,
+                  backgroundColor: selected ? c.surface.input : 'transparent',
+                }}
+              >
+                {selected && (
+                  <CheckIcon width={16} height={16} color={c.brand.primary} />
+                )}
+                <Text weight="semibold" style={{
                   fontSize: 14,
                   letterSpacing: 0.2,
                   lineHeight: 14 * 1.4,
-                  color: selected && !disabled
-                    ? c.text.link
-                    : '#6b7280',
-                }}
-              >
-                {opt.label}
-              </Text>
-            </Pressable>
+                  color: selected ? c.text.link : c.text.secondary,
+                }}>
+                  {opt.label}
+                </Text>
+              </Pressable>
+            </View>
           );
         })}
       </View>

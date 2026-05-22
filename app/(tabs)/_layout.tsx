@@ -7,6 +7,10 @@ export default function TabLayout() {
       <Stack.Screen name="two" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="create-habit" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="habit/[id]" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="profile-settings" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="app-settings" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="about-app" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="legal/[type]" options={{ animation: 'slide_from_right' }} />
     </Stack>
   );
 }

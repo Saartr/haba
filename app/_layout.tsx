@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 import { useFonts, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
+import { SettingsProvider } from '@/lib/settings-context';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -37,7 +38,8 @@ function RootLayoutNav() {
     if (!ready || !fontsLoaded || !checked) return;
     const inAuth = segments[0] === '(auth)';
     const inTabs = segments[0] === '(tabs)';
-    if (authed && !inTabs) {
+    const inDev = segments[0] === 'dev';
+    if (authed && !inTabs && !inDev) {
       router.replace('/(tabs)');
     } else if (!authed && !inAuth) {
       router.replace('/(auth)/welcome');
@@ -57,8 +59,10 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <SettingsProvider>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </SettingsProvider>
   );
 }

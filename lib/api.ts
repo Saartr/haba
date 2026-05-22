@@ -80,6 +80,10 @@ export async function getMe(): Promise<UserProfile> {
   return request('/auth/me', {}, true);
 }
 
+export async function updateProfile(data: { first_name?: string }): Promise<UserProfile> {
+  return request('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }, true);
+}
+
 // ── Habits ────────────────────────────────────────────────────────────────────
 
 export type Habit = {

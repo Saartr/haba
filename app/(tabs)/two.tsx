@@ -1,13 +1,75 @@
-import { View, Pressable } from 'react-native';
-import Text from '@/components/Text';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Pressable, Image } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { clearTokens } from '@/lib/auth';
+import Text from '@/components/Text';
+import { useColors, colors } from '@/lib/colors';
 import { useAuth } from '@/lib/auth-context';
+import { useSettings } from '@/lib/settings-context';
+import { clearTokens } from '@/lib/auth';
+
+import ArrowBackIcon from '@/assets/icons/arrow_back.svg';
+import UserIcon from '@/assets/icons/User.svg';
+import SettingsIcon from '@/assets/icons/Settings.svg';
+import InfoCircleIcon from '@/assets/icons/InfoCircle.svg';
+import MoreVerticalIcon from '@/assets/icons/MoreVertical.svg';
+import LogoutIcon from '@/assets/icons/Logout.svg';
+import DeleteForeverIcon from '@/assets/icons/DeleteForever.svg';
+import ChevronRightIcon from '@/assets/icons/ChevronRight.svg';
+
+function ProfileAvatar({ firstName, avatarUrl }: { firstName: string | null; avatarUrl: string | null }) {
+  const initial = firstName ? firstName[0].toUpperCase() : '?';
+  if (avatarUrl) {
+    return <Image source={{ uri: avatarUrl }} style={{ width: 60, height: 60, borderRadius: 30 }} />;
+  }
+  return (
+    <View style={{
+      width: 60, height: 60, borderRadius: 30,
+      backgroundColor: colors.neutral[100],
+      alignItems: 'center', justifyContent: 'center',
+    }}>
+      <Text weight="bold" style={{ fontSize: 28, color: colors.neutral[500] }}>
+        {initial}
+      </Text>
+    </View>
+  );
+}
+
+function MenuItem({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress: () => void }) {
+  const c = useColors();
+  return (
+    <Pressable onPress={onPress} hitSlop={4}>
+      {({ pressed }) => (
+        <View style={{
+          height: 58,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          opacity: pressed ? 0.6 : 1,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            {icon}
+            <Text weight="semibold" style={{ fontSize: 16, color: c.text.secondary, letterSpacing: 0.2 }}>
+              {label}
+            </Text>
+          </View>
+          <ChevronRightIcon width={24} height={24} color={c.text.secondary} />
+        </View>
+      )}
+    </Pressable>
+  );
+}
 
 export default function ProfileScreen() {
+  const c = useColors();
   const router = useRouter();
-  const { setAuthed } = useAuth();
+  const { setAuthed, user } = useAuth();
+  const { colorScheme } = useSettings();
+  const insets = useSafeAreaInsets();
+
+  const screenBg = colorScheme === 'dark' ? colors.neutral[950] : colors.neutral[50];
+  const cardBg = colorScheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
+
+  const displayName = user?.first_name ?? user?.username ?? null;
 
   const handleLogout = async () => {
     await clearTokens();
@@ -15,29 +77,114 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-0">
-      <View className="flex-1 items-center justify-center gap-4">
-        <Text className="text-body-16 text-neutral-500">
-          Профиль — в разработке
-        </Text>
-
-        <Pressable
-          onPress={handleLogout}
-          className="bg-red-500 rounded-xl px-8 py-3 active:opacity-70"
-        >
-          <Text weight="bold" className="text-body-16 text-neutral-0">Выйти</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }} edges={['top']}>
+      {/* Navigation bar */}
+      <View style={{ height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
+        <Pressable onPress={() => router.back()} hitSlop={8}>
+          {({ pressed }) => (
+            <View style={{ padding: 4, opacity: pressed ? 0.6 : 1 }}>
+              <ArrowBackIcon width={24} height={24} color={c.text.primary} />
+            </View>
+          )}
         </Pressable>
+        <Text weight="bold" style={{
+          flex: 1, textAlign: 'center',
+          fontSize: 18, color: c.text.primary, letterSpacing: 0.2,
+        }}>
+          Профиль
+        </Text>
+        <View style={{ width: 32 }} />
+      </View>
 
-        {__DEV__ && (
-          <Pressable
-            onPress={() => router.push('/dev')}
-            className="mt-4 border border-neutral-300 rounded-xl px-8 py-3 active:opacity-70"
-          >
-            <Text weight="bold" className="text-body-16 text-neutral-600">
-              🧩 Component Gallery
+      <View style={{ flex: 1, paddingBottom: insets.bottom + 16 }}>
+        {/* Avatar + name */}
+        <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 24 }}>
+          <ProfileAvatar firstName={user?.first_name ?? null} avatarUrl={user?.avatar_url ?? null} />
+          {displayName && (
+            <Text weight="semibold" style={{
+              marginTop: 8, fontSize: 16,
+              color: c.text.primary, letterSpacing: 0.2,
+            }}>
+              {displayName}
             </Text>
+          )}
+        </View>
+
+        {/* Menu list */}
+        <View style={{
+          marginHorizontal: 24,
+          backgroundColor: cardBg,
+          borderRadius: 16,
+          paddingVertical: 16,
+          paddingHorizontal: 24,
+          gap: 16,
+        }}>
+          <MenuItem
+            icon={<UserIcon width={24} height={24} color={c.text.secondary} />}
+            label="Настройки профиля"
+            onPress={() => router.push('/(tabs)/profile-settings')}
+          />
+          <MenuItem
+            icon={<SettingsIcon width={24} height={24} color={c.text.secondary} />}
+            label="Настройки приложения"
+            onPress={() => router.push('/(tabs)/app-settings')}
+          />
+          <MenuItem
+            icon={<InfoCircleIcon width={24} height={24} color={c.text.secondary} />}
+            label="О приложении"
+            onPress={() => router.push('/(tabs)/about-app')}
+          />
+          {__DEV__ && (
+            <MenuItem
+              icon={<MoreVerticalIcon width={24} height={24} color={c.text.secondary} />}
+              label="Компоненты"
+              onPress={() => router.push('/dev')}
+            />
+          )}
+        </View>
+
+        {/* Push buttons to bottom */}
+        <View style={{ flex: 1 }} />
+
+        {/* Action buttons */}
+        <View style={{ marginHorizontal: 24, gap: 16 }}>
+          <Pressable onPress={handleLogout} style={{ height: 56 }}>
+            {({ pressed }) => (
+              <View style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 12,
+                borderRadius: 12,
+                backgroundColor: pressed ? c.brand.pressed : c.brand.primary,
+              }}>
+                <LogoutIcon width={24} height={24} color={colors.neutral[0]} />
+                <Text weight="bold" style={{ fontSize: 16, color: colors.neutral[0], letterSpacing: 0.2 }}>
+                  Выйти из аккаунта
+                </Text>
+              </View>
+            )}
           </Pressable>
-        )}
+
+          <Pressable onPress={() => {}} style={{ height: 56 }}>
+            {({ pressed }) => (
+              <View style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 12,
+                opacity: pressed ? 0.7 : 1,
+              }}>
+                <DeleteForeverIcon width={24} height={24} color={colors.red[500]} />
+                <Text weight="bold" style={{ fontSize: 16, color: colors.red[500], letterSpacing: 0.2 }}>
+                  Удалить аккаунт
+                </Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
       </View>
     </SafeAreaView>
   );

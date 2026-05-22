@@ -1,4 +1,4 @@
-import { useColorScheme } from 'react-native';
+import { useSettings } from '@/lib/settings-context';
 
 export const colors = {
   purple: {
@@ -64,6 +64,6 @@ const dark: SemanticColors = {
 };
 
 export function useColors(): SemanticColors {
-  const scheme = useColorScheme();
-  return scheme === 'dark' ? dark : light;
+  const { colorScheme } = useSettings();
+  return colorScheme === 'dark' ? dark : light;
 }

@@ -4,11 +4,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect } from 'expo-router';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
+import SegmentedControl from '@/components/SegmentedControl';
+import Select from '@/components/Select';
+import Lists from '@/components/Lists';
 import { useState } from 'react';
-import { colors } from '@/lib/colors';
+import { useColors, colors } from '@/lib/colors';
+import { useSettings } from '@/lib/settings-context';
 import MailIcon from '@/assets/icons/Mail.svg';
 import PinIcon from '@/assets/icons/Pin.svg';
 import TelegramIcon from '@/assets/icons/Telegram.svg';
+import UserIcon from '@/assets/icons/User.svg';
+import SettingsIcon from '@/assets/icons/Settings.svg';
+import InfoCircleIcon from '@/assets/icons/InfoCircle.svg';
 
 if (!__DEV__) {
   // В проде роут недоступен
@@ -17,12 +24,13 @@ if (!__DEV__) {
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const c = useColors();
   return (
-    <View className="mb-8">
-      <Text weight="bold" className="text-body-12 text-neutral-500 tracking-default uppercase mb-4">
+    <View style={{ marginBottom: 32 }}>
+      <Text weight="bold" style={{ fontSize: 12, color: c.text.secondary, letterSpacing: 0.2, textTransform: 'uppercase', marginBottom: 16 }}>
         {title}
       </Text>
-      <View className="gap-3">
+      <View style={{ gap: 12 }}>
         {children}
       </View>
     </View>
@@ -30,26 +38,35 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Label({ text }: { text: string }) {
+  const c = useColors();
   return (
-    <Text className="text-body-12 text-neutral-400 mb-1">
+    <Text style={{ fontSize: 12, color: c.text.placeholder, marginBottom: 4 }}>
       {text}
     </Text>
   );
 }
 
 export default function DevScreen() {
+  const c = useColors();
+  const { colorScheme } = useSettings();
   const [inputValue, setInputValue] = useState('');
   const [inputError, setInputError] = useState('');
+  const [theme, setTheme] = useState('system');
+  const [toggle2, setToggle2] = useState('on');
+  const [selectValue, setSelectValue] = useState('');
+
+  const screenBg = colorScheme === 'dark' ? colors.neutral[950] : colors.neutral[100];
+  const borderColor = colorScheme === 'dark' ? colors.neutral[800] : colors.neutral[200];
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-100">
-      <View className="h-14 px-6 justify-center border-b border-neutral-200">
-        <Text weight="bold" className="text-h4 text-neutral-900">
+    <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }}>
+      <View style={{ height: 56, paddingHorizontal: 24, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: borderColor }}>
+        <Text weight="bold" style={{ fontSize: 18, color: c.text.primary }}>
           🧩 Component Gallery
         </Text>
       </View>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 24 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24 }}>
 
         {/* BUTTON — MAIN */}
         <Section title="Button / Main">
@@ -80,6 +97,76 @@ export default function DevScreen() {
 
           <Label text="Disabled" />
           <Button variant="text" label="Изменить данные для входа" onPress={() => {}} disabled />
+        </Section>
+
+        {/* ПРОФИЛЬ */}
+        <Section title="Компоненты в профиле">
+          <Label text="Segmented — 3 варианта (тема)" />
+          <SegmentedControl
+            label="Тема"
+            options={[
+              { label: 'Системная', value: 'system' },
+              { label: 'Светлая', value: 'light' },
+              { label: 'Темная', value: 'dark' },
+            ]}
+            value={theme}
+            onChange={setTheme}
+          />
+
+          <Label text="Segmented — 2 варианта (вкл/выкл)" />
+          <SegmentedControl
+            label="Уведомления"
+            options={[
+              { label: 'Включить', value: 'on' },
+              { label: 'Выключить', value: 'off' },
+            ]}
+            value={toggle2}
+            onChange={setToggle2}
+          />
+
+          <Label text="Select — Default (интерактивный)" />
+          <Select
+            label="Язык"
+            placeholder="Выберите язык"
+            options={[
+              { label: 'Русский', value: 'ru' },
+              { label: 'English', value: 'en' },
+              { label: 'Español', value: 'es' },
+            ]}
+            value={selectValue}
+            onChange={setSelectValue}
+          />
+
+          <Label text="Select — Error" />
+          <Select
+            label="Язык"
+            placeholder="Выберите язык"
+            options={[{ label: 'Русский', value: 'ru' }]}
+            value=""
+            onChange={() => {}}
+            error="Выберите язык из списка"
+          />
+
+          <Label text="Select — Disabled" />
+          <Select
+            label="Язык"
+            options={[{ label: 'Русский', value: 'ru' }]}
+            value="ru"
+            onChange={() => {}}
+            disabled
+          />
+
+          <Label text="Segmented — Disabled" />
+          <SegmentedControl
+            label="Недоступно"
+            options={[
+              { label: 'Включить', value: 'on' },
+              { label: 'Выключить', value: 'off' },
+            ]}
+            value="on"
+            onChange={() => {}}
+            disabled
+          />
         </Section>
 
         {/* INPUT */}
@@ -131,6 +218,29 @@ export default function DevScreen() {
           <Button
             label={inputError ? 'Сбросить ошибку' : 'Показать ошибку'}
             onPress={() => setInputError(inputError ? '' : 'Неверный код')}
+          />
+        </Section>
+
+        {/* LISTS */}
+        <Section title="Lists">
+          <Label text="С иконками (стиль профиля)" />
+          <Lists
+            items={[
+              { label: 'Настройки профиля', icon: <UserIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+              { label: 'Настройки приложения', icon: <SettingsIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+              { label: 'О приложении', icon: <InfoCircleIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+            ]}
+            cardStyle={{ gap: 16 }}
+          />
+
+          <Label text="Без иконок (стиль О приложении)" />
+          <Lists
+            items={[
+              { label: 'Политика конфиденциальности', onPress: () => {} },
+              { label: 'Пользовательское соглашение', onPress: () => {} },
+              { label: 'Согласие на обработку данных', onPress: () => {} },
+            ]}
+            cardStyle={{ gap: 16 }}
           />
         </Section>
 
