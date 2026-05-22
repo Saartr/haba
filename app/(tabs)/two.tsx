@@ -1,7 +1,8 @@
-import { View, Pressable, Image } from 'react-native';
+import { View, Pressable, Image, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Text from '@/components/Text';
+import Lists from '@/components/Lists';
 import { useColors, colors } from '@/lib/colors';
 import { useAuth } from '@/lib/auth-context';
 import { useSettings } from '@/lib/settings-context';
@@ -14,7 +15,6 @@ import InfoCircleIcon from '@/assets/icons/InfoCircle.svg';
 import MoreVerticalIcon from '@/assets/icons/MoreVertical.svg';
 import LogoutIcon from '@/assets/icons/Logout.svg';
 import DeleteForeverIcon from '@/assets/icons/DeleteForever.svg';
-import ChevronRightIcon from '@/assets/icons/ChevronRight.svg';
 
 function ProfileAvatar({ firstName, avatarUrl }: { firstName: string | null; avatarUrl: string | null }) {
   const initial = firstName ? firstName[0].toUpperCase() : '?';
@@ -34,30 +34,6 @@ function ProfileAvatar({ firstName, avatarUrl }: { firstName: string | null; ava
   );
 }
 
-function MenuItem({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress: () => void }) {
-  const c = useColors();
-  return (
-    <Pressable onPress={onPress} hitSlop={4}>
-      {({ pressed }) => (
-        <View style={{
-          height: 58,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          opacity: pressed ? 0.6 : 1,
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-            {icon}
-            <Text weight="semibold" style={{ fontSize: 16, color: c.text.secondary, letterSpacing: 0.2 }}>
-              {label}
-            </Text>
-          </View>
-          <ChevronRightIcon width={24} height={24} color={c.text.secondary} />
-        </View>
-      )}
-    </Pressable>
-  );
-}
 
 export default function ProfileScreen() {
   const c = useColors();
@@ -71,9 +47,14 @@ export default function ProfileScreen() {
 
   const displayName = user?.first_name ?? user?.username ?? null;
 
-  const handleLogout = async () => {
-    await clearTokens();
-    setAuthed(false);
+  const handleLogout = () => {
+    Alert.alert('Выйти из аккаунта?', '', [
+      { text: 'Отмена', style: 'cancel' },
+      { text: 'Выйти', style: 'destructive', onPress: async () => {
+        await clearTokens();
+        setAuthed(false);
+      }},
+    ]);
   };
 
   return (
@@ -111,37 +92,31 @@ export default function ProfileScreen() {
         </View>
 
         {/* Menu list */}
-        <View style={{
-          marginHorizontal: 24,
-          backgroundColor: cardBg,
-          borderRadius: 16,
-          paddingVertical: 16,
-          paddingHorizontal: 24,
-          gap: 16,
-        }}>
-          <MenuItem
-            icon={<UserIcon width={24} height={24} color={c.text.secondary} />}
-            label="Настройки профиля"
-            onPress={() => router.push('/(tabs)/profile-settings')}
-          />
-          <MenuItem
-            icon={<SettingsIcon width={24} height={24} color={c.text.secondary} />}
-            label="Настройки приложения"
-            onPress={() => router.push('/(tabs)/app-settings')}
-          />
-          <MenuItem
-            icon={<InfoCircleIcon width={24} height={24} color={c.text.secondary} />}
-            label="О приложении"
-            onPress={() => router.push('/(tabs)/about-app')}
-          />
-          {__DEV__ && (
-            <MenuItem
-              icon={<MoreVerticalIcon width={24} height={24} color={c.text.secondary} />}
-              label="Компоненты"
-              onPress={() => router.push('/dev')}
-            />
-          )}
-        </View>
+        <Lists
+          cardStyle={{ marginHorizontal: 24, backgroundColor: cardBg }}
+          items={[
+            {
+              label: 'Настройки профиля',
+              icon: <UserIcon width={24} height={24} color={c.text.secondary} />,
+              onPress: () => router.push('/(tabs)/profile-settings'),
+            },
+            {
+              label: 'Настройки приложения',
+              icon: <SettingsIcon width={24} height={24} color={c.text.secondary} />,
+              onPress: () => router.push('/(tabs)/app-settings'),
+            },
+            {
+              label: 'О приложении',
+              icon: <InfoCircleIcon width={24} height={24} color={c.text.secondary} />,
+              onPress: () => router.push('/(tabs)/about-app'),
+            },
+            ...(__DEV__ ? [{
+              label: 'Компоненты',
+              icon: <MoreVerticalIcon width={24} height={24} color={c.text.secondary} />,
+              onPress: () => router.push('/dev'),
+            }] : []),
+          ]}
+        />
 
         {/* Push buttons to bottom */}
         <View style={{ flex: 1 }} />
