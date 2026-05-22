@@ -12,9 +12,9 @@ metadata:
 **Why:** Файлы на сервере содержат template literals (обратные кавычки) и `${...}` — они интерпретируются bash'ем как command substitution и всё ломается. Это происходило несколько раз подряд.
 
 **How to apply:** Единственный рабочий метод для правки серверных файлов:
-1. Скачать файл: `ssh -i /tmp/haba_deploy root@147.45.134.216 "cat /path/to/file.js" > C:/tmp/file.js`
+1. Скачать файл: `ssh -i ~/.ssh/haba_deploy root@147.45.134.216 "cat /path/to/file.js" > C:/tmp/file.js`
 2. Отредактировать локально инструментом Edit
-3. Загрузить обратно: `scp -i /tmp/haba_deploy "C:/tmp/file.js" root@147.45.134.216:/path/to/file.js`
-4. Перезапустить: `ssh -i /tmp/haba_deploy root@147.45.134.216 "pm2 restart step-bot"`
+3. Загрузить обратно: `scp -i ~/.ssh/haba_deploy "C:/tmp/file.js" root@147.45.134.216:/path/to/file.js`
+4. Перезапустить: `ssh -i ~/.ssh/haba_deploy root@147.45.134.216 "pm2 restart step-bot"`
 
-SSH-ключ: `/tmp/haba_deploy`, сервер: `root@147.45.134.216`
+SSH-ключ: `~/.ssh/haba_deploy` (`C:\Users\Saartr\.ssh\haba_deploy`), сервер: `root@147.45.134.216`, алиас: `ssh Haba`
