@@ -31,4 +31,6 @@ metadata:
 
 **JWT:** accessToken TTL 15 мин, refreshToken TTL 30 дней (ротируется при использовании)
 
+**Бэкенд в git — TODO:** Бэкенд (`/var/www/step-bot`) пока не в репозитории. Нужно перенести в папку `backend/` в этом же репо, настроить `git pull` на сервере и автодеплой через GitHub Actions. Сейчас деплой идёт вручную через scp.
+
 **How to apply:** При написании кода — Expo SDK 55, читать доки на https://docs.expo.dev/versions/v55.0.0/. Бэкенд — Express 5, `postgres` tag-библиотека.
