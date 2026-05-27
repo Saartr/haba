@@ -18,7 +18,7 @@ metadata:
 - Дизайн-система: TapaDS, цвета через `useColors()` из `lib/colors.ts`
 - Шрифт: Manrope (medium/semibold/bold), обёртка `components/Text.tsx`
 
-**Бэкенд** (`/var/www/step-bot` на `bot.mihmih.pro`, Ubuntu 24.04.4 LTS):
+**Бэкенд** (`/var/www/haba/backend` на `bot.mihmih.pro`, Ubuntu 24.04.4 LTS, в репо в папке `backend/`):
 - Node.js v22, Express 5
 - grammy v1 (Telegram Bot API) — бот `@Step_Challenges_Bot`
 - PostgreSQL (библиотека `postgres` tag, не pg/knex)
@@ -31,6 +31,6 @@ metadata:
 
 **JWT:** accessToken TTL 15 мин, refreshToken TTL 30 дней (ротируется при использовании)
 
-**Бэкенд в git — TODO:** Бэкенд (`/var/www/step-bot`) пока не в репозитории. Нужно перенести в папку `backend/` в этом же репо, настроить `git pull` на сервере и автодеплой через GitHub Actions. Сейчас деплой идёт вручную через scp.
+**Деплой бэкенда:** ручной скрипт `deploy-backend.ps1` в корне репо. Подробности — [[project-backend-deploy]].
 
-**How to apply:** При написании кода — Expo SDK 55, читать доки на https://docs.expo.dev/versions/v55.0.0/. Бэкенд — Express 5, `postgres` tag-библиотека.
+**How to apply:** При написании кода — Expo SDK 55, читать доки на https://docs.expo.dev/versions/v55.0.0/. Бэкенд — Express 5, `postgres` tag-библиотека. Серверные правки коммитить в `backend/`, деплоить через `./deploy-backend.ps1` после пуша в `main`.

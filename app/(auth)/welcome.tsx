@@ -30,12 +30,15 @@ export default function WelcomeScreen() {
       const decoded = JSON.parse(atob(match[1]));
       if (!decoded.hash) return false;
       setProcessing(true);
+      setShowWebView(false);
       telegramAuth(decoded as TelegramUser)
         .then(result => saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken }).then(() => result))
-        .then(result => setAuthed(true, result.user))
+        .then(result => {
+          setProcessing(false);
+          setAuthed(true, result.user);
+        })
         .catch((e: any) => {
           setProcessing(false);
-          setShowWebView(false);
           setError(e.message ?? 'Ошибка авторизации');
         });
       return true;
