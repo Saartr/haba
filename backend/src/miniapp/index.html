@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Записать шаги</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+if (!window.Telegram || !window.Telegram.WebApp) {
+  var s = document.createElement('script');
+  s.src = '/miniapp/telegram-web-app.js';
+  document.head.appendChild(s);
+}
+</script>
+<script>
+  // Если Telegram не загрузился за 3 сек — продолжаем без него
+  window._tgTimeout = setTimeout(() => {
+    if (!window.Telegram) {
+      window.Telegram = { WebApp: {
+        ready: ()=>{}, expand: ()=>{}, close: ()=>{},
+        initData: '', initDataUnsafe: {},
+        openLink: (url) => window.open(url, '_blank')
+      }};
+      // Запускаем app.js вручную
+      const s = document.createElement('script');
+      s.src = 'app.js';
+      document.body.appendChild(s);
+    }
+  }, 3000);
+</script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--tg-theme-bg-color, #fff);
+      color: var(--tg-theme-text-color, #000);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 360px;
+      background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+    }
+    h1 { font-size: 22px; margin-bottom: 8px; }
+    .subtitle { font-size: 14px; opacity: 0.6; margin-bottom: 24px; }
+    .steps-display {
+      font-size: 48px;
+      font-weight: 700;
+      margin: 16px 0;
+      color: var(--tg-theme-link-color, #2481cc);
+    }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 12px;
+      transition: opacity 0.2s;
+    }
+    .btn:active { opacity: 0.7; }
+    .btn-primary {
+      background: var(--tg-theme-button-color, #2481cc);
+      color: var(--tg-theme-button-text-color, #fff);
+    }
+    .btn-secondary {
+      background: var(--tg-theme-secondary-bg-color, #e0e0e0);
+      color: var(--tg-theme-text-color, #000);
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    input[type=number] {
+      flex: 1;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.15);
+      font-size: 18px;
+      text-align: center;
+      background: var(--tg-theme-bg-color, #fff);
+      color: var(--tg-theme-text-color, #000);
+    }
+    .status {
+      font-size: 13px;
+      opacity: 0.6;
+      margin-top: 12px;
+      min-height: 20px;
+    }
+    .error { color: #e53935; opacity: 1; }
+    .success { color: #43a047; opacity: 1; }
+    #google-section { display: none; }
+    #manual-section { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>👟 Шаги за сегодня</h1>
+    <p class="subtitle" id="subtitle">Загружаем...</p>
+
+    <!-- Google Fit секция -->
+    <div id="google-section">
+      <div class="steps-display" id="steps-value">—</div>
+      <button class="btn btn-primary" id="sync-btn" onclick="syncGoogleFit()">
+        🔄 Синхронизировать с Google Fit
+      </button>
+      <button class="btn btn-secondary" onclick="showManual()">
+        ✏️ Ввести вручную
+      </button>
+    </div>
+
+    <!-- Ручной ввод -->
+    <div id="manual-section">
+      <div class="input-row">
+        <input type="number" id="manual-input" placeholder="8 000" min="0" max="200000">
+      </div>
+      <button class="btn btn-primary" onclick="submitManual()">
+        ✅ Записать шаги
+      </button>
+      <button class="btn btn-secondary" id="back-btn" onclick="showGoogle()" style="display:none">
+        ← Назад
+      </button>
+    </div>
+
+    <p class="status" id="status"></p>
+  </div>
+
+  <script>
+function loadApp() {
+  var s = document.createElement('script');
+  s.src = '/miniapp/app.js';
+  document.body.appendChild(s);
+}
+
+function waitForTelegram(attempts) {
+  if (window.Telegram && window.Telegram.WebApp) {
+    loadApp();
+  } else if (attempts > 0) {
+    setTimeout(function() { waitForTelegram(attempts - 1); }, 200);
+  } else {
+    // Фолбэк — запускаем без Telegram SDK
+    window.Telegram = { WebApp: {
+      ready: function(){}, expand: function(){}, close: function(){},
+      initData: '', initDataUnsafe: {},
+      openLink: function(url){ window.open(url, '_blank'); }
+    }};
+    loadApp();
+  }
+}
+
+window.addEventListener('load', function() { waitForTelegram(20); });
+</script>
+</body>
+</html>
