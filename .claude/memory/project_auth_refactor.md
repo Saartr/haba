@@ -7,26 +7,29 @@ metadata:
   originSessionId: 6f334f79-b33a-4bdb-b852-d3bff627bebf
 ---
 
-Переход с OTP (send-code / verify-code) на Telegram Login Widget — **завершён**.
+Переход с OTP → Telegram Login Widget (WebView) → браузер + deep link — **завершён**.
 
-**Why:** OTP требовал, чтобы пользователь сначала написал боту /start и имел username. Виджет авторизует через официальный Telegram OAuth — проще и надёжнее.
+**Why:** WebView не мог перехватить `intent://` редиректы на Android, а `oauth.telegram.org` блокирует embedding (X-Frame-Options). Браузер + deeplink обходит оба ограничения.
 
-**Что сделано:**
+**Флоу авторизации:**
+1. Пользователь нажимает кнопку → `Linking.openURL('https://bot.mihmih.pro/api/v1/auth/telegram-login')`
+2. Сервер делает `redirect` → `oauth.telegram.org` (Telegram OAuth)
+3. Telegram редиректит на `https://bot.mihmih.pro/api/v1/auth/telegram-callback`
+4. Страница callback читает `window.location.hash` и делает `window.location.replace('haba://auth/callback' + fragment)`
+5. Android перехватывает deeplink `haba://auth/callback#tgAuthResult=...`
+6. `app/(auth)/welcome.tsx` ловит через `Linking.addEventListener('url', ...)` → парсит `tgAuthResult` → `POST /auth/telegram` → JWT сохраняется
 
-Бэкенд (`backend/src/api/auth.js` в репо, `/var/www/haba/backend/src/api/auth.js` на сервере):
-- `GET /api/v1/auth/telegram-login` — HTML с кнопкой → `oauth.telegram.org`
-- `GET /api/v1/auth/telegram-callback` — пустая HTML-страница для получения tgAuthResult
-- `POST /api/v1/auth/telegram` — HMAC-верификация, upsert user, скачивание аватара (с redirect-following), JWT
-- `POST /api/v1/auth/refresh` — ротация refresh-токена (DELETE старого перед INSERT)
+**Бэкенд** (`backend/src/api/auth.js`):
+- `GET /api/v1/auth/telegram-login` — redirect на `oauth.telegram.org`
+- `GET /api/v1/auth/telegram-callback` — HTML, читает fragment и редиректит на `haba://`
+- `POST /api/v1/auth/telegram` — HMAC-верификация, upsert user, скачивание аватара, JWT
+- `POST /api/v1/auth/refresh` — ротация refresh-токена
 - `GET /api/v1/auth/me` — профиль пользователя
-- Nginx: `location /avatars/` с `alias /var/www/haba/backend/public/avatars/` для статической отдачи аватаров
 
-Фронтенд:
-- `app/(auth)/welcome.tsx` — Modal + WebView с Telegram Login Widget
-- `tg://` deeplinks перехватываются → `Linking.openURL()` открывает приложение Telegram
-- После входа: `tgAuthResult` из URL fragment → `POST /auth/telegram` → JWT сохраняется
-- `lib/api.ts` — добавлены `telegramAuth()`, `getMe()`, тип `UserProfile`
-- `lib/auth-context.tsx` — расширен: `user: UserProfile | null`, `refreshUser()`, `setAuthed(value, profile?)`
-- Экраны `enter-username.tsx` и `verify-code.tsx` удалены
+**Фронтенд:**
+- `app/(auth)/welcome.tsx` — кнопка `Linking.openURL` + `Linking.addEventListener` для deeplink, без WebView/Modal
+- `lib/api.ts` — `telegramAuth()`, `getMe()`, тип `UserProfile`
+- `lib/auth-context.tsx` — `user: UserProfile | null`, `refreshUser()`, `setAuthed(value, profile?)`
+- Deep link scheme `haba://` настроен в `app.json` и `AndroidManifest.xml`
 
-**How to apply:** Старые эндпоинты send-code/verify-code мертвы, их можно удалить из кода сервера. Флоу авторизации полностью через виджет.
+**How to apply:** Флоу авторизации полностью через системный браузер. WebView не используется. Старые эндпоинты send-code/verify-code удалены.

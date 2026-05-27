@@ -1,7 +1,8 @@
 # Memory Index
 
 - [iOS Build Plan](project_ios_plan.md) — EAS Build when Apple Developer Account obtained; Android-only until then
-- [Auth Refactor → Telegram Login Widget](project_auth_refactor.md) — завершено: WebView+виджет на фронте, HMAC-верификация + аватары на бэке
+- [Auth Refactor → браузер + deep link](project_auth_refactor.md) — завершено: системный браузер → oauth.telegram.org → haba:// deeplink, без WebView
+- [Health Connect](project_health_connect.md) — реализовано, заблокировано Google Play верификацией; разблокируется после регистрации в Play Console ($25)
 - [Главный экран](project_main_screen.md) — реализован: шторка, аватар, имя с truncation, empty state, без таб-бара
 - [SSH: редактирование файлов на сервере](feedback_ssh_file_edit.md) — серверный код правится локально в `backend/` и деплоится через `./deploy-backend.ps1`, никакой прямой правки на сервере
 - [Figma TapaDS — источник правды](feedback_figma_source_of_truth.md) — иконки/цвета/компоненты/отступы только из Figma TapaDS, не придумывать самостоятельно
