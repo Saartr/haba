@@ -1,12 +1,11 @@
-import { View, useWindowDimensions, Modal, Linking } from 'react-native';
-import { useState } from 'react';
+import { View, useWindowDimensions, Linking } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
 import Text from '@/components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TelegramIcon from '@/assets/icons/Telegram.svg';
 import TapaWelcome from '@/assets/images/tapa_welcome.svg';
 import Button from '@/components/Button';
 import { useColors } from '@/lib/colors';
-import { WebView } from 'react-native-webview';
 import { telegramAuth, TelegramUser } from '@/lib/api';
 import { saveTokens } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
@@ -17,20 +16,19 @@ export default function WelcomeScreen() {
   const { width } = useWindowDimensions();
   const c = useColors();
   const { setAuthed } = useAuth();
-  const [showWebView, setShowWebView] = useState(false);
-  const [webViewKey, setWebViewKey] = useState(0);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const listenerRef = useRef<ReturnType<typeof Linking.addEventListener> | null>(null);
 
-  function handleCallback(url: string) {
+  function handleDeepLink(url: string) {
+    if (!url.startsWith('haba://auth/callback')) return;
     const fragment = url.split('#')[1] ?? '';
     const match = fragment.match(/tgAuthResult=([^&]+)/);
-    if (!match) return false;
+    if (!match) return;
     try {
       const decoded = JSON.parse(atob(match[1]));
-      if (!decoded.hash) return false;
+      if (!decoded.hash) return;
       setProcessing(true);
-      setShowWebView(false);
       telegramAuth(decoded as TelegramUser)
         .then(result => saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken }).then(() => result))
         .then(result => {
@@ -41,10 +39,36 @@ export default function WelcomeScreen() {
           setProcessing(false);
           setError(e.message ?? 'Ошибка авторизации');
         });
-      return true;
     } catch {
-      return false;
+      setError('Ошибка авторизации');
     }
+  }
+
+  useEffect(() => {
+    // Ловим deeplink если приложение уже открыто
+    listenerRef.current = Linking.addEventListener('url', ({ url }) => {
+      console.log('[TgLogin] deeplink:', url);
+      handleDeepLink(url);
+    });
+
+    // Ловим deeplink если приложение было закрыто
+    Linking.getInitialURL().then(url => {
+      if (url) {
+        console.log('[TgLogin] initialURL:', url);
+        handleDeepLink(url);
+      }
+    });
+
+    return () => {
+      listenerRef.current?.remove();
+    };
+  }, []);
+
+  function openTelegram() {
+    setError(null);
+    Linking.openURL(TELEGRAM_LOGIN_URL).catch(() => {
+      setError('Не удалось открыть браузер');
+    });
   }
 
   return (
@@ -70,57 +94,11 @@ export default function WelcomeScreen() {
       <View className="px-6 pb-8">
         <Button
           label="Войти через Telegram"
-          onPress={() => { setError(null); setWebViewKey(k => k + 1); setShowWebView(true); }}
+          onPress={openTelegram}
           loading={processing}
           icon={<TelegramIcon width={20} height={20} color={c.text.onPrimary} />}
         />
       </View>
-
-      <Modal
-        visible={showWebView}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowWebView(false)}
-      >
-        <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }}>
-          <View className="px-4 pb-3 pt-2 flex-row items-center justify-between">
-            <Text weight="semibold" className="text-body-16" style={{ color: c.text.primary }}>
-              Войти через Telegram
-            </Text>
-            <Button
-              label="Отмена"
-              variant="text"
-              onPress={() => setShowWebView(false)}
-            />
-          </View>
-
-          <WebView
-            key={webViewKey}
-            source={{ uri: TELEGRAM_LOGIN_URL }}
-            style={{ flex: 1, backgroundColor: c.surface.default }}
-            javaScriptEnabled
-            domStorageEnabled
-            onShouldStartLoadWithRequest={(request) => {
-              if (request.url.startsWith('tg://') || request.url.startsWith('tg:')) {
-                Linking.openURL(request.url);
-                return false;
-              }
-              if (request.url.includes('/telegram-callback')) {
-                const handled = handleCallback(request.url);
-                if (handled) setShowWebView(false);
-                return false;
-              }
-              return true;
-            }}
-            onNavigationStateChange={(state) => {
-              if (state.url?.includes('/telegram-callback')) {
-                const handled = handleCallback(state.url);
-                if (handled) setShowWebView(false);
-              }
-            }}
-          />
-        </SafeAreaView>
-      </Modal>
     </SafeAreaView>
   );
 }
