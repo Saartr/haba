@@ -150,6 +150,19 @@ export async function logHabit(id: number, value: number, date?: string): Promis
   return request(`/habits/${id}/logs`, { method: 'POST', body: JSON.stringify({ value, date }) }, true);
 }
 
+export async function syncHabitSteps(
+  id: number,
+  value: number,
+  source: 'health_connect' | 'healthkit',
+  date?: string,
+): Promise<HabitLog> {
+  return request(
+    `/habits/${id}/logs/sync`,
+    { method: 'POST', body: JSON.stringify({ value, source, date }) },
+    true,
+  );
+}
+
 export async function excludeMember(habitId: number, userId: number): Promise<void> {
   return request(`/habits/${habitId}/members/${userId}`, { method: 'DELETE' }, true);
 }

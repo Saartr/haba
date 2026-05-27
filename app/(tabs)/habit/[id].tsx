@@ -10,6 +10,8 @@ import {
   Alert,
   Clipboard,
   ActivityIndicator,
+  Platform,
+  Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -25,12 +27,19 @@ import { useColors, colors } from '@/lib/colors';
 import {
   getHabit,
   logHabit,
+  syncHabitSteps,
   excludeMember,
   closeHabit,
   transferHabit,
   HabitDetail,
   HabitMember,
 } from '@/lib/api';
+import {
+  isHealthConnectAvailable,
+  hasStepsPermission,
+  requestStepsPermission,
+  getTodaySteps,
+} from '@/lib/health';
 import { useEffect, useState, useCallback } from 'react';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -193,6 +202,7 @@ export default function HabitScreen() {
   const [habit, setHabit] = useState<HabitDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [logLoading, setLogLoading] = useState(false);
+  const [trackerLoading, setTrackerLoading] = useState(false);
   const [excludeTarget, setExcludeTarget] = useState<number | null>(null);
   const [inviteModal, setInviteModal] = useState(false);
   const [stepsModal, setStepsModal] = useState(false);
@@ -214,6 +224,26 @@ export default function HabitScreen() {
   }, [habitId]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Автосинк шагов из Health Connect, если уже есть permission
+  useEffect(() => {
+    if (!habit || habit.category !== 'steps' || Platform.OS !== 'android') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const granted = await hasStepsPermission();
+        if (!granted || cancelled) return;
+        const steps = await getTodaySteps();
+        if (cancelled || steps <= 0) return;
+        await syncHabitSteps(habitId, steps, 'health_connect');
+        if (!cancelled) load();
+      } catch (e) {
+        // тихий автосинк — не дёргаем юзера Alert'ом
+        console.warn('[health] auto-sync failed:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [habit?.id, habit?.category, habitId, load]);
 
   const me = habit?.members.find(m => m.is_self);
   const today = new Date().toISOString().slice(0, 10);
@@ -251,6 +281,50 @@ export default function HabitScreen() {
       load();
     } catch (e: any) {
       Alert.alert('Ошибка', e.message);
+    }
+  }
+
+  async function handleConnectTracker() {
+    if (Platform.OS !== 'android') {
+      Alert.alert('Скоро', 'Подключение трекера на iOS пока недоступно');
+      return;
+    }
+    setTrackerLoading(true);
+    try {
+      const available = await isHealthConnectAvailable();
+      if (!available) {
+        setTrackerLoading(false);
+        Alert.alert(
+          'Health Connect не найден',
+          'Установите приложение Health Connect из Play Store, затем попробуйте снова.',
+          [
+            { text: 'Отмена', style: 'cancel' },
+            {
+              text: 'Открыть Play Store',
+              onPress: () =>
+                Linking.openURL('market://details?id=com.google.android.apps.healthdata').catch(() =>
+                  Linking.openURL('https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata'),
+                ),
+            },
+          ],
+        );
+        return;
+      }
+      const granted = await requestStepsPermission();
+      if (!granted) {
+        Alert.alert('Доступ не получен', 'Без доступа к шагам синк не сработает.');
+        return;
+      }
+      const steps = await getTodaySteps();
+      if (steps > 0) {
+        await syncHabitSteps(habitId, steps, 'health_connect');
+      }
+      setStepsModal(false);
+      load();
+    } catch (e: any) {
+      Alert.alert('Ошибка', e?.message ?? 'Не удалось подключить трекер');
+    } finally {
+      setTrackerLoading(false);
     }
   }
 
@@ -480,7 +554,9 @@ export default function HabitScreen() {
       {/* Steps modal */}
       <BottomModal title="Внести шаги" visible={stepsModal} onClose={() => { setStepsModal(false); setStepsInput(''); }}>
         <View style={{ gap: 16 }}>
-          <Button label="Подключить трекер?" onPress={() => {}} />
+          {Platform.OS === 'android' && (
+            <Button label="Подключить трекер" onPress={handleConnectTracker} loading={trackerLoading} />
+          )}
           <View style={{ gap: 8 }}>
             <TextInput
               value={stepsInput}
