@@ -163,7 +163,7 @@ router.post('/join', async (req, res) => {
   }
 });
 
-// POST /api/v1/habits/:id/logs — внести лог
+// POST /api/v1/habits/:id/logs — внести лог (ручной ввод, безусловный update)
 router.post('/:id/logs', async (req, res) => {
   const habitId = parseInt(req.params.id);
   const { value, date } = req.body;
@@ -175,14 +175,53 @@ router.post('/:id/logs', async (req, res) => {
     if (!membership) return res.status(403).json({ message: 'Нет доступа' });
     const logDate = date ?? toDateStr(new Date());
     const [log] = await sql`
-      INSERT INTO habit_logs (habit_id, user_id, date, value)
-      VALUES (${habitId}, ${req.userId}, ${logDate}, ${value})
-      ON CONFLICT (habit_id, user_id, date) DO UPDATE SET value = ${value}
+      INSERT INTO habit_logs (habit_id, user_id, date, value, source)
+      VALUES (${habitId}, ${req.userId}, ${logDate}, ${value}, 'manual')
+      ON CONFLICT (habit_id, user_id, date) DO UPDATE
+        SET value = ${value}, source = 'manual'
       RETURNING *
     `;
     res.json(log);
   } catch (e) {
     console.error('log habit error:', e);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// POST /api/v1/habits/:id/logs/sync — синк из health-трекера (GREATEST, не затирает ручной ввод)
+router.post('/:id/logs/sync', async (req, res) => {
+  const habitId = parseInt(req.params.id);
+  const { value, date, source } = req.body;
+  if (value === undefined || typeof value !== 'number' || value < 0 || value > 200000) {
+    return res.status(400).json({ message: 'value обязателен (0..200000)' });
+  }
+  if (source !== 'health_connect' && source !== 'healthkit') {
+    return res.status(400).json({ message: 'source должен быть health_connect или healthkit' });
+  }
+  try {
+    const [membership] = await sql`
+      SELECT 1 FROM habit_members WHERE habit_id = ${habitId} AND user_id = ${req.userId}
+    `;
+    if (!membership) return res.status(403).json({ message: 'Нет доступа' });
+    const logDate = date ?? toDateStr(new Date());
+    const [log] = await sql`
+      INSERT INTO habit_logs (habit_id, user_id, date, value, source)
+      VALUES (${habitId}, ${req.userId}, ${logDate}, ${value}, ${source})
+      ON CONFLICT (habit_id, user_id, date) DO UPDATE
+        SET value = GREATEST(habit_logs.value, EXCLUDED.value),
+            source = CASE WHEN habit_logs.value >= EXCLUDED.value
+                          THEN habit_logs.source ELSE EXCLUDED.source END
+      RETURNING *
+    `;
+    if (source === 'health_connect' || source === 'healthkit') {
+      await sql`
+        UPDATE users SET health_connected_at = COALESCE(health_connected_at, now())
+        WHERE id = ${req.userId}
+      `;
+    }
+    res.json(log);
+  } catch (e) {
+    console.error('sync habit log error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
