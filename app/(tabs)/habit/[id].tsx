@@ -293,7 +293,6 @@ export default function HabitScreen() {
     try {
       const available = await isHealthConnectAvailable();
       if (!available) {
-        setTrackerLoading(false);
         Alert.alert(
           'Health Connect не найден',
           'Установите приложение Health Connect из Play Store, затем попробуйте снова.',
@@ -316,9 +315,7 @@ export default function HabitScreen() {
         return;
       }
       const steps = await getTodaySteps();
-      if (steps > 0) {
-        await syncHabitSteps(habitId, steps, 'health_connect');
-      }
+      if (steps > 0) await syncHabitSteps(habitId, steps, 'health_connect');
       setStepsModal(false);
       load();
     } catch (e: any) {

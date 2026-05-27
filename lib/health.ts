@@ -4,6 +4,7 @@ import {
   requestPermission,
   getGrantedPermissions,
   aggregateRecord,
+  openHealthConnectSettings,
 } from 'react-native-health-connect';
 
 let initialized = false;
@@ -51,6 +52,11 @@ export async function requestStepsPermission(): Promise<boolean> {
     console.warn('[health] requestPermission failed:', e);
     return false;
   }
+}
+
+// Открывает экран разрешений Health Connect (обходит race condition в requestPermission)
+export function openHealthConnectPermissions(): void {
+  openHealthConnectSettings();
 }
 
 export async function getTodaySteps(): Promise<number> {
