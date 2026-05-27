@@ -37,6 +37,7 @@
       "expo-router",
       "react-native-health-connect",
       "./plugins/with-health-permissions.js",
+      "./plugins/with-tg-queries.js",
       [
         "expo-build-properties",
         {
