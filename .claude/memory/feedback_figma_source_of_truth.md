@@ -1,7 +1,7 @@
 ---
 name: feedback-figma-source-of-truth
 description: Figma TapaDS — источник правды для всех визуальных решений
-metadata: 
+metadata:
   node_type: memory
   type: feedback
   originSessionId: 6f334f79-b33a-4bdb-b852-d3bff627bebf
@@ -12,7 +12,8 @@ metadata:
 **Why:** Пользователь явно установил это правило. TapaDS — единственный источник правды для визуальной части. Самостоятельные решения расходятся с дизайном.
 
 **How to apply:**
-- **Иконки** — запрашивать SVG-пути через Figma MCP (`get_design_context` или `use_figma`) из фрейма с иконками (node-id `129-193` в файле TapaDS). viewBox брать из реальных bounds пути, НЕ менять на `0 0 24 24`. `width="24" height="24"`, `fill="currentColor"`.
+
+- **Иконки** — запрашивать SVG-пути через Figma MCP (`get_design_context` или `use_figma`) из фрейма с иконками (node-id `129-193` в файле TapaDS). Или запрашивать файл с иконкой у пользователя. viewBox брать из реальных bounds пути, НЕ менять на `0 0 24 24`. `width="24" height="24"`, `fill="currentColor"`.
 - **Цвета** — смотреть переменные в TapaDS, добавлять в `lib/colors.ts` если ещё нет. Использовать `useColors()` и семантические токены, не хардкодить hex.
 - **Компоненты** (кнопки, инпуты, карточки) — запрашивать макет из Figma перед реализацией, если пользователь скинул node-id или ссылку.
 - **Отступы, радиусы, типографика** — из TapaDS, описаны в `lib/design.md`.

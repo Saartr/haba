@@ -13,13 +13,13 @@ metadata:
 
 **Что сделано:**
 
-Бэкенд (`/var/www/step-bot/src/api/auth.js`):
+Бэкенд (`backend/src/api/auth.js` в репо, `/var/www/haba/backend/src/api/auth.js` на сервере):
 - `GET /api/v1/auth/telegram-login` — HTML с кнопкой → `oauth.telegram.org`
 - `GET /api/v1/auth/telegram-callback` — пустая HTML-страница для получения tgAuthResult
 - `POST /api/v1/auth/telegram` — HMAC-верификация, upsert user, скачивание аватара (с redirect-following), JWT
 - `POST /api/v1/auth/refresh` — ротация refresh-токена (DELETE старого перед INSERT)
 - `GET /api/v1/auth/me` — профиль пользователя
-- Nginx: `location /avatars/` с `alias /var/www/step-bot/public/avatars/` для статической отдачи аватаров
+- Nginx: `location /avatars/` с `alias /var/www/haba/backend/public/avatars/` для статической отдачи аватаров
 
 Фронтенд:
 - `app/(auth)/welcome.tsx` — Modal + WebView с Telegram Login Widget

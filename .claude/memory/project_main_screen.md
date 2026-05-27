@@ -9,17 +9,20 @@ metadata:
 
 Главный экран `app/(tabs)/index.tsx` реализован как per Figma (node 640-2113).
 
-**Why:** Первый экран после авторизации. Показывает приветствие и empty state пока нет привычек.
+**Why:** Первый экран после авторизации. Показывает приветствие, список привычек и две кнопки действий внизу.
 
 **Что реализовано:**
 - Верхняя шторка: «Привет,» (text.secondary) + displayName (text.primary), оба 20px Bold
 - displayName = first_name ?? username, обрезается до 12 символов с «…»
-- Аватар: 40px круг — фото из Telegram или инициал First Name (neutral[200] фон)
+- Аватар: 40px круг — фото из Telegram или инициал First Name (neutral[50] фон, обводка neutral[500])
 - Тап по аватару → навигация на `/(tabs)/two` (профиль)
 - StatusBar `backgroundColor` совпадает с цветом шторки (нет разрыва под статусбаром)
-- Шторка расширяется под статусбар через `useSafeAreaInsets` + `paddingTop: insets.top + 16`
-- Empty state: маскот `tapa_quest.png` (171×224) + текст «Нет активных привычек» + кнопка «Добавить»
-- Иконка + в кнопке: `Plus.svg` с `fill="currentColor"`, цвет `c.icon.onPrimary`
+- Шторка с `borderBottomLeftRadius: 32` и тенью (только в light)
+- Загрузка привычек: `useFocusEffect` → `getHabits()` из `lib/api`, ActivityIndicator в loading
+- Empty state: маскот `tapa_quest.png` (171×224) + «Нет активных привычек» (если `habits.length === 0`)
+- Список: FlatList с `HabitCard` (округлый, тень, имя + цель)
+- Тап по карточке → `/(tabs)/habit/[id]`
+- Внизу две кнопки 50/50: «Добавить» (Plus, → `/(tabs)/create-habit`) и «Вступить» (GroupPlus, `onPress={() => {}}` — пока заглушка)
 - Таб-бар полностью убран, навигация только через Stack
 
-**How to apply:** Следующий шаг — функциональность «Добавить привычку» (сейчас `onPress={() => {}}`).
+**How to apply:** Кнопка «Вступить» — следующий шаг (присоединение к групповой привычке по invite-коду через `habits.invite_code`).

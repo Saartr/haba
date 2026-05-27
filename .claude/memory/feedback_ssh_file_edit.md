@@ -1,20 +1,26 @@
 ---
 name: feedback-ssh-file-edit
-description: "Как правильно редактировать файлы на сервере по SSH — только через scp, не через inline команды"
-metadata: 
+description: "Серверные файлы редактируются локально в backend/ + ./deploy-backend.ps1, не через scp"
+metadata:
   node_type: memory
   type: feedback
   originSessionId: 6f334f79-b33a-4bdb-b852-d3bff627bebf
 ---
 
-Никогда не редактировать файлы на сервере через `ssh ... "node -e \"...\""`  или `ssh ... python3 -c "..."` — backtick-строки в JavaScript и SQL-запросы ломают shell-экранирование и команда не выполняется.
+Никогда не редактировать файлы напрямую на сервере. Бэкенд теперь в репозитории — все правки делаются локально в `backend/`, коммитятся в `main`, деплоятся через `./deploy-backend.ps1`.
 
-**Why:** Файлы на сервере содержат template literals (обратные кавычки) и `${...}` — они интерпретируются bash'ем как command substitution и всё ломается. Это происходило несколько раз подряд.
+**Why:** Раньше файлы правились scp туда-обратно (`cat > local → Edit → scp back`), а ещё раньше — inline через `ssh ... "node -e ..."` (последний способ ломался на template literals и SQL-запросах из-за shell-экранирования). После переноса в `backend/` правки на сервере = расхождение с git и потеря работы при следующем `git pull` (через скрипт деплоя).
 
-**How to apply:** Единственный рабочий метод для правки серверных файлов:
-1. Скачать файл: `ssh -i ~/.ssh/haba_deploy root@147.45.134.216 "cat /path/to/file.js" > C:/tmp/file.js`
-2. Отредактировать локально инструментом Edit
-3. Загрузить обратно: `scp -i ~/.ssh/haba_deploy "C:/tmp/file.js" root@147.45.134.216:/path/to/file.js`
-4. Перезапустить: `ssh -i ~/.ssh/haba_deploy root@147.45.134.216 "pm2 restart step-bot"`
+**How to apply:**
+1. Найти и отредактировать файл локально: `backend/src/...` (через Edit, не scp)
+2. Закоммитить и запушить в `main`: `git add backend/... && git commit -m '...' && git push origin main`
+3. Запустить деплой: `./deploy-backend.ps1` (из PowerShell в `c:\haba`)
+4. Проверить логи если что-то сломалось: `ssh Haba 'pm2 logs step-bot --lines 50 --nostream'`
 
-SSH-ключ: `~/.ssh/haba_deploy` (`C:\Users\Saartr\.ssh\haba_deploy`), сервер: `root@147.45.134.216`, алиас: `ssh Haba`
+**Когда нужен прямой SSH (без правки файлов):**
+- Просмотр логов: `ssh Haba 'pm2 logs step-bot --lines 50 --nostream'`
+- Проверка статуса: `ssh Haba 'pm2 list'`
+- Перезапуск без деплоя (например, после правки `.env`): `ssh Haba 'pm2 restart step-bot'`
+- Правка `.env` (он не в git): `scp Haba:/var/www/haba/backend/.env C:/tmp/.env` → Edit → `scp C:/tmp/.env Haba:/var/www/haba/backend/.env` → `ssh Haba 'pm2 restart step-bot'`
+
+SSH-ключ: `~/.ssh/haba_deploy` (`C:\Users\Saartr\.ssh\haba_deploy`), сервер: `root@147.45.134.216`, алиас в `~/.ssh/config`: `ssh Haba` (без `-i`).

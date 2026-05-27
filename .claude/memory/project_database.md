@@ -31,6 +31,6 @@ habit_logs   — id, habit_id → habits, user_id → users, date DATE, value IN
 ```
 
 `avatar_url` — полный URL `https://bot.mihmih.pro/avatars/{userId}.jpg`, null если нет аватара.
-Аватары хранятся на диске: `/var/www/step-bot/public/avatars/{userId}.jpg`
+Аватары хранятся на сервере: `/var/www/haba/backend/public/avatars/{userId}.jpg` (исключены из git).
 
-**How to apply:** При добавлении новых таблиц или колонок — писать миграцию в `/var/www/step-bot/src/db/` и вызывать из `migrate.js`. Использовать `IF NOT EXISTS` и `IF NOT EXISTS column` чтобы не ломать повторные запуски.
+**How to apply:** При добавлении новых таблиц или колонок — писать миграцию в `backend/src/db/` (в репо), коммитить, деплоить через `./deploy-backend.ps1`. Использовать `IF NOT EXISTS` и `IF NOT EXISTS column` чтобы не ломать повторные запуски.
