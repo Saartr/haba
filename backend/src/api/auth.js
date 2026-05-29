@@ -192,34 +192,13 @@ router.post('/vk', async (req, res) => {
   }
 });
 
-// GET /api/v1/auth/telegram-login — сначала логаутим старую сессию, потом редиректим на авторизацию
-// Это гарантирует что oauth.telegram.org покажет диалог подтверждения, а не сделает мгновенный redirect
+// GET /api/v1/auth/telegram-login — редирект на oauth.telegram.org
 router.get('/telegram-login', (req, res) => {
   const BOT_ID = '8671249381';
   const origin = encodeURIComponent('https://bot.mihmih.pro');
   const returnTo = encodeURIComponent('https://bot.mihmih.pro/api/v1/auth/telegram-callback');
   const authUrl = `https://oauth.telegram.org/auth?bot_id=${BOT_ID}&origin=${origin}&return_to=${returnTo}&request_access=write`;
-
-  // Сначала разлогиниваем старую сессию, потом редиректим на авторизацию
-  // oauth.telegram.org/auth/logout принимает bot_id и origin
-  const logoutUrl = `https://oauth.telegram.org/auth/logout?bot_id=${BOT_ID}&origin=${origin}`;
-
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store');
-  res.send(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <script>
-    // Сбрасываем сессию через fetch, потом редиректим на авторизацию
-    fetch('${logoutUrl}', { credentials: 'include' })
-      .finally(function() {
-        window.location.replace('${authUrl}');
-      });
-  </script>
-</head>
-<body></body>
-</html>`);
+  res.redirect(authUrl);
 });
 
 // GET /api/v1/auth/telegram-callback
