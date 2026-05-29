@@ -195,7 +195,7 @@ router.post('/vk', async (req, res) => {
 // GET /api/v1/auth/telegram-login — редирект на oauth.telegram.org
 router.get('/telegram-login', (req, res) => {
   const BOT_ID = '8671249381';
-  const origin = encodeURIComponent('https://bot.mihmih.pro');
+  const origin = encodeURIComponent('bot.mihmih.pro');
   const returnTo = encodeURIComponent('https://bot.mihmih.pro/api/v1/auth/telegram-callback');
   const authUrl = `https://oauth.telegram.org/auth?bot_id=${BOT_ID}&origin=${origin}&return_to=${returnTo}&request_access=write`;
   res.redirect(authUrl);
