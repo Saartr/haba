@@ -196,35 +196,16 @@ router.post('/vk', async (req, res) => {
 router.get('/telegram-login', (req, res) => {
   const BOT_ID = '8671249381';
   const origin = encodeURIComponent('https://bot.mihmih.pro');
-  const returnTo = encodeURIComponent('https://bot.mihmih.pro/api/v1/auth/telegram-fragment');
+  const returnTo = encodeURIComponent('https://bot.mihmih.pro/api/v1/auth/telegram-callback');
   const authUrl = `https://oauth.telegram.org/auth?bot_id=${BOT_ID}&origin=${origin}&return_to=${returnTo}&request_access=write`;
   res.redirect(authUrl);
 });
 
-// GET /api/v1/auth/telegram-fragment — принимает tgAuthResult из fragment через JS
-// и делает redirect на /telegram-open?data=... (теперь это query параметр, доступный серверу)
-router.get('/telegram-fragment', (req, res) => {
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store');
-  res.send(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body><script>
-  var hash = window.location.hash.slice(1);
-  if (hash) {
-    window.location.replace('/api/v1/auth/telegram-open?' + hash);
-  }
-</script></body></html>`);
-});
-
-// GET /api/v1/auth/telegram-open?tgAuthResult=... — получает данные как query и редиректит на intent://
-router.get('/telegram-open', (req, res) => {
-  const data = req.query.tgAuthResult;
-  if (!data) return res.status(400).send('Missing tgAuthResult');
-  const intentUrl = `intent://auth/callback?tgAuthResult=${encodeURIComponent(data)}#Intent;scheme=haba;package=pro.mihmih.haba;end`;
-  res.redirect(intentUrl);
-});
-
 // GET /api/v1/auth/telegram-callback
+// oauth.telegram.org редиректит сюда с fragment #tgAuthResult=...
+// JS читает fragment и строит haba:// ссылку — пользователь нажимает кнопку.
+// Мы не делаем автоматический JS redirect (Chrome блокирует custom scheme через JS),
+// а показываем кнопку <a href="haba://..."> которую пользователь нажимает сам.
 router.get('/telegram-callback', (req, res) => {
   // oauth.telegram.org редиректит сюда с fragment #tgAuthResult=...
   // Браузер не передаёт fragment на сервер, поэтому отдаём HTML который читает fragment и редиректит в приложение.
@@ -246,18 +227,21 @@ router.get('/telegram-callback', (req, res) => {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f5f5f5; font-family: sans-serif; gap: 20px; }
-    .btn { background: #2481cc; color: #fff; border: none; border-radius: 12px; padding: 16px 40px; font-size: 17px; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn { background: #2481cc; color: #fff; border: none; border-radius: 12px; padding: 16px 40px; font-size: 17px; text-decoration: none; display: inline-block; }
     p { color: #555; font-size: 15px; margin: 0; text-align: center; padding: 0 32px; line-height: 1.5; }
   </style>
 </head>
 <body>
   <p>Вы вошли через Telegram.</p>
-  <a class="btn" id="btn">Открыть Тапа</a>
+  <a class="btn" id="btn" href="#">Открыть Тапа</a>
   <script>
-    var hash = window.location.hash;
-    // intent:// схема надёжно открывает приложение на Android из браузера
-    var intentUrl = 'intent://auth/callback' + hash + '#Intent;scheme=haba;package=pro.mihmih.haba;end';
-    document.getElementById('btn').href = intentUrl;
+    // Читаем tgAuthResult из fragment и строим haba:// ссылку.
+    // Используем <a href> — Chrome не блокирует переход по ссылке на custom scheme
+    // в отличие от window.location.replace / window.location.href через JS.
+    var params = window.location.hash.slice(1);
+    if (params) {
+      document.getElementById('btn').href = 'haba://auth/callback?' + params;
+    }
   </script>
 </body>
 </html>`);
