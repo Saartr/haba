@@ -1,0 +1,25 @@
+apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+android {
+  compileSdkVersion 36
+  namespace "pro.mihmih.haba.vkid"
+  defaultConfig {
+    minSdkVersion 26
+    targetSdkVersion 36
+  }
+}
+
+repositories {
+  google()
+  mavenCentral()
+  maven { url 'https://artifactory-external.vkpartner.ru/artifactory/vkid-sdk-android/' }
+  maven { url 'https://artifactory-external.vkpartner.ru/artifactory/maven/' }
+  maven { url 'https://artifactory-external.vkpartner.ru/artifactory/vk-id-captcha/android/' }
+}
+
+dependencies {
+  implementation "com.vk.id:vkid:2.6.0"
+  implementation project(':expo-modules-core')
+  implementation "androidx.activity:activity-ktx:1.9.0"
+}

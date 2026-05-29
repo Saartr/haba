@@ -1,12 +1,17 @@
-import { NativeModules, Platform } from 'react-native';
+import { Platform } from 'react-native';
+import { requireOptionalNativeModule } from 'expo-modules-core';
 
 interface VkAuthResult {
   accessToken: string;
   userId: string;
   expiresIn: number;
+  firstName: string;
+  lastName: string;
+  photo200: string;
+  email: string;
 }
 
-const { VkIdModule } = NativeModules;
+const VkIdModule = requireOptionalNativeModule('VkIdModule');
 
 export function signInWithVK(): Promise<VkAuthResult> {
   if (Platform.OS !== 'android') {

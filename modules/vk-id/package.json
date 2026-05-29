@@ -1,0 +1,6 @@
+{
+  "name": "vk-id",
+  "version": "1.0.0",
+  "description": "VK ID native module for Haba",
+  "main": "index.ts"
+}

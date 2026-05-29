@@ -77,7 +77,14 @@ export default function WelcomeScreen() {
     setProcessing(true);
     try {
       const vkResult = await signInWithVK();
-      const result = await vkAuth({ accessToken: vkResult.accessToken, userId: vkResult.userId });
+      const result = await vkAuth({
+        accessToken: vkResult.accessToken,
+        userId: vkResult.userId,
+        firstName: vkResult.firstName,
+        lastName: vkResult.lastName,
+        photo200: vkResult.photo200,
+        email: vkResult.email,
+      });
       await saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken });
       setAuthed(true, result.user);
     } catch (e: any) {

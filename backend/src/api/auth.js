@@ -107,39 +107,38 @@ async function fetchAndSaveAvatar(bot, tgId, userId, photoUrl) {
 }
 
 const VK_SERVICE_TOKEN = process.env.VK_SERVICE_TOKEN;
+const VK_CLIENT_ID = '54615454';
 
-async function fetchVkUserInfo(accessToken, userId) {
-  const url = `https://api.vk.com/method/users.get?user_ids=${userId}&fields=photo_200,screen_name&access_token=${accessToken}&v=5.199`;
+async function verifyVkToken(accessToken, userId) {
+  // secure.checkToken не привязан к IP в отличие от users.get с user access token
+  const url = `https://api.vk.com/method/secure.checkToken?token=${accessToken}&client_secret=${process.env.VK_CLIENT_SECRET}&access_token=${VK_SERVICE_TOKEN}&v=5.199`;
   const res = await fetch(url);
   const data = await res.json();
   if (data.error) throw new Error(`VK API error: ${data.error.error_msg}`);
-  return data.response[0];
+  if (!data.response?.success) throw new Error('Token verification failed');
+  if (String(data.response.user_id) !== String(userId)) throw new Error('userId mismatch');
+  return data.response;
 }
 
 // POST /api/v1/auth/vk
 router.post('/vk', async (req, res) => {
-  const { accessToken, userId } = req.body;
+  const { accessToken, userId, firstName: clientFirstName, lastName: clientLastName, photo200, email } = req.body;
   if (!accessToken || !userId) {
     return res.status(400).json({ message: 'accessToken и userId обязательны' });
   }
 
-  let vkUser;
   try {
-    vkUser = await fetchVkUserInfo(accessToken, userId);
+    await verifyVkToken(accessToken, userId);
   } catch (e) {
-    console.error('VK user fetch error:', e.message);
+    console.error('VK token verify error:', e.message);
     return res.status(401).json({ message: 'Не удалось верифицировать VK токен' });
   }
 
-  if (String(vkUser.id) !== String(userId)) {
-    return res.status(401).json({ message: 'Неверный userId' });
-  }
-
-  const vkId = String(vkUser.id);
-  const firstName = vkUser.first_name || null;
-  const lastName = vkUser.last_name || null;
-  const username = vkUser.screen_name || null;
-  const photoUrl = vkUser.photo_200 || null;
+  const vkId = String(userId);
+  const firstName = clientFirstName || null;
+  const lastName = clientLastName || null;
+  const username = null;
+  const photoUrl = photo200 || null;
 
   try {
     const [user] = await sql`
