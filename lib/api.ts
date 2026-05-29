@@ -69,6 +69,13 @@ export async function telegramAuth(data: TelegramUser): Promise<AuthResult> {
   });
 }
 
+export async function vkAuth(data: { accessToken: string; userId: string }): Promise<AuthResult> {
+  return request('/auth/vk', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 export type UserProfile = {
   username: string | null;
   first_name: string | null;

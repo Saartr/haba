@@ -106,6 +106,91 @@ async function fetchAndSaveAvatar(bot, tgId, userId, photoUrl) {
   }
 }
 
+const VK_SERVICE_TOKEN = process.env.VK_SERVICE_TOKEN;
+
+async function fetchVkUserInfo(accessToken, userId) {
+  const url = `https://api.vk.com/method/users.get?user_ids=${userId}&fields=photo_200,screen_name&access_token=${accessToken}&v=5.199`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.error) throw new Error(`VK API error: ${data.error.error_msg}`);
+  return data.response[0];
+}
+
+// POST /api/v1/auth/vk
+router.post('/vk', async (req, res) => {
+  const { accessToken, userId } = req.body;
+  if (!accessToken || !userId) {
+    return res.status(400).json({ message: 'accessToken и userId обязательны' });
+  }
+
+  let vkUser;
+  try {
+    vkUser = await fetchVkUserInfo(accessToken, userId);
+  } catch (e) {
+    console.error('VK user fetch error:', e.message);
+    return res.status(401).json({ message: 'Не удалось верифицировать VK токен' });
+  }
+
+  if (String(vkUser.id) !== String(userId)) {
+    return res.status(401).json({ message: 'Неверный userId' });
+  }
+
+  const vkId = String(vkUser.id);
+  const firstName = vkUser.first_name || null;
+  const lastName = vkUser.last_name || null;
+  const username = vkUser.screen_name || null;
+  const photoUrl = vkUser.photo_200 || null;
+
+  try {
+    const [user] = await sql`
+      INSERT INTO users (vk_id, username, first_name, last_name)
+      VALUES (${vkId}, ${username}, ${firstName}, ${lastName})
+      ON CONFLICT (vk_id) DO UPDATE SET
+        username   = COALESCE(EXCLUDED.username,   users.username),
+        first_name = COALESCE(EXCLUDED.first_name, users.first_name),
+        last_name  = COALESCE(EXCLUDED.last_name,  users.last_name)
+      RETURNING id, username, first_name, last_name, avatar_url
+    `;
+
+    let avatarUrl = user.avatar_url;
+    if (!avatarUrl && photoUrl) {
+      const destPath = path.join(AVATARS_DIR, `${user.id}.jpg`);
+      try {
+        fs.mkdirSync(AVATARS_DIR, { recursive: true });
+        await downloadFile(photoUrl, destPath);
+        avatarUrl = `${AVATARS_URL}/${user.id}.jpg`;
+        await sql`UPDATE users SET avatar_url = ${avatarUrl} WHERE id = ${user.id}`;
+      } catch (e) {
+        console.error('VK avatar download failed:', e.message);
+      }
+    }
+
+    const newAccessToken = makeAccessToken(user.id);
+    const refreshToken = makeRefreshToken(user.id);
+    const refreshExp = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    await sql`DELETE FROM refresh_tokens WHERE user_id = ${user.id}`;
+    await sql`
+      INSERT INTO refresh_tokens (user_id, token, expires_at)
+      VALUES (${user.id}, ${refreshToken}, ${refreshExp})
+    `;
+
+    res.json({
+      accessToken: newAccessToken,
+      refreshToken,
+      user: {
+        username,
+        first_name: user.first_name || null,
+        last_name:  user.last_name  || null,
+        avatar_url: avatarUrl || null,
+      },
+    });
+  } catch (e) {
+    console.error('vk auth error:', e);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
 // GET /api/v1/auth/telegram-login — редирект на oauth.telegram.org
 router.get('/telegram-login', (req, res) => {
   const BOT_ID = '8671249381';

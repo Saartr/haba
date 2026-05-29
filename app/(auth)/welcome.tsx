@@ -1,4 +1,4 @@
-import { View, useWindowDimensions, Linking } from 'react-native';
+import { View, useWindowDimensions, Linking, Platform } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import Text from '@/components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,9 +6,10 @@ import TelegramIcon from '@/assets/icons/Telegram.svg';
 import TapaWelcome from '@/assets/images/tapa_welcome.svg';
 import Button from '@/components/Button';
 import { useColors } from '@/lib/colors';
-import { telegramAuth, TelegramUser } from '@/lib/api';
+import { telegramAuth, TelegramUser, vkAuth } from '@/lib/api';
 import { saveTokens } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
+import { signInWithVK } from '@/modules/vk-id';
 
 const TELEGRAM_LOGIN_URL = 'https://bot.mihmih.pro/api/v1/auth/telegram-login';
 
@@ -71,6 +72,21 @@ export default function WelcomeScreen() {
     });
   }
 
+  async function handleVkLogin() {
+    setError(null);
+    setProcessing(true);
+    try {
+      const vkResult = await signInWithVK();
+      const result = await vkAuth({ accessToken: vkResult.accessToken, userId: vkResult.userId });
+      await saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken });
+      setAuthed(true, result.user);
+    } catch (e: any) {
+      setError(e.message ?? 'Ошибка авторизации через VK');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }}>
       <TapaWelcome width={width} height={width} />
@@ -91,13 +107,21 @@ export default function WelcomeScreen() {
 
       <View className="flex-1" />
 
-      <View className="px-6 pb-8">
+      <View className="px-6 pb-8 gap-3">
         <Button
           label="Войти через Telegram"
           onPress={openTelegram}
           loading={processing}
           icon={<TelegramIcon width={20} height={20} color={c.text.onPrimary} />}
         />
+        {Platform.OS === 'android' && (
+          <Button
+            label="Войти через VK"
+            onPress={handleVkLogin}
+            loading={processing}
+            variant="secondary"
+          />
+        )}
       </View>
     </SafeAreaView>
   );
