@@ -9,6 +9,7 @@ interface VkAuthResult {
   lastName: string;
   photo200: string;
   email: string;
+  phone: string;
 }
 
 const VkIdModule = requireOptionalNativeModule('VkIdModule');

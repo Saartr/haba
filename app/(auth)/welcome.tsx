@@ -84,6 +84,7 @@ export default function WelcomeScreen() {
         lastName: vkResult.lastName,
         photo200: vkResult.photo200,
         email: vkResult.email,
+        phone: vkResult.phone,
       });
       await saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken });
       setAuthed(true, result.user);

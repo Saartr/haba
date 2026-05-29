@@ -34,7 +34,8 @@ class VkIdModule : Module() {
             "firstName" to (user?.firstName ?: ""),
             "lastName" to (user?.lastName ?: ""),
             "photo200" to (user?.photo200 ?: ""),
-            "email" to (user?.email ?: "")
+            "email" to (user?.email ?: ""),
+            "phone" to (user?.phone ?: "")
           ))
         }
 
@@ -47,7 +48,7 @@ class VkIdModule : Module() {
         VKID.instance.authorize(
           activity as androidx.activity.ComponentActivity,
           callback = callback,
-          params = VKIDAuthParams { scopes = setOf("email") }
+          params = VKIDAuthParams { scopes = setOf("email", "phone") }
         )
       }
     }

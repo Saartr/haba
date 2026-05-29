@@ -122,7 +122,7 @@ async function verifyVkToken(accessToken, userId) {
 
 // POST /api/v1/auth/vk
 router.post('/vk', async (req, res) => {
-  const { accessToken, userId, firstName: clientFirstName, lastName: clientLastName, photo200, email } = req.body;
+  const { accessToken, userId, firstName: clientFirstName, lastName: clientLastName, photo200, email, phone } = req.body;
   if (!accessToken || !userId) {
     return res.status(400).json({ message: 'accessToken и userId обязательны' });
   }
@@ -137,18 +137,20 @@ router.post('/vk', async (req, res) => {
   const vkId = String(userId);
   const firstName = clientFirstName || null;
   const lastName = clientLastName || null;
-  const username = null;
   const photoUrl = photo200 || null;
+  const emailVal = email || null;
+  const phoneVal = phone || null;
 
   try {
     const [user] = await sql`
-      INSERT INTO users (vk_id, username, first_name, last_name)
-      VALUES (${vkId}, ${username}, ${firstName}, ${lastName})
+      INSERT INTO users (vk_id, first_name, last_name, email, phone)
+      VALUES (${vkId}, ${firstName}, ${lastName}, ${emailVal}, ${phoneVal})
       ON CONFLICT (vk_id) DO UPDATE SET
-        username   = COALESCE(EXCLUDED.username,   users.username),
         first_name = COALESCE(EXCLUDED.first_name, users.first_name),
-        last_name  = COALESCE(EXCLUDED.last_name,  users.last_name)
-      RETURNING id, username, first_name, last_name, avatar_url
+        last_name  = COALESCE(EXCLUDED.last_name,  users.last_name),
+        email      = COALESCE(EXCLUDED.email,      users.email),
+        phone      = COALESCE(EXCLUDED.phone,      users.phone)
+      RETURNING id, first_name, last_name, avatar_url
     `;
 
     let avatarUrl = user.avatar_url;
@@ -178,7 +180,7 @@ router.post('/vk', async (req, res) => {
       accessToken: newAccessToken,
       refreshToken,
       user: {
-        username,
+        username:   null,
         first_name: user.first_name || null,
         last_name:  user.last_name  || null,
         avatar_url: avatarUrl || null,

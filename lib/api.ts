@@ -69,7 +69,7 @@ export async function telegramAuth(data: TelegramUser): Promise<AuthResult> {
   });
 }
 
-export async function vkAuth(data: { accessToken: string; userId: string; firstName?: string; lastName?: string; photo200?: string; email?: string }): Promise<AuthResult> {
+export async function vkAuth(data: { accessToken: string; userId: string; firstName?: string; lastName?: string; photo200?: string; email?: string; phone?: string }): Promise<AuthResult> {
   return request('/auth/vk', {
     method: 'POST',
     body: JSON.stringify(data),
