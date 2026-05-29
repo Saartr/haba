@@ -11,8 +11,7 @@ import { saveTokens } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
 import { signInWithVK } from '@/modules/vk-id';
 
-const BOT_ID = '8671249381';
-const TELEGRAM_AUTH_URL = `https://oauth.telegram.org/auth?bot_id=${BOT_ID}&origin=${encodeURIComponent('https://bot.mihmih.pro')}&return_to=${encodeURIComponent('https://bot.mihmih.pro/api/v1/auth/telegram-callback')}&request_access=write`;
+const TELEGRAM_AUTH_URL = 'https://bot.mihmih.pro/api/v1/auth/telegram-login';
 
 export default function WelcomeScreen() {
   const { width } = useWindowDimensions();
