@@ -227,22 +227,16 @@ router.get('/telegram-callback', (req, res) => {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f5f5f5; font-family: sans-serif; gap: 20px; }
-    .btn { background: #2481cc; color: #fff; border: none; border-radius: 12px; padding: 16px 40px; font-size: 17px; text-decoration: none; display: inline-block; }
+    .btn { background: #2481cc; color: #fff; border: none; border-radius: 12px; padding: 16px 40px; font-size: 17px; cursor: pointer; }
     p { color: #555; font-size: 15px; margin: 0; text-align: center; padding: 0 32px; line-height: 1.5; }
   </style>
 </head>
 <body>
   <p>Вы вошли через Telegram.</p>
-  <a class="btn" id="btn" href="#">Открыть Тапа</a>
-  <script>
-    // Читаем tgAuthResult из fragment и строим haba:// ссылку.
-    // Используем <a href> — Chrome не блокирует переход по ссылке на custom scheme
-    // в отличие от window.location.replace / window.location.href через JS.
+  <button class="btn" onclick="
     var params = window.location.hash.slice(1);
-    if (params) {
-      document.getElementById('btn').href = 'haba://auth/callback?' + params;
-    }
-  </script>
+    window.location.href = 'haba://auth/callback?' + params;
+  ">Открыть Тапа</button>
 </body>
 </html>`);
 });
