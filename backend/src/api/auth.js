@@ -208,22 +208,26 @@ router.get('/telegram-callback', (req, res) => {
   // Важно: Chrome на Android блокирует window.location.replace на кастомную схему (haba://) если страница
   // не показала контент пользователю. Поэтому показываем кнопку и делаем редирект через 300ms.
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
   res.send(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f0f0f0; font-family: sans-serif; }
+    body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f0f0f0; font-family: sans-serif; gap: 16px; }
     .btn { background: #2481cc; color: #fff; border: none; border-radius: 12px; padding: 16px 32px; font-size: 16px; cursor: pointer; }
+    p { color: #666; font-size: 14px; margin: 0; text-align: center; padding: 0 24px; }
   </style>
 </head>
 <body>
-  <button class="btn" onclick="open()">Вернуться в приложение</button>
+  <p>Авторизация прошла успешно.<br>Нажмите кнопку чтобы вернуться в приложение.</p>
+  <button class="btn" id="btn">Открыть Тапа</button>
   <script>
     var deeplink = 'haba://auth/callback' + window.location.hash;
-    function open() { window.location.replace(deeplink); }
-    setTimeout(open, 300);
+    document.getElementById('btn').addEventListener('click', function() {
+      window.location.href = deeplink;
+    });
   </script>
 </body>
 </html>`);
