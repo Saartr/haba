@@ -35,18 +35,34 @@ function RootLayoutNav() {
   // Обрабатываем Telegram deeplink на уровне root layout — он всегда смонтирован,
   // в отличие от welcome.tsx который может быть не активен при возврате из браузера
   function handleDeepLink(url: string | null) {
-    if (!url || !url.startsWith('haba://auth/callback')) return;
-    if (processingRef.current) return;
+    console.log('[TgLogin] handleDeepLink called, url:', url);
+    if (!url || !url.startsWith('haba://auth/callback')) {
+      console.log('[TgLogin] skip — not a callback url');
+      return;
+    }
+    if (processingRef.current) {
+      console.log('[TgLogin] skip — already processing');
+      return;
+    }
     const fragment = url.split('#')[1] ?? '';
+    console.log('[TgLogin] fragment:', fragment ? fragment.slice(0, 50) + '...' : '(empty)');
     const match = fragment.match(/tgAuthResult=([^&]+)/);
-    if (!match) return;
+    if (!match) {
+      console.log('[TgLogin] skip — no tgAuthResult in fragment');
+      return;
+    }
     try {
       const decoded = JSON.parse(atob(match[1]));
+      console.log('[TgLogin] decoded ok, hash present:', !!decoded.hash);
       if (!decoded.hash) return;
       processingRef.current = true;
+      console.log('[TgLogin] calling telegramAuth...');
       telegramAuth(decoded as TelegramUser)
         .then(result => saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken }).then(() => result))
-        .then(result => { setAuthed(true, result.user); })
+        .then(result => {
+          console.log('[TgLogin] success, user:', result.user?.username);
+          setAuthed(true, result.user);
+        })
         .catch(e => { console.error('[TgLogin] auth error:', e.message); })
         .finally(() => { processingRef.current = false; });
     } catch (e) {
@@ -55,8 +71,15 @@ function RootLayoutNav() {
   }
 
   useEffect(() => {
-    const sub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
-    Linking.getInitialURL().then(handleDeepLink);
+    console.log('[TgLogin] setting up listeners');
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      console.log('[TgLogin] addEventListener fired:', url.slice(0, 80));
+      handleDeepLink(url);
+    });
+    Linking.getInitialURL().then(url => {
+      console.log('[TgLogin] getInitialURL:', url);
+      handleDeepLink(url);
+    });
     return () => sub.remove();
   }, []);
 
