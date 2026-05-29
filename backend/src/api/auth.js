@@ -193,10 +193,13 @@ router.post('/vk', async (req, res) => {
 });
 
 // GET /api/v1/auth/telegram-login — редирект на oauth.telegram.org
+// return_to указывает на нашу callback-страницу которая отдаёт deeplink кнопку.
+// Страница открывается через Linking.openURL в приложении — Chrome может закрыть вкладку
+// если цепочка редиректов слишком быстрая. Поэтому добавляем ?t= для сброса кэша.
 router.get('/telegram-login', (req, res) => {
   const BOT_ID = '8671249381';
   const origin = encodeURIComponent('https://bot.mihmih.pro');
-  const returnTo = encodeURIComponent('https://bot.mihmih.pro/api/v1/auth/telegram-callback');
+  const returnTo = encodeURIComponent(`https://bot.mihmih.pro/api/v1/auth/telegram-callback?t=${Date.now()}`);
   const authUrl = `https://oauth.telegram.org/auth?bot_id=${BOT_ID}&origin=${origin}&return_to=${returnTo}&request_access=write`;
   res.redirect(authUrl);
 });
@@ -214,34 +217,17 @@ router.get('/telegram-callback', (req, res) => {
   // Решение: передаём fragment через query-параметр с помощью промежуточной страницы,
   // а затем отдаём страницу с кнопкой И intent:// схемой (Android открывает приложение
   // через intent без закрытия вкладки).
+  // Chrome Custom Tab (expo-web-browser openAuthSessionAsync) перехватывает редирект
+  // на haba:// автоматически и закрывает вкладку — JS redirect здесь работает надёжно.
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
   res.send(`<!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f5f5f5; font-family: sans-serif; gap: 20px; }
-    .btn { background: #2481cc; color: #fff; border: none; border-radius: 12px; padding: 16px 40px; font-size: 17px; cursor: pointer; }
-    p { color: #555; font-size: 15px; margin: 0; text-align: center; padding: 0 32px; line-height: 1.5; }
-  </style>
-</head>
+<head><meta charset="utf-8"></head>
 <body>
-  <p>Вы вошли через Telegram.<br>Нажмите кнопку чтобы открыть приложение.</p>
-  <button class="btn" id="btn">Открыть Тапа</button>
-  <script>
-    var hash = window.location.hash;
-    var deeplink = 'haba://auth/callback' + hash;
-    var intent = 'intent://auth/callback' + hash + '#Intent;scheme=haba;package=pro.mihmih.haba;end';
-    var btn = document.getElementById('btn');
-    btn.addEventListener('click', function() {
-      // intent:// надёжнее открывает приложение на Android не закрывая вкладку
-      window.location.href = intent;
-      // fallback на случай если intent не сработал
-      setTimeout(function() { window.location.href = deeplink; }, 1000);
-    });
-  </script>
+<script>
+  window.location.replace('haba://auth/callback' + window.location.hash);
+</script>
 </body>
 </html>`);
 });

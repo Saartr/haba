@@ -1,5 +1,6 @@
-import { View, useWindowDimensions, Linking, Platform } from 'react-native';
+import { View, useWindowDimensions, Platform } from 'react-native';
 import { useState } from 'react';
+import * as WebBrowser from 'expo-web-browser';
 import Text from '@/components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TelegramIcon from '@/assets/icons/Telegram.svg';
@@ -20,11 +21,11 @@ export default function WelcomeScreen() {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function openTelegram() {
+  async function openTelegram() {
     setError(null);
-    Linking.openURL(TELEGRAM_LOGIN_URL).catch(() => {
-      setError('Не удалось открыть браузер');
-    });
+    // openAuthSessionAsync открывает Chrome Custom Tab и автоматически перехватывает
+    // редирект на haba:// — вкладка не закрывается самопроизвольно
+    await WebBrowser.openAuthSessionAsync(TELEGRAM_LOGIN_URL, 'haba://');
   }
 
   async function handleVkLogin() {
