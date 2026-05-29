@@ -204,20 +204,27 @@ router.get('/telegram-login', (req, res) => {
 // GET /api/v1/auth/telegram-callback
 router.get('/telegram-callback', (req, res) => {
   // oauth.telegram.org редиректит сюда с fragment #tgAuthResult=...
-  // Браузер не передаёт fragment на сервер, поэтому отдаём HTML который читает fragment и редиректит в приложение
+  // Браузер не передаёт fragment на сервер, поэтому отдаём HTML который читает fragment и редиректит в приложение.
+  // Важно: Chrome на Android блокирует window.location.replace на кастомную схему (haba://) если страница
+  // не показала контент пользователю. Поэтому показываем кнопку и делаем редирект через 300ms.
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(`<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"></head>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f0f0f0; font-family: sans-serif; }
+    .btn { background: #2481cc; color: #fff; border: none; border-radius: 12px; padding: 16px 32px; font-size: 16px; cursor: pointer; }
+  </style>
+</head>
 <body>
-<script>
-  var fragment = window.location.hash;
-  if (fragment) {
-    window.location.replace('haba://auth/callback' + fragment);
-  } else {
-    window.location.replace('haba://auth/callback');
-  }
-</script>
+  <button class="btn" onclick="open()">Вернуться в приложение</button>
+  <script>
+    var deeplink = 'haba://auth/callback' + window.location.hash;
+    function open() { window.location.replace(deeplink); }
+    setTimeout(open, 300);
+  </script>
 </body>
 </html>`);
 });
