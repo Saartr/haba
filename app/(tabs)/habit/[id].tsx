@@ -6,31 +6,33 @@ import {
   Modal,
   TextInput,
   StatusBar,
-  useColorScheme,
   Alert,
   Clipboard,
   ActivityIndicator,
   Platform,
   Linking,
 } from 'react-native';
+import Calendar, { CalendarDay } from '@/components/Calendar';
+import Card from '@/components/Card';
+import NavigationBar from '@/components/NavigationBar';
+import CheckIcon from '@/assets/icons/Check.svg';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Text from '@/components/Text';
 import Button from '@/components/Button';
-import ArrowBackIcon from '@/assets/icons/arrow_back.svg';
 import MoreVerticalIcon from '@/assets/icons/MoreVertical.svg';
 import ShareIcon from '@/assets/icons/Share.svg';
 import BlockIcon from '@/assets/icons/Block.svg';
 import CloseIcon from '@/assets/icons/Close.svg';
 import FootprintIcon from '@/assets/icons/Footprint.svg';
 import { useColors, colors } from '@/lib/colors';
+import { useSettings } from '@/lib/settings-context';
 import {
   getHabit,
   logHabit,
   syncHabitSteps,
   excludeMember,
   closeHabit,
-  transferHabit,
   HabitDetail,
   HabitMember,
 } from '@/lib/api';
@@ -44,20 +46,23 @@ import { useEffect, useState, useCallback } from 'react';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-type DayStatus = 'done' | 'missed' | 'today' | 'future';
 
-type WeekDay = { date: number; fullDate: string; status: DayStatus };
+const CHECK_IN_LABELS: Record<string, [string, string]> = {
+  smoking:    ['Не курил', 'Курил'],
+  'no-smoking': ['Не курил', 'Курил'],
+};
 
-function buildWeekDays(habit: HabitDetail): WeekDay[] {
+function buildCalendarDays(habit: HabitDetail): CalendarDay[] {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
   const dayOfWeek = today.getUTCDay() || 7;
   const mon = new Date(today);
   mon.setUTCDate(today.getUTCDate() - dayOfWeek + 1);
 
+  const selfId = habit.members.find(m => m.is_self)?.id;
   const myLogs = new Map(
     habit.week_logs
-      .filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)
+      .filter(l => l.user_id === selfId)
       .map(l => [l.date.slice(0, 10), l.value]),
   );
 
@@ -66,52 +71,117 @@ function buildWeekDays(habit: HabitDetail): WeekDay[] {
     d.setUTCDate(mon.getUTCDate() + i);
     const dateStr = d.toISOString().slice(0, 10);
     const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+    const loggedValue = myLogs.get(dateStr);
 
-    let status: DayStatus;
+    let status: CalendarDay['status'];
     if (diff > 0) {
       status = 'future';
     } else if (diff === 0) {
-      status = 'today';
+      // Сегодня: зависит от того залогировано ли
+      if (loggedValue === undefined) {
+        status = 'current';       // ещё не отмечено
+      } else if (loggedValue > 0) {
+        status = 'check';         // не курил — зелёный
+      } else {
+        status = 'miss';          // курил — красный
+      }
     } else {
-      const val = myLogs.get(dateStr);
-      status = val && val > 0 ? 'done' : 'missed';
+      // Прошлые дни
+      status = loggedValue !== undefined && loggedValue > 0 ? 'check' : 'miss';
     }
-    return { date: d.getUTCDate(), fullDate: dateStr, status };
+    return { day: d.getUTCDate(), status };
   });
+}
+
+
+function SoloHabitScreen({
+  habit, onLog, logLoading,
+}: {
+  habit: HabitDetail;
+  onLog: (value: number) => void;
+  logLoading: boolean;
+}) {
+  const c = useColors();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { colorScheme: scheme } = useSettings();
+  const [successLabel, failLabel] = CHECK_IN_LABELS[habit.category ?? ''] ?? ['Выполнено', 'Пропустил'];
+  const calendarDays = buildCalendarDays(habit);
+  const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
+  const statusBarStyle = scheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }} edges={['bottom']}>
+      <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
+
+      <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>
+        <NavigationBar
+          title={habit.name}
+          onBack={() => router.back()}
+          right={<MoreVerticalIcon width={24} height={24} color={c.text.primary} />}
+        />
+      </View>
+
+      {/* Content — без flex:1, естественная высота */}
+      <View style={{ padding: 24, gap: 16 }}>
+        <Calendar days={calendarDays} />
+
+        <View style={{ flexDirection: 'row', gap: 16 }}>
+          <Card style={{ flex: 1, gap: 4 }}>
+            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
+              Текущий стрик
+            </Text>
+            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
+              {habit.streak?.current ?? 0}
+            </Text>
+          </Card>
+          <Card style={{ flex: 1, gap: 4 }}>
+            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
+              Лучший стрик
+            </Text>
+            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
+              {habit.streak?.max ?? 0}
+            </Text>
+          </Card>
+        </View>
+      </View>
+
+      {/* Спейсер — отжимает кнопки вниз */}
+      <View style={{ flex: 1 }} />
+
+      {/* Bottom buttons */}
+      <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 24, paddingBottom: 16 }}>
+        <Pressable onPress={() => onLog(1)} disabled={logLoading} style={{ flex: 1, height: 56 }}>
+          {({ pressed }) => (
+            <View style={{
+              flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+              gap: 12, borderRadius: 12,
+              backgroundColor: pressed ? c.brand.pressed : c.brand.primary,
+            }}>
+              <CheckIcon width={16} height={16} color="#FFFFFF" />
+              <Text weight="bold" style={{ fontSize: 16, color: '#FFFFFF' }}>{successLabel}</Text>
+            </View>
+          )}
+        </Pressable>
+        <Pressable onPress={() => onLog(0)} disabled={logLoading} style={{ flex: 1, height: 56 }}>
+          {({ pressed }) => (
+            <View style={{
+              flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+              gap: 12, borderRadius: 12,
+              backgroundColor: pressed ? colors.red[600] : colors.red[500],
+            }}>
+              <CloseIcon width={14} height={14} color="#FFFFFF" />
+              <Text weight="bold" style={{ fontSize: 16, color: '#FFFFFF' }}>{failLabel}</Text>
+            </View>
+          )}
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
 }
 
 // ─── sub-components ───────────────────────────────────────────────────────────
 
-function DayCell({ day }: { day: WeekDay }) {
-  const c = useColors();
-  const bg =
-    day.status === 'done' ? colors.green[500] :
-    day.status === 'missed' ? colors.red[500] :
-    colors.neutral[100];
-  const borderColor =
-    day.status === 'done' ? colors.green[600] :
-    day.status === 'missed' ? colors.red[600] :
-    day.status === 'today' ? colors.neutral[500] :
-    colors.neutral[200];
-  const textColor =
-    day.status === 'done' ? colors.green[800] :
-    day.status === 'missed' ? colors.red[800] :
-    day.status === 'today' ? c.text.primary :
-    c.text.placeholder;
-  const shadow = day.status === 'future' ? {
-    shadowColor: '#11182707', shadowOffset: { width: 1, height: 2 },
-    shadowOpacity: 1, shadowRadius: 6, elevation: 1,
-  } : {};
-
-  return (
-    <View style={{ flex: 1, height: 56, alignItems: 'center', justifyContent: 'center',
-      borderRadius: 8, borderWidth: 1, backgroundColor: bg, borderColor, ...shadow }}>
-      <Text weight="bold" style={{ fontSize: 16, color: textColor, letterSpacing: 0.2 }}>
-        {day.date}
-      </Text>
-    </View>
-  );
-}
 
 function MemberRow({
   member, goalValue, todayValue, isCreator, onExclude,
@@ -172,7 +242,7 @@ function BottomModal({ title, visible, onClose, children }: {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(18,18,18,0.24)' }}>
-        <View style={{ backgroundColor: colors.neutral[0], borderTopLeftRadius: 24,
+        <View style={{ backgroundColor: c.surface.input, borderTopLeftRadius: 24,
           borderTopRightRadius: 24, paddingTop: 32, paddingBottom: 56, paddingHorizontal: 24, gap: 32 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Text weight="bold" style={{ fontSize: 24, color: c.text.primary, letterSpacing: 0.2 }}>
@@ -195,7 +265,7 @@ export default function HabitScreen() {
   const c = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const scheme = useColorScheme();
+  const { colorScheme: scheme } = useSettings();
   const { id } = useLocalSearchParams<{ id: string }>();
   const habitId = parseInt(id);
 
@@ -352,6 +422,18 @@ export default function HabitScreen() {
     Alert.alert('Скопировано', link);
   }
 
+  async function handleSoloLog(value: number) {
+    setLogLoading(true);
+    try {
+      await logHabit(habitId, value);
+      load();
+    } catch (e: any) {
+      Alert.alert('Ошибка', e.message);
+    } finally {
+      setLogLoading(false);
+    }
+  }
+
   if (loading || !habit) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default, alignItems: 'center', justifyContent: 'center' }}>
@@ -360,7 +442,16 @@ export default function HabitScreen() {
     );
   }
 
-  const weekDays = buildWeekDays(habit);
+  if (habit.type === 'solo') {
+    return (
+      <SoloHabitScreen
+        habit={habit}
+        onLog={handleSoloLog}
+        logLoading={logLoading}
+      />
+    );
+  }
+
   const progressPercent = habit.goal_value
     ? Math.min((myTodayLog?.value ?? 0) / habit.goal_value, 1)
     : myTodayLog?.value ? 1 : 0;
@@ -370,19 +461,20 @@ export default function HabitScreen() {
       <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
 
       {/* Nav bar */}
-      <View style={{ backgroundColor: panelColor, height: 56 + insets.top, paddingTop: insets.top,
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
-        <Pressable onPress={() => router.back()} hitSlop={8}
-          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, position: 'absolute', left: 24, top: insets.top + 16 })}>
-          <ArrowBackIcon width={24} height={24} color={c.text.primary} />
-        </Pressable>
-        <Text weight="semibold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2, marginTop: insets.top }}>
-          {habit.name}
-        </Text>
-        <Pressable onPress={() => setMenuVisible(v => !v)} hitSlop={8}
-          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, position: 'absolute', right: 24, top: insets.top + 16 })}>
-          <MoreVerticalIcon width={24} height={24} color={c.text.primary} />
-        </Pressable>
+      <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>
+        <NavigationBar
+          title={habit.name}
+          onBack={() => router.back()}
+          right={
+            <Pressable onPress={() => setMenuVisible(v => !v)} hitSlop={8}>
+              {({ pressed }) => (
+                <View style={{ opacity: pressed ? 0.7 : 1 }}>
+                  <MoreVerticalIcon width={24} height={24} color={c.text.primary} />
+                </View>
+              )}
+            </Pressable>
+          }
+        />
       </View>
 
       {/* Dropdown menu */}
@@ -396,7 +488,7 @@ export default function HabitScreen() {
               position: 'absolute',
               top: insets.top + 56 - 8,
               right: 16,
-              backgroundColor: colors.neutral[0],
+              backgroundColor: c.surface.input,
               borderRadius: 16,
               paddingVertical: 8,
               minWidth: 200,
@@ -452,59 +544,53 @@ export default function HabitScreen() {
           Достижения
         </Text>
 
-        {/* Week strip */}
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {weekDays.map(day => <DayCell key={day.fullDate} day={day} />)}
-        </View>
+        <Calendar days={buildCalendarDays(habit)} />
 
         {/* Stats */}
         <View style={{ flexDirection: 'row', gap: 16 }}>
           {habit.category === 'steps' && (
-            <View style={{ flex: 1, backgroundColor: colors.neutral[0], borderRadius: 32,
-              borderWidth: 1, borderColor: colors.purple[50], paddingHorizontal: 16, paddingVertical: 24, gap: 16 }}>
+            <Card style={{ flex: 1, gap: 16 }}>
               <View>
-                <Text weight="medium" style={{ fontSize: 14, color: colors.neutral[600], letterSpacing: 0.2 }}>
+                <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
                   Шагов за сегодня
                 </Text>
-                <Text weight="bold" style={{ fontSize: 16, color: colors.neutral[900], letterSpacing: 0.2 }}>
+                <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
                   {(myTodayLog?.value ?? 0).toLocaleString('ru-RU')}
                   {habit.goal_value ? ` / ${habit.goal_value.toLocaleString('ru-RU')}` : ''}
                 </Text>
               </View>
               <View style={{ height: 22 }}>
                 <View style={{ position: 'absolute', left: 0, right: 0, top: 4, height: 14,
-                  borderRadius: 12, borderWidth: 1, borderColor: colors.neutral[500], backgroundColor: colors.neutral[100] }} />
+                  borderRadius: 12, borderWidth: 1, borderColor: c.border.input, backgroundColor: c.surface.disabled }} />
                 <View style={{ position: 'absolute', left: 4, top: 4, height: 14, borderRadius: 12,
                   backgroundColor: progressPercent > 0 ? colors.green[500] : colors.neutral[600],
                   width: Math.max(14, progressPercent * 100) }} />
               </View>
-            </View>
+            </Card>
           )}
 
-          <View style={{ flex: 1, backgroundColor: colors.neutral[0], borderRadius: 32,
-            borderWidth: 1, borderColor: colors.purple[50], padding: 16, gap: 4 }}>
+          <Card style={{ flex: 1, gap: 4 }}>
             <View>
-              <Text weight="medium" style={{ fontSize: 14, color: colors.neutral[600], letterSpacing: 0.2 }}>
+              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
                 Текущий стрик
               </Text>
-              <Text weight="bold" style={{ fontSize: 16, color: colors.neutral[900], letterSpacing: 0.2 }}>
+              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
                 {habit.streak.current}
               </Text>
             </View>
             <View>
-              <Text weight="medium" style={{ fontSize: 14, color: colors.neutral[600], letterSpacing: 0.2 }}>
+              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
                 Максимальный
               </Text>
-              <Text weight="bold" style={{ fontSize: 16, color: colors.neutral[900], letterSpacing: 0.2 }}>
+              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
                 {habit.streak.max}
               </Text>
             </View>
-          </View>
+          </Card>
         </View>
 
         {/* Участники */}
-        <View style={{ backgroundColor: colors.neutral[0], borderRadius: 32, borderWidth: 1,
-          borderColor: colors.purple[50], paddingHorizontal: 24, paddingVertical: 16, gap: 16 }}>
+        <Card style={{ gap: 16 }}>
           <Text weight="bold" style={{ fontSize: 14, color: c.text.label, letterSpacing: 0.2 }}>
             Участники
           </Text>
@@ -526,7 +612,7 @@ export default function HabitScreen() {
               Пригласить в группу
             </Text>
           </Pressable>
-        </View>
+        </Card>
       </ScrollView>
 
       <View style={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 16 }}>
@@ -541,7 +627,7 @@ export default function HabitScreen() {
       {/* Invite modal */}
       <BottomModal title="Пригласить в группу" visible={inviteModal} onClose={() => setInviteModal(false)}>
         <View style={{ gap: 16 }}>
-          <Text weight="bold" style={{ fontSize: 16, color: colors.neutral[600], letterSpacing: 0.2 }}>
+          <Text weight="bold" style={{ fontSize: 16, color: c.text.secondary, letterSpacing: 0.2 }}>
             Любой человек может вступить в групповую привычку по этой ссылке
           </Text>
           <Button label="Скопировать ссылку" onPress={handleCopyInvite} />
@@ -587,7 +673,7 @@ export default function HabitScreen() {
         onClose={() => setExcludeTarget(null)}
       >
         <View style={{ gap: 16 }}>
-          <Text weight="bold" style={{ fontSize: 16, color: colors.neutral[600], letterSpacing: 0.2 }}>
+          <Text weight="bold" style={{ fontSize: 16, color: c.text.secondary, letterSpacing: 0.2 }}>
             После исключения вся информация об участнике будет удалена из группы
           </Text>
           <Button label="Подтвердить" onPress={handleExclude} />

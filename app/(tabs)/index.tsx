@@ -1,16 +1,19 @@
-import { View, Pressable, Image, FlatList, useColorScheme, StatusBar, ActivityIndicator } from 'react-native';
+import { View, Pressable, Image, FlatList, StatusBar, ActivityIndicator } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 import Text from '@/components/Text';
 import Button from '@/components/Button';
+import Card from '@/components/Card';
+import HabitTag from '@/components/HabitTag';
 import MascotSvg from '@/assets/images/tapa_quest.png';
 import PlusIcon from '@/assets/icons/Plus.svg';
 import GroupPlusIcon from '@/assets/icons/GroupPlus.svg';
 import { useColors, colors } from '@/lib/colors';
+import { useSettings } from '@/lib/settings-context';
 import { useAuth } from '@/lib/auth-context';
-import { getHabits, Habit } from '@/lib/api';
+import { getHabits, getHabit, Habit } from '@/lib/api';
 
 function Avatar({ firstName, avatarUrl }: { firstName: string | null; avatarUrl: string | null }) {
   const initial = firstName ? firstName[0].toUpperCase() : '?';
@@ -31,33 +34,42 @@ function Avatar({ firstName, avatarUrl }: { firstName: string | null; avatarUrl:
   );
 }
 
-function HabitCard({ habit, onPress }: { habit: Habit; onPress: () => void }) {
+type HabitExtra = { streak: number; today_value: number };
+
+function pluralDays(n: number): string {
+  const last = n % 10;
+  const lastTwo = n % 100;
+  if (lastTwo >= 11 && lastTwo <= 14) return `${n} дней`;
+  if (last === 1) return `${n} день`;
+  if (last >= 2 && last <= 4) return `${n} дня`;
+  return `${n} дней`;
+}
+
+function HabitCard({ habit, extra, onPress }: { habit: Habit; extra: HabitExtra | null; onPress: () => void }) {
   const c = useColors();
+
+  const subtitle = habit.category === 'smoking' ? 'Без сигарет' : 'Шагов за сегодня';
+  const value = habit.category === 'smoking'
+    ? pluralDays(extra?.streak ?? 0)
+    : `${extra?.today_value ?? 0}/${habit.goal_value ?? 0}`;
+
   return (
-    <Pressable onPress={onPress}
-      style={({ pressed }) => ({
-        backgroundColor: colors.neutral[0],
-        borderRadius: 24,
-        borderWidth: 1,
-        borderColor: colors.purple[50],
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        gap: 4,
-        opacity: pressed ? 0.85 : 1,
-        shadowColor: '#11182707',
-        shadowOffset: { width: 1, height: 2 },
-        shadowOpacity: 1,
-        shadowRadius: 12,
-        elevation: 2,
-      })}>
-      <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-        {habit.name}
-      </Text>
-      {habit.goal_value != null && (
-        <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-          Цель: {habit.goal_value.toLocaleString('ru-RU')} {habit.goal_unit ?? ''}
-        </Text>
-      )}
+    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
+      <Card>
+        <View style={{ flexDirection: 'row' }}>
+          <View style={{ gap: 8, flex: 1 }}>
+            <HabitTag type={habit.type} />
+            <View>
+              <Text weight="medium" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
+                {subtitle}
+              </Text>
+              <Text weight="bold" style={{ fontSize: 20, lineHeight: 20 * 1.5, color: c.text.primary, letterSpacing: 0.2 }}>
+                {value}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Card>
     </Pressable>
   );
 }
@@ -66,10 +78,11 @@ export default function HabitsScreen() {
   const c = useColors();
   const router = useRouter();
   const { user } = useAuth();
-  const scheme = useColorScheme();
+  const { colorScheme: scheme } = useSettings();
   const insets = useSafeAreaInsets();
 
   const [habits, setHabits] = useState<Habit[]>([]);
+  const [extras, setExtras] = useState<Record<number, HabitExtra>>({});
   const [loading, setLoading] = useState(true);
 
   const rawName = user?.first_name ?? user?.username ?? null;
@@ -85,6 +98,24 @@ export default function HabitsScreen() {
     try {
       const data = await getHabits();
       setHabits(data);
+
+      const results = await Promise.allSettled(data.map(h => getHabit(h.id)));
+      const map: Record<number, HabitExtra> = {};
+      const today = new Date().toISOString().split('T')[0];
+      results.forEach((res, i) => {
+        if (res.status === 'fulfilled') {
+          const detail = res.value;
+          const self = detail.members.find(m => m.is_self);
+          const todayLog = self
+            ? detail.week_logs.find(l => l.date.slice(0, 10) === today && l.user_id === self.id)
+            : undefined;
+          map[data[i].id] = {
+            streak: detail.streak.current,
+            today_value: todayLog?.value ?? 0,
+          };
+        }
+      });
+      setExtras(map);
     } catch {
       // не авторизован или сеть — оставляем пустой список
     } finally {
@@ -138,9 +169,9 @@ export default function HabitsScreen() {
         <FlatList
           data={habits}
           keyExtractor={h => String(h.id)}
-          contentContainerStyle={{ padding: 24, gap: 12 }}
+          contentContainerStyle={{ padding: 24, gap: 16 }}
           renderItem={({ item }) => (
-            <HabitCard habit={item} onPress={() => router.push(`/(tabs)/habit/${item.id}`)} />
+            <HabitCard habit={item} extra={extras[item.id] ?? null} onPress={() => router.push(`/(tabs)/habit/${item.id}`)} />
           )}
         />
       )}

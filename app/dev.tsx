@@ -7,6 +7,11 @@ import Input from '@/components/Input';
 import SegmentedControl from '@/components/SegmentedControl';
 import Select from '@/components/Select';
 import Lists from '@/components/Lists';
+import Calendar from '@/components/Calendar';
+import NavigationBar from '@/components/NavigationBar';
+import Card from '@/components/Card';
+import HabitTag from '@/components/HabitTag';
+import MoreVerticalIcon from '@/assets/icons/MoreVertical.svg';
 import { useState } from 'react';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
@@ -242,6 +247,80 @@ export default function DevScreen() {
             ]}
             cardStyle={{ gap: 16 }}
           />
+        </Section>
+
+        {/* CALENDAR */}
+        <Section title="Calendar">
+          <Label text="7 дней (check / miss / current / future)" />
+          <Calendar
+            days={[
+              { day: 18, status: 'check' },
+              { day: 19, status: 'miss' },
+              { day: 20, status: 'check' },
+              { day: 21, status: 'check' },
+              { day: 22, status: 'current' },
+              { day: 23, status: 'future' },
+              { day: 24, status: 'future' },
+            ]}
+          />
+        </Section>
+
+        {/* NAVIGATION BAR */}
+        <Section title="Navigation Bar">
+          <Label text="Только заголовок" />
+          <NavigationBar title="Заголовок" />
+
+          <Label text="С кнопкой назад" />
+          <NavigationBar title="Заголовок" onBack={() => {}} />
+
+          <Label text="С кнопкой назад и действием справа" />
+          <NavigationBar
+            title="Заголовок"
+            onBack={() => {}}
+            right={<MoreVerticalIcon width={24} height={24} color={c.text.primary} />}
+          />
+        </Section>
+
+        {/* HABIT TAG */}
+        <Section title="HabitTag">
+          <Label text="Групповая (violet)" />
+          <HabitTag type="group" />
+
+          <Label text="Одиночная (yellow)" />
+          <HabitTag type="solo" />
+        </Section>
+
+        {/* CARD */}
+        <Section title="Card">
+          <Label text="Базовая карточка" />
+          <Card>
+            <Text weight="semibold" style={{ fontSize: 16, color: c.text.primary }}>
+              Заголовок карточки
+            </Text>
+            <Text style={{ fontSize: 14, color: c.text.secondary }}>
+              Содержимое карточки — любые дочерние элементы
+            </Text>
+          </Card>
+
+          <Label text="Две карточки в ряд (стрики)" />
+          <View style={{ flexDirection: 'row', gap: 16 }}>
+            <Card style={{ flex: 1, gap: 4 }}>
+              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
+                Текущий стрик
+              </Text>
+              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
+                7
+              </Text>
+            </Card>
+            <Card style={{ flex: 1, gap: 4 }}>
+              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
+                Лучший стрик
+              </Text>
+              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
+                21
+              </Text>
+            </Card>
+          </View>
         </Section>
 
       </ScrollView>
