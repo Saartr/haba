@@ -1,7 +1,7 @@
 # Memory Index
 
 - [iOS Build Plan](project_ios_plan.md) — EAS Build when Apple Developer Account obtained; Android-only until then
-- [Auth Refactor → браузер + deep link](project_auth_refactor.md) — завершено: системный браузер → oauth.telegram.org → haba:// deeplink, без WebView
+- [Авторизация](project_auth_refactor.md) — два способа: Telegram (браузер + deeplink) и VK ID (нативный SDK 2.6.0, Expo Module, New Arch)
 - [Health Connect](project_health_connect.md) — реализовано, заблокировано Google Play верификацией; разблокируется после регистрации в Play Console ($25)
 - [Главный экран](project_main_screen.md) — реализован: шторка, аватар, имя с truncation, empty state, без таб-бара
 - [SSH: редактирование файлов на сервере](feedback_ssh_file_edit.md) — серверный код правится локально в `backend/` и деплоится через `./deploy-backend.ps1`, никакой прямой правки на сервере

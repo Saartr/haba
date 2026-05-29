@@ -11,7 +11,11 @@ PostgreSQL на сервере `bot.mihmih.pro`. Подключение чере
 
 **Оригинальные таблицы (bot-функциональность):**
 ```sql
-users          — id, tg_id, username, first_name, last_name, avatar_url, created_at
+users          — id, tg_id BIGINT NULL, vk_id TEXT UNIQUE,
+                 username, first_name, last_name,
+                 email TEXT, phone TEXT,
+                 avatar_url, created_at
+               UNIQUE(vk_id) — partial index заменён на constraint
 groups         — id, name, invite_code, creator_id → users, created_at
 group_members  — user_id → users, group_id → groups, joined_at
 goals          — id, group_id → groups, steps_per_day, period_days, starts_at, deadline
@@ -19,6 +23,9 @@ steps          — id, user_id → users, goal_id → goals, count, recorded_at
                UNIQUE(user_id, goal_id, recorded_at)
 refresh_tokens — id, user_id → users, token UNIQUE, expires_at, created_at
 ```
+
+Telegram-пользователи: `tg_id` заполнен, `vk_id` = NULL.
+VK-пользователи: `vk_id` заполнен, `tg_id` = NULL.
 
 **Таблицы привычек (добавлены позже, migrate_habits.js):**
 ```sql

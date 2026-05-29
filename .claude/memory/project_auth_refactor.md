@@ -1,35 +1,53 @@
 ---
 name: project-auth-refactor
-description: Auth flow refactored to Telegram Login Widget — COMPLETED 2026-05-21
-metadata: 
-  node_type: memory
+description: Два способа авторизации — Telegram (браузер + deeplink) и VK ID (нативный SDK)
+metadata:
   type: project
-  originSessionId: 6f334f79-b33a-4bdb-b852-d3bff627bebf
 ---
 
-Переход с OTP → Telegram Login Widget (WebView) → браузер + deep link — **завершён**.
+## Telegram авторизация — завершена
 
-**Why:** WebView не мог перехватить `intent://` редиректы на Android, а `oauth.telegram.org` блокирует embedding (X-Frame-Options). Браузер + deeplink обходит оба ограничения.
-
-**Флоу авторизации:**
-1. Пользователь нажимает кнопку → `Linking.openURL('https://bot.mihmih.pro/api/v1/auth/telegram-login')`
-2. Сервер делает `redirect` → `oauth.telegram.org` (Telegram OAuth)
-3. Telegram редиректит на `https://bot.mihmih.pro/api/v1/auth/telegram-callback`
-4. Страница callback читает `window.location.hash` и делает `window.location.replace('haba://auth/callback' + fragment)`
+**Флоу:**
+1. `Linking.openURL('https://bot.mihmih.pro/api/v1/auth/telegram-login')`
+2. Сервер → redirect → `oauth.telegram.org`
+3. Telegram → redirect на `/api/v1/auth/telegram-callback`
+4. HTML-страница читает `window.location.hash` → `window.location.replace('haba://auth/callback' + fragment)`
 5. Android перехватывает deeplink `haba://auth/callback#tgAuthResult=...`
-6. `app/(auth)/welcome.tsx` ловит через `Linking.addEventListener('url', ...)` → парсит `tgAuthResult` → `POST /auth/telegram` → JWT сохраняется
+6. `welcome.tsx` парсит `tgAuthResult` → `POST /auth/telegram` → JWT
 
-**Бэкенд** (`backend/src/api/auth.js`):
-- `GET /api/v1/auth/telegram-login` — redirect на `oauth.telegram.org`
-- `GET /api/v1/auth/telegram-callback` — HTML, читает fragment и редиректит на `haba://`
-- `POST /api/v1/auth/telegram` — HMAC-верификация, upsert user, скачивание аватара, JWT
-- `POST /api/v1/auth/refresh` — ротация refresh-токена
-- `GET /api/v1/auth/me` — профиль пользователя
+**Бэкенд:** `GET /auth/telegram-login`, `GET /auth/telegram-callback`, `POST /auth/telegram` (HMAC-верификация)
 
-**Фронтенд:**
-- `app/(auth)/welcome.tsx` — кнопка `Linking.openURL` + `Linking.addEventListener` для deeplink, без WebView/Modal
-- `lib/api.ts` — `telegramAuth()`, `getMe()`, тип `UserProfile`
-- `lib/auth-context.tsx` — `user: UserProfile | null`, `refreshUser()`, `setAuthed(value, profile?)`
-- Deep link scheme `haba://` настроен в `app.json` и `AndroidManifest.xml`
+**Данные в users:** `tg_id`, `username`, `first_name`, `last_name`, `avatar_url`
 
-**How to apply:** Флоу авторизации полностью через системный браузер. WebView не используется. Старые эндпоинты send-code/verify-code удалены.
+**Телефон из Telegram:** недоступен через OAuth. Единственный вариант — бот с кнопкой `request_contact`.
+
+---
+
+## VK ID авторизация — завершена (2026-05-29)
+
+**Флоу:**
+1. Нажимает «Войти через VK» → `VkIdModule.signIn()` (нативный VK ID SDK 2.6.0)
+2. SDK показывает системный диалог (One Tap или браузер)
+3. SDK возвращает `AccessToken` с `userData` (имя, фото, email, телефон)
+4. `POST /auth/vk` → `secure.checkToken` (сервисный ключ, не привязан к IP) → upsert user → JWT
+
+**Why `secure.checkToken`, не `users.get`:** `users.get` с user access token привязан к IP устройства — сервер получает отказ `access_token was given to another ip address`.
+
+**Данные в users:** `vk_id`, `first_name`, `last_name`, `email`, `phone`, `avatar_url`
+
+**Телефон:** VK передаёт через scope `phone`, но реально возвращает только приложениям с бизнес-аккаунтом VK ID Console. Разблокируется после регистрации в RuStore.
+
+**Нативный модуль:**
+- `modules/vk-id/android/src/main/java/pro/mihmih/haba/vkid/VkIdModule.kt` — Expo Module (New Arch совместимый)
+- `modules/vk-id/android/build.gradle` — зависимость `com.vk.id:vkid:2.6.0`
+- `modules/vk-id/expo-module.config.json` — автолинкинг через `nativeModulesDir`
+- `modules/vk-id/index.ts` — JS-обёртка `signInWithVK()`
+- Manifest placeholders: `VKIDClientID=54615454`, `VKIDClientSecret`, `VKIDRedirectHost=vk.com`, `VKIDRedirectScheme=vk54615454`
+
+**VK ID Console:** app ID `54615454`, Android, SHA-1 debug keystore зарегистрирован.
+
+**Env на сервере:** `VK_CLIENT_SECRET`, `VK_SERVICE_TOKEN` добавлены в `.env`.
+
+**Why New Arch совместимый модуль:** `newArchEnabled=true` в `gradle.properties` — старый `ReactContextBaseJavaModule` + `PackageList` не работает в Bridgeless режиме. Нужен Expo Module с `expo-module.config.json`.
+
+**How to apply:** При добавлении новых нативных модулей — использовать Expo Modules API (`Module` класс), размещать в `modules/<name>/android/`, создавать `expo-module.config.json`.

@@ -11,14 +11,30 @@
 
 ## Авторизация
 
+Два способа входа: Telegram и VK ID.
+
+### Telegram
+
 Флоу через системный браузер и Android deep link:
 
-1. Пользователь нажимает кнопку — приложение открывает `https://bot.mihmih.pro/api/v1/auth/telegram-login` через `Linking.openURL`
-2. Сервер делает redirect на `oauth.telegram.org`
-3. Пользователь подтверждает вход в Telegram
-4. Telegram редиректит на `/api/v1/auth/telegram-callback` — страница читает `tgAuthResult` из фрагмента URL и редиректит на `haba://auth/callback#tgAuthResult=...`
-5. Приложение перехватывает deeplink через `Linking.addEventListener`, парсит данные и вызывает `POST /api/v1/auth/telegram`
-6. Сервер проверяет HMAC-подпись, создаёт/обновляет пользователя, возвращает JWT
+1. `Linking.openURL('https://bot.mihmih.pro/api/v1/auth/telegram-login')`
+2. Сервер → redirect → `oauth.telegram.org`
+3. Telegram → redirect на `/api/v1/auth/telegram-callback` — читает `tgAuthResult` из фрагмента → `haba://auth/callback#tgAuthResult=...`
+4. Приложение перехватывает deeplink → `POST /auth/telegram` (HMAC-верификация) → JWT
+
+Сохраняет: `tg_id`, `username`, `first_name`, `last_name`, `avatar_url`.
+
+### VK ID
+
+Нативный VK ID SDK 2.6.0 через Expo Module (совместим с New Architecture):
+
+1. `signInWithVK()` → нативный диалог VK One Tap
+2. SDK возвращает `AccessToken` с профилем пользователя
+3. `POST /auth/vk` → верификация через `secure.checkToken` (сервисный ключ) → JWT
+
+Сохраняет: `vk_id`, `first_name`, `last_name`, `email`, `phone`, `avatar_url`.
+
+> `phone` возвращается VK только для приложений с бизнес-аккаунтом VK ID Console — разблокируется после регистрации в RuStore.
 
 Схема `haba://` настроена в `app.json` и `android/app/src/main/AndroidManifest.xml`.
 
