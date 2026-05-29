@@ -1,18 +1,19 @@
-import { View, useWindowDimensions, Linking, Platform } from 'react-native';
+import { View, useWindowDimensions, Modal, Linking, Platform } from 'react-native';
 import { useState } from 'react';
+import { WebView } from 'react-native-webview';
 import Text from '@/components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TelegramIcon from '@/assets/icons/Telegram.svg';
 import TapaWelcome from '@/assets/images/tapa_welcome.svg';
 import Button from '@/components/Button';
 import { useColors } from '@/lib/colors';
-import { vkAuth } from '@/lib/api';
+import { telegramAuth, TelegramUser, vkAuth } from '@/lib/api';
 import { saveTokens } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
 import { signInWithVK } from '@/modules/vk-id';
 
 const BOT_ID = '8671249381';
-const TELEGRAM_LOGIN_URL = `https://oauth.telegram.org/auth?bot_id=${BOT_ID}&origin=${encodeURIComponent('https://bot.mihmih.pro')}&return_to=${encodeURIComponent('https://bot.mihmih.pro/api/v1/auth/telegram-callback')}&request_access=write`;
+const TELEGRAM_AUTH_URL = `https://oauth.telegram.org/auth?bot_id=${BOT_ID}&origin=${encodeURIComponent('https://bot.mihmih.pro')}&return_to=${encodeURIComponent('https://bot.mihmih.pro/api/v1/auth/telegram-callback')}&request_access=write`;
 
 export default function WelcomeScreen() {
   const { width } = useWindowDimensions();
@@ -20,10 +21,32 @@ export default function WelcomeScreen() {
   const { setAuthed } = useAuth();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [webViewVisible, setWebViewVisible] = useState(false);
 
-  function openTelegram() {
-    setError(null);
-    Linking.openURL(TELEGRAM_LOGIN_URL).catch(() => setError('Не удалось открыть браузер'));
+  function handleWebViewNavigationStateChange(navState: { url: string }) {
+    const { url } = navState;
+    if (!url.startsWith('haba://auth/callback')) return;
+
+    setWebViewVisible(false);
+
+    // Данные могут прийти как query (?tgAuthResult=) или fragment (#tgAuthResult=)
+    const queryMatch = url.match(/[?&]tgAuthResult=([^&#]+)/);
+    const fragmentMatch = url.match(/#.*tgAuthResult=([^&]+)/);
+    const match = queryMatch || fragmentMatch;
+    if (!match) return;
+
+    try {
+      const decoded = JSON.parse(atob(match[1]));
+      if (!decoded.hash) return;
+      setProcessing(true);
+      telegramAuth(decoded as TelegramUser)
+        .then(result => saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken }).then(() => result))
+        .then(result => { setAuthed(true, result.user); })
+        .catch((e: any) => { setError(e.message ?? 'Ошибка авторизации'); })
+        .finally(() => setProcessing(false));
+    } catch {
+      setError('Ошибка авторизации');
+    }
   }
 
   async function handleVkLogin() {
@@ -72,7 +95,7 @@ export default function WelcomeScreen() {
       <View className="px-6 pb-8 gap-3">
         <Button
           label="Войти через Telegram"
-          onPress={openTelegram}
+          onPress={() => { setError(null); setWebViewVisible(true); }}
           loading={processing}
           icon={<TelegramIcon width={20} height={20} color={c.text.onPrimary} />}
         />
@@ -85,6 +108,20 @@ export default function WelcomeScreen() {
           />
         )}
       </View>
+
+      <Modal visible={webViewVisible} animationType="slide" onRequestClose={() => setWebViewVisible(false)}>
+        <WebView
+          source={{ uri: TELEGRAM_AUTH_URL }}
+          onNavigationStateChange={handleWebViewNavigationStateChange}
+          onShouldStartLoadWithRequest={request => {
+            if (request.url.startsWith('haba://')) {
+              handleWebViewNavigationStateChange({ url: request.url });
+              return false;
+            }
+            return true;
+          }}
+        />
+      </Modal>
     </SafeAreaView>
   );
 }
