@@ -1,4 +1,4 @@
-import { View, Pressable, Image, Alert, Linking } from 'react-native';
+import { View, Pressable, Image, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Text from '@/components/Text';
@@ -51,11 +51,6 @@ export default function ProfileScreen() {
     Alert.alert('Выйти из аккаунта?', '', [
       { text: 'Отмена', style: 'cancel' },
       { text: 'Выйти', style: 'destructive', onPress: async () => {
-        // Сбрасываем Telegram сессию чтобы при следующем входе
-        // oauth.telegram.org показал диалог подтверждения
-        if (user?.tg_id) {
-          Linking.openURL('https://oauth.telegram.org/auth/logout').catch(() => {});
-        }
         await clearTokens();
         setAuthed(false);
       }},
