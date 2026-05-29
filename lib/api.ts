@@ -81,6 +81,8 @@ export type UserProfile = {
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
+  tg_id: string | null;
+  vk_id: string | null;
 };
 
 export async function getMe(): Promise<UserProfile> {

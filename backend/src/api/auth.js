@@ -358,16 +358,18 @@ router.post('/refresh', async (req, res) => {
 router.get('/me', requireAuth, async (req, res) => {
   try {
     const [user] = await sql`
-      SELECT username, first_name, last_name, avatar_url
+      SELECT username, first_name, last_name, avatar_url, tg_id, vk_id
       FROM users WHERE id = ${req.userId}
     `;
     if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
 
     res.json({
-      username:   user.username,
+      username:   user.username   || null,
       first_name: user.first_name || null,
       last_name:  user.last_name  || null,
       avatar_url: user.avatar_url || null,
+      tg_id:      user.tg_id ? String(user.tg_id) : null,
+      vk_id:      user.vk_id     || null,
     });
   } catch (e) {
     console.error('me error:', e);
