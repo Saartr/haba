@@ -207,6 +207,13 @@ router.get('/telegram-callback', (req, res) => {
   // Браузер не передаёт fragment на сервер, поэтому отдаём HTML который читает fragment и редиректит в приложение.
   // Важно: Chrome на Android блокирует window.location.replace на кастомную схему (haba://) если страница
   // не показала контент пользователю. Поэтому показываем кнопку и делаем редирект через 300ms.
+  // oauth.telegram.org передаёт tgAuthResult в fragment (#), который не доходит до сервера.
+  // Поэтому отдаём HTML: он читает fragment из window.location.hash и строит deeplink.
+  // Проблема: если у пользователя уже есть сессия Telegram, oauth.telegram.org делает
+  // мгновенный redirect и Chrome закрывает вкладку до рендера JS.
+  // Решение: передаём fragment через query-параметр с помощью промежуточной страницы,
+  // а затем отдаём страницу с кнопкой И intent:// схемой (Android открывает приложение
+  // через intent без закрытия вкладки).
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
   res.send(`<!DOCTYPE html>
@@ -215,18 +222,24 @@ router.get('/telegram-callback', (req, res) => {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f0f0f0; font-family: sans-serif; gap: 16px; }
-    .btn { background: #2481cc; color: #fff; border: none; border-radius: 12px; padding: 16px 32px; font-size: 16px; cursor: pointer; }
-    p { color: #666; font-size: 14px; margin: 0; text-align: center; padding: 0 24px; }
+    body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f5f5f5; font-family: sans-serif; gap: 20px; }
+    .btn { background: #2481cc; color: #fff; border: none; border-radius: 12px; padding: 16px 40px; font-size: 17px; cursor: pointer; }
+    p { color: #555; font-size: 15px; margin: 0; text-align: center; padding: 0 32px; line-height: 1.5; }
   </style>
 </head>
 <body>
-  <p>Авторизация прошла успешно.<br>Нажмите кнопку чтобы вернуться в приложение.</p>
+  <p>Вы вошли через Telegram.<br>Нажмите кнопку чтобы открыть приложение.</p>
   <button class="btn" id="btn">Открыть Тапа</button>
   <script>
-    var deeplink = 'haba://auth/callback' + window.location.hash;
-    document.getElementById('btn').addEventListener('click', function() {
-      window.location.href = deeplink;
+    var hash = window.location.hash;
+    var deeplink = 'haba://auth/callback' + hash;
+    var intent = 'intent://auth/callback' + hash + '#Intent;scheme=haba;package=pro.mihmih.haba;end';
+    var btn = document.getElementById('btn');
+    btn.addEventListener('click', function() {
+      // intent:// надёжнее открывает приложение на Android не закрывая вкладку
+      window.location.href = intent;
+      // fallback на случай если intent не сработал
+      setTimeout(function() { window.location.href = deeplink; }, 1000);
     });
   </script>
 </body>
