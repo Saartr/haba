@@ -77,13 +77,25 @@ function downloadFile(url, dest) {
 
 async function fetchAndSaveAvatar(bot, tgId, userId, photoUrl) {
   const destPath = path.join(AVATARS_DIR, `${userId}.jpg`);
-  const stat = fs.existsSync(destPath) ? fs.statSync(destPath) : null;
-  if (stat && stat.size > 0) return `${AVATARS_URL}/${userId}.jpg`;
-  if (stat && stat.size === 0) fs.unlinkSync(destPath);
+  fs.mkdirSync(AVATARS_DIR, { recursive: true });
 
+  // Сначала пробуем Bot API — надёжнее чем временный photo_url из виджета
+  try {
+    const photos = await bot.api.getUserProfilePhotos(tgId, { limit: 1 });
+    if (photos.total_count) {
+      const fileId = photos.photos[0][0].file_id;
+      const file = await bot.api.getFile(fileId);
+      const fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_TOKEN}/${file.file_path}`;
+      await downloadFile(fileUrl, destPath);
+      return `${AVATARS_URL}/${userId}.jpg`;
+    }
+  } catch (e) {
+    console.error('Avatar download via Bot API failed:', e.message);
+  }
+
+  // Fallback на photo_url из виджета
   if (photoUrl) {
     try {
-      fs.mkdirSync(AVATARS_DIR, { recursive: true });
       await downloadFile(photoUrl, destPath);
       return `${AVATARS_URL}/${userId}.jpg`;
     } catch (e) {
@@ -91,19 +103,7 @@ async function fetchAndSaveAvatar(bot, tgId, userId, photoUrl) {
     }
   }
 
-  try {
-    const photos = await bot.api.getUserProfilePhotos(tgId, { limit: 1 });
-    if (!photos.total_count) return null;
-    const fileId = photos.photos[0][0].file_id;
-    const file = await bot.api.getFile(fileId);
-    const fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_TOKEN}/${file.file_path}`;
-    fs.mkdirSync(AVATARS_DIR, { recursive: true });
-    await downloadFile(fileUrl, destPath);
-    return `${AVATARS_URL}/${userId}.jpg`;
-  } catch (e) {
-    console.error('Avatar download via Bot API failed:', e.message);
-    return null;
-  }
+  return null;
 }
 
 const VK_SERVICE_TOKEN = process.env.VK_SERVICE_TOKEN;
@@ -273,12 +273,11 @@ router.post('/telegram', async (req, res) => {
       RETURNING id, username, first_name, last_name, avatar_url
     `;
 
-    let avatarUrl = user.avatar_url;
-    if (!avatarUrl) {
-      avatarUrl = await fetchAndSaveAvatar(req.bot, tgId, user.id, data.photo_url || null);
-      if (avatarUrl) {
-        await sql`UPDATE users SET avatar_url = ${avatarUrl} WHERE id = ${user.id}`;
-      }
+    // Всегда обновляем аватар — photo_url из Telegram временный и протухает
+    let avatarUrl = await fetchAndSaveAvatar(req.bot, tgId, user.id, data.photo_url || null);
+    if (!avatarUrl) avatarUrl = user.avatar_url;
+    if (avatarUrl && avatarUrl !== user.avatar_url) {
+      await sql`UPDATE users SET avatar_url = ${avatarUrl} WHERE id = ${user.id}`;
     }
 
     const accessToken = makeAccessToken(user.id);
