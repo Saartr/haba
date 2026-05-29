@@ -9,11 +9,11 @@ import { useSettings } from '@/lib/settings-context';
 import ArrowBackIcon from '@/assets/icons/arrow_back.svg';
 
 const CARD_SHADOW = {
-  shadowColor: '#11182A',
+  shadowColor: '#121212',
   shadowOffset: { width: 1, height: 2 },
-  shadowOpacity: 0.04,
+  shadowOpacity: 0.08,
   shadowRadius: 12,
-  elevation: 2,
+  elevation: 3,
 } as const;
 
 export default function AboutAppScreen() {

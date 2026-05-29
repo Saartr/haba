@@ -49,7 +49,7 @@ function RootLayoutNav() {
   if (!ready || !fontsLoaded) return null;
 
   return (
-    <Stack>
+    <Stack screenOptions={{ animationDuration: 280 }}>
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="dev" options={{ headerShown: false }} />

@@ -31,17 +31,34 @@ const SettingsContext = createContext<SettingsContextType>({
   updateSettings: () => {},
 });
 
+function resolveScheme(theme: ThemePreference, sys: 'light' | 'dark'): 'light' | 'dark' {
+  return theme === 'system' ? sys : theme;
+}
+
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useColorScheme();
+  const systemScheme: 'light' | 'dark' = useColorScheme() === 'dark' ? 'dark' : 'light';
   const [settings, setSettings] = useState<Settings>(defaults);
+  const [colorScheme, setColorScheme] = useState<'light' | 'dark'>(systemScheme);
 
   useEffect(() => {
     SecureStore.getItemAsync(STORE_KEY).then(raw => {
       if (raw) {
-        try { setSettings({ ...defaults, ...JSON.parse(raw) }); } catch {}
+        try {
+          const loaded: Settings = { ...defaults, ...JSON.parse(raw) };
+          setSettings(loaded);
+          setColorScheme(resolveScheme(loaded.theme, systemScheme));
+        } catch {}
       }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Синхронизируем с системной темой если выбрано 'system'
+  useEffect(() => {
+    if (settings.theme === 'system') {
+      setColorScheme(systemScheme);
+    }
+  }, [systemScheme, settings.theme]);
 
   const updateSettings = useCallback((updates: Partial<Settings>) => {
     setSettings(prev => {
@@ -49,10 +66,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       SecureStore.setItemAsync(STORE_KEY, JSON.stringify(next));
       return next;
     });
-  }, []);
-
-  const colorScheme: 'light' | 'dark' =
-    settings.theme === 'system' ? (systemScheme ?? 'light') : settings.theme;
+    if ('theme' in updates) {
+      setColorScheme(resolveScheme(updates.theme!, systemScheme));
+    }
+  }, [systemScheme]);
 
   return (
     <SettingsContext.Provider value={{ settings, colorScheme, updateSettings }}>
