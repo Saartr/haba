@@ -8,16 +8,22 @@ metadata:
 ## Telegram авторизация — завершена
 
 **Флоу:**
-1. `Linking.openURL('https://bot.mihmih.pro/api/v1/auth/telegram-login')`
-2. Сервер → redirect → `oauth.telegram.org`
-3. Telegram → redirect на `/api/v1/auth/telegram-callback`
-4. HTML-страница читает `window.location.hash` → `window.location.replace('haba://auth/callback' + fragment)`
-5. Android перехватывает deeplink `haba://auth/callback#tgAuthResult=...`
-6. `welcome.tsx` парсит `tgAuthResult` → `POST /auth/telegram` → JWT
+1. `Linking.openURL('https://oauth.telegram.org/auth?bot_id=...&origin=https://bot.mihmih.pro&return_to=.../telegram-callback&request_access=write')`
+   — открываем oauth.telegram.org **напрямую**, без серверного redirect (иначе fragment теряется)
+2. Telegram показывает диалог подтверждения → redirect на `/api/v1/auth/telegram-callback#tgAuthResult=...`
+3. HTML-страница читает `window.location.hash`, показывает кнопку «Открыть Тапа» + авто-редирект 500ms
+4. Нажатие кнопки → `haba://auth/callback?tgAuthResult=...`
+5. `_layout.tsx` ловит deeplink → `POST /auth/telegram` (HMAC-верификация) → JWT
 
-**Бэкенд:** `GET /auth/telegram-login`, `GET /auth/telegram-callback`, `POST /auth/telegram` (HMAC-верификация)
+**Важно:** `origin` должен быть `https://bot.mihmih.pro` (с протоколом) — без `https://` Telegram возвращает `tgAuthResult=false`.
+
+**Важно:** Серверный redirect через `/telegram-login` терял fragment — Telegram добавляет `#tgAuthResult` только к финальному URL в браузере.
+
+**Бэкенд:** `GET /auth/telegram-callback` (HTML с кнопкой), `POST /auth/telegram` (HMAC-верификация)
 
 **Данные в users:** `tg_id`, `username`, `first_name`, `last_name`, `avatar_url`
+
+**Аватар:** всегда обновляется при логине через Bot API (`getUserProfilePhotos`), `photo_url` из виджета временный.
 
 **Телефон из Telegram:** недоступен через OAuth. Единственный вариант — бот с кнопкой `request_contact`.
 

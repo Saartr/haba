@@ -233,10 +233,19 @@ router.get('/telegram-callback', (req, res) => {
 </head>
 <body>
   <p>Вы вошли через Telegram.</p>
-  <button class="btn" onclick="
-    var params = window.location.hash.slice(1);
-    window.location.href = 'haba://auth/callback?' + params;
-  ">Открыть Тапа</button>
+  <button class="btn" id="btn">Открыть Тапа</button>
+  <script>
+    var hash = window.location.hash;
+    var params = hash.slice(1);
+    console.log('hash:', hash, 'params:', params);
+    var deeplink = 'haba://auth/callback?' + params;
+    document.getElementById('btn').onclick = function() {
+      window.location.href = deeplink;
+    };
+    if (params) {
+      setTimeout(function() { window.location.href = deeplink; }, 500);
+    }
+  </script>
 </body>
 </html>`);
 });

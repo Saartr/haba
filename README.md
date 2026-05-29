@@ -17,12 +17,14 @@
 
 Флоу через системный браузер и Android deep link:
 
-1. `Linking.openURL('https://bot.mihmih.pro/api/v1/auth/telegram-login')`
-2. Сервер → redirect → `oauth.telegram.org`
-3. Telegram → redirect на `/api/v1/auth/telegram-callback` — читает `tgAuthResult` из фрагмента → `haba://auth/callback#tgAuthResult=...`
-4. Приложение перехватывает deeplink → `POST /auth/telegram` (HMAC-верификация) → JWT
+1. Приложение открывает `oauth.telegram.org` **напрямую** (без серверного redirect — иначе fragment теряется)
+2. Telegram показывает диалог подтверждения → redirect на `/api/v1/auth/telegram-callback#tgAuthResult=...`
+3. Страница callback показывает кнопку «Открыть Тапа» + авто-редирект через 500ms → `haba://auth/callback?tgAuthResult=...`
+4. `_layout.tsx` перехватывает deeplink → `POST /auth/telegram` (HMAC-верификация) → JWT
 
-Сохраняет: `tg_id`, `username`, `first_name`, `last_name`, `avatar_url`.
+**Важно:** `origin` = `https://bot.mihmih.pro` (с протоколом). Домен зарегистрирован в BotFather → `@Step_Challenges_Bot` → Domain.
+
+Сохраняет: `tg_id`, `username`, `first_name`, `last_name`, `avatar_url`. Аватар обновляется при каждом логине через Bot API.
 
 ### VK ID
 
