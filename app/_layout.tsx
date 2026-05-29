@@ -3,7 +3,7 @@ import '../global.css';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
-import { Linking } from 'react-native';
+import { AppState, Linking } from 'react-native';
 import 'react-native-reanimated';
 import { useFonts, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
@@ -72,15 +72,35 @@ function RootLayoutNav() {
 
   useEffect(() => {
     console.log('[TgLogin] setting up listeners');
-    const sub = Linking.addEventListener('url', ({ url }) => {
+
+    // Ловим deeplink если приложение уже на переднем плане
+    const linkSub = Linking.addEventListener('url', ({ url }) => {
       console.log('[TgLogin] addEventListener fired:', url.slice(0, 80));
       handleDeepLink(url);
     });
+
+    // Ловим deeplink при холодном старте
     Linking.getInitialURL().then(url => {
       console.log('[TgLogin] getInitialURL:', url);
       handleDeepLink(url);
     });
-    return () => sub.remove();
+
+    // Ловим deeplink через AppState: когда приложение возвращается из фона
+    // (Oplus/OPPO замораживает процесс, onNewIntent не всегда срабатывает)
+    const appStateSub = AppState.addEventListener('change', state => {
+      console.log('[TgLogin] AppState change:', state);
+      if (state === 'active') {
+        Linking.getInitialURL().then(url => {
+          console.log('[TgLogin] AppState active, getInitialURL:', url);
+          handleDeepLink(url);
+        });
+      }
+    });
+
+    return () => {
+      linkSub.remove();
+      appStateSub.remove();
+    };
   }, []);
 
   useEffect(() => {

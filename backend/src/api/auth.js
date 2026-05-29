@@ -217,17 +217,28 @@ router.get('/telegram-callback', (req, res) => {
   // Решение: передаём fragment через query-параметр с помощью промежуточной страницы,
   // а затем отдаём страницу с кнопкой И intent:// схемой (Android открывает приложение
   // через intent без закрытия вкладки).
-  // Chrome Custom Tab (expo-web-browser openAuthSessionAsync) перехватывает редирект
-  // на haba:// автоматически и закрывает вкладку — JS redirect здесь работает надёжно.
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
   res.send(`<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"></head>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f5f5f5; font-family: sans-serif; gap: 20px; }
+    .btn { background: #2481cc; color: #fff; border: none; border-radius: 12px; padding: 16px 40px; font-size: 17px; cursor: pointer; text-decoration: none; display: inline-block; }
+    p { color: #555; font-size: 15px; margin: 0; text-align: center; padding: 0 32px; line-height: 1.5; }
+  </style>
+</head>
 <body>
-<script>
-  window.location.replace('haba://auth/callback' + window.location.hash);
-</script>
+  <p>Вы вошли через Telegram.</p>
+  <a class="btn" id="btn">Открыть Тапа</a>
+  <script>
+    var hash = window.location.hash;
+    // intent:// схема надёжно открывает приложение на Android из браузера
+    var intentUrl = 'intent://auth/callback' + hash + '#Intent;scheme=haba;package=pro.mihmih.haba;end';
+    document.getElementById('btn').href = intentUrl;
+  </script>
 </body>
 </html>`);
 });
