@@ -6,18 +6,15 @@ $ErrorActionPreference = 'Stop'
 
 Write-Host "Deploying backend to bot.mihmih.pro..." -ForegroundColor Cyan
 
-ssh Haba @'
-set -e
-cd /var/www/haba
-echo "--- git pull ---"
-git pull --ff-only
-echo "--- npm install ---"
-cd backend
-npm install --omit=dev
-echo "--- pm2 restart ---"
-pm2 restart step-bot
-echo "--- pm2 status ---"
-pm2 list
-'@
+ssh Haba "cd /var/www/haba && git pull --ff-only && echo done_pull"
+Write-Host "--- git pull done ---"
+
+ssh Haba "cd /var/www/haba/backend && npm install --omit=dev"
+Write-Host "--- npm install done ---"
+
+ssh Haba "pm2 restart step-bot"
+Write-Host "--- pm2 restarted ---"
+
+ssh Haba "pm2 list"
 
 Write-Host "Done." -ForegroundColor Green
