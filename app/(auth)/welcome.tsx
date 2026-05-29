@@ -1,12 +1,12 @@
 import { View, useWindowDimensions, Linking, Platform } from 'react-native';
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import Text from '@/components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TelegramIcon from '@/assets/icons/Telegram.svg';
 import TapaWelcome from '@/assets/images/tapa_welcome.svg';
 import Button from '@/components/Button';
 import { useColors } from '@/lib/colors';
-import { telegramAuth, TelegramUser, vkAuth } from '@/lib/api';
+import { vkAuth } from '@/lib/api';
 import { saveTokens } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
 import { signInWithVK } from '@/modules/vk-id';
@@ -19,51 +19,6 @@ export default function WelcomeScreen() {
   const { setAuthed } = useAuth();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const listenerRef = useRef<ReturnType<typeof Linking.addEventListener> | null>(null);
-
-  function handleDeepLink(url: string) {
-    if (!url.startsWith('haba://auth/callback')) return;
-    const fragment = url.split('#')[1] ?? '';
-    const match = fragment.match(/tgAuthResult=([^&]+)/);
-    if (!match) return;
-    try {
-      const decoded = JSON.parse(atob(match[1]));
-      if (!decoded.hash) return;
-      setProcessing(true);
-      telegramAuth(decoded as TelegramUser)
-        .then(result => saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken }).then(() => result))
-        .then(result => {
-          setProcessing(false);
-          setAuthed(true, result.user);
-        })
-        .catch((e: any) => {
-          setProcessing(false);
-          setError(e.message ?? 'Ошибка авторизации');
-        });
-    } catch {
-      setError('Ошибка авторизации');
-    }
-  }
-
-  useEffect(() => {
-    // Ловим deeplink если приложение уже открыто
-    listenerRef.current = Linking.addEventListener('url', ({ url }) => {
-      console.log('[TgLogin] deeplink:', url);
-      handleDeepLink(url);
-    });
-
-    // Ловим deeplink если приложение было закрыто
-    Linking.getInitialURL().then(url => {
-      if (url) {
-        console.log('[TgLogin] initialURL:', url);
-        handleDeepLink(url);
-      }
-    });
-
-    return () => {
-      listenerRef.current?.remove();
-    };
-  }, []);
 
   function openTelegram() {
     setError(null);
