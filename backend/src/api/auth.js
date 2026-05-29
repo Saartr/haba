@@ -193,15 +193,35 @@ router.post('/vk', async (req, res) => {
 });
 
 // GET /api/v1/auth/telegram-login — редирект на oauth.telegram.org
-// return_to указывает на нашу callback-страницу которая отдаёт deeplink кнопку.
-// Страница открывается через Linking.openURL в приложении — Chrome может закрыть вкладку
-// если цепочка редиректов слишком быстрая. Поэтому добавляем ?t= для сброса кэша.
 router.get('/telegram-login', (req, res) => {
   const BOT_ID = '8671249381';
   const origin = encodeURIComponent('https://bot.mihmih.pro');
-  const returnTo = encodeURIComponent(`https://bot.mihmih.pro/api/v1/auth/telegram-callback?t=${Date.now()}`);
+  const returnTo = encodeURIComponent('https://bot.mihmih.pro/api/v1/auth/telegram-fragment');
   const authUrl = `https://oauth.telegram.org/auth?bot_id=${BOT_ID}&origin=${origin}&return_to=${returnTo}&request_access=write`;
   res.redirect(authUrl);
+});
+
+// GET /api/v1/auth/telegram-fragment — принимает tgAuthResult из fragment через JS
+// и делает redirect на /telegram-open?data=... (теперь это query параметр, доступный серверу)
+router.get('/telegram-fragment', (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body><script>
+  var hash = window.location.hash.slice(1);
+  if (hash) {
+    window.location.replace('/api/v1/auth/telegram-open?' + hash);
+  }
+</script></body></html>`);
+});
+
+// GET /api/v1/auth/telegram-open?tgAuthResult=... — получает данные как query и редиректит на intent://
+router.get('/telegram-open', (req, res) => {
+  const data = req.query.tgAuthResult;
+  if (!data) return res.status(400).send('Missing tgAuthResult');
+  const intentUrl = `intent://auth/callback?tgAuthResult=${encodeURIComponent(data)}#Intent;scheme=haba;package=pro.mihmih.haba;end`;
+  res.redirect(intentUrl);
 });
 
 // GET /api/v1/auth/telegram-callback

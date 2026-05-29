@@ -44,11 +44,14 @@ function RootLayoutNav() {
       console.log('[TgLogin] skip — already processing');
       return;
     }
-    const fragment = url.split('#')[1] ?? '';
-    console.log('[TgLogin] fragment:', fragment ? fragment.slice(0, 50) + '...' : '(empty)');
-    const match = fragment.match(/tgAuthResult=([^&]+)/);
+    // Данные могут прийти как query (?tgAuthResult=) через intent:// редирект
+    // или как fragment (#tgAuthResult=) через старый флоу
+    const queryMatch = url.match(/[?&]tgAuthResult=([^&#]+)/);
+    const fragmentMatch = url.match(/#.*tgAuthResult=([^&]+)/);
+    const match = queryMatch || fragmentMatch;
+    console.log('[TgLogin] queryMatch:', !!queryMatch, 'fragmentMatch:', !!fragmentMatch);
     if (!match) {
-      console.log('[TgLogin] skip — no tgAuthResult in fragment');
+      console.log('[TgLogin] skip — no tgAuthResult');
       return;
     }
     try {
