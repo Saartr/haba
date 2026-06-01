@@ -11,6 +11,11 @@ import Calendar from '@/components/Calendar';
 import NavigationBar from '@/components/NavigationBar';
 import Card from '@/components/Card';
 import HabitTag from '@/components/HabitTag';
+import DropdownMenu from '@/components/DropdownMenu';
+import Fab from '@/components/Fab';
+import LogoutIcon from '@/assets/icons/Logout.svg';
+import ShareIcon from '@/assets/icons/Share.svg';
+import GroupPlusIcon from '@/assets/icons/GroupPlus.svg';
 import MoreVerticalIcon from '@/assets/icons/MoreVertical.svg';
 import { useState } from 'react';
 import { useColors, colors } from '@/lib/colors';
@@ -288,6 +293,39 @@ export default function DevScreen() {
 
           <Label text="Одиночная (yellow)" />
           <HabitTag type="solo" />
+        </Section>
+
+        {/* FAB */}
+        <Section title="FAB">
+          <Label text="Нажми — раскроется меню с затемнением" />
+          <View style={{ alignItems: 'flex-end' }}>
+            <Fab
+              items={[
+                { label: 'Создать цель', icon: <UserIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+                { label: 'Создать групповую цель', icon: <GroupPlusIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+                { label: 'Вступить в группу по коду', icon: <ShareIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+              ]}
+            />
+          </View>
+        </Section>
+
+        {/* DROPDOWN MENU */}
+        <Section title="Dropdown Menu">
+          <Label text="Обычные пункты" />
+          <DropdownMenu
+            items={[
+              { label: 'Передать права', icon: <UserIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+              { label: 'Пригласить', icon: <ShareIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+            ]}
+          />
+
+          <Label text="С деструктивным пунктом" />
+          <DropdownMenu
+            items={[
+              { label: 'Передать права', icon: <UserIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+              { label: 'Выйти из привычки', icon: <LogoutIcon width={24} height={24} color={colors.red[500]} />, onPress: () => {}, destructive: true },
+            ]}
+          />
         </Section>
 
         {/* CARD */}

@@ -38,9 +38,9 @@ export default function NavigationBar({ title, onBack, right }: Props) {
         </Pressable>
       )}
 
-      {/* Правая иконка — right=24 по Figma, контейнер 24×24 */}
+      {/* Правая иконка — right=24 по Figma */}
       {right && (
-        <View style={{ position: 'absolute', right: 24, width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ position: 'absolute', right: 24 }}>
           {right}
         </View>
       )}

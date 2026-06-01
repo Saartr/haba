@@ -5,7 +5,7 @@ type Variant = 'group' | 'solo';
 
 const CONFIG: Record<Variant, { bg: string; color: string; label: string }> = {
   group: { bg: '#E0DBFF', color: '#6047FF', label: 'ГРУППОВАЯ' },
-  solo:  { bg: '#FEF9C3', color: '#CA8A04', label: 'ОДИНОЧНАЯ' },
+  solo:  { bg: '#FEF9C3', color: '#CA8A04', label: 'ПЕРСОНАЛЬНАЯ' },
 };
 
 type Props = {

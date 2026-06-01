@@ -3,6 +3,14 @@ import Text from '@/components/Text';
 import { useColors } from '@/lib/colors';
 import ChevronRightIcon from '@/assets/icons/ChevronRight.svg';
 
+const SHADOW = {
+  shadowColor: '#787878',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 6,
+  elevation: 3,
+} as const;
+
 export type ListItemData = {
   label: string;
   icon?: React.ReactNode;
@@ -52,6 +60,7 @@ export default function Lists({ items, cardStyle }: Props) {
       paddingHorizontal: 24,
       paddingVertical: 16,
       overflow: 'hidden',
+      ...SHADOW,
     }, cardStyle]}>
       {items.map((item) => (
         <Item key={item.label} {...item} />

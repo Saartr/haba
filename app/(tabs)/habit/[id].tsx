@@ -14,7 +14,10 @@ import {
 } from 'react-native';
 import Calendar, { CalendarDay } from '@/components/Calendar';
 import Card from '@/components/Card';
+import DropdownMenu from '@/components/DropdownMenu';
 import NavigationBar from '@/components/NavigationBar';
+import EditIcon from '@/assets/icons/Edit.svg';
+import DeleteIcon from '@/assets/icons/Delete.svg';
 import CheckIcon from '@/assets/icons/Check.svg';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -25,6 +28,9 @@ import ShareIcon from '@/assets/icons/Share.svg';
 import BlockIcon from '@/assets/icons/Block.svg';
 import CloseIcon from '@/assets/icons/Close.svg';
 import FootprintIcon from '@/assets/icons/Footprint.svg';
+import SupervisorAccountIcon from '@/assets/icons/SupervisorAccount.svg';
+import LogoutIcon from '@/assets/icons/Logout.svg';
+import DeleteForeverIcon from '@/assets/icons/DeleteForever.svg';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import {
@@ -95,20 +101,23 @@ function buildCalendarDays(habit: HabitDetail): CalendarDay[] {
 
 
 function SoloHabitScreen({
-  habit, onLog, logLoading,
+  habit, onLog, logLoading, onDelete,
 }: {
   habit: HabitDetail;
   onLog: (value: number) => void;
   logLoading: boolean;
+  onDelete: () => void;
 }) {
   const c = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colorScheme: scheme } = useSettings();
+  const [menuVisible, setMenuVisible] = useState(false);
   const [successLabel, failLabel] = CHECK_IN_LABELS[habit.category ?? ''] ?? ['Выполнено', 'Пропустил'];
   const calendarDays = buildCalendarDays(habit);
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
+  const overlayColor = scheme === 'dark' ? 'rgba(0,0,0,0.7)' : 'rgba(18,18,18,0.24)';
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }} edges={['bottom']}>
@@ -118,9 +127,40 @@ function SoloHabitScreen({
         <NavigationBar
           title={habit.name}
           onBack={() => router.back()}
-          right={<MoreVerticalIcon width={24} height={24} color={c.text.primary} />}
+          right={
+            <Pressable onPress={() => setMenuVisible(true)} hitSlop={8}>
+              {({ pressed }) => (
+                <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1 }}>
+                  <MoreVerticalIcon width={24} height={24} color={c.text.primary} />
+                </View>
+              )}
+            </Pressable>
+          }
         />
       </View>
+
+      <Modal visible={menuVisible} transparent animationType="none" onRequestClose={() => setMenuVisible(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: overlayColor }} onPress={() => setMenuVisible(false)}>
+          <View style={{ position: 'absolute', top: insets.top + 56, right: 24 }} onStartShouldSetResponder={() => true}>
+            <DropdownMenu
+              style={{ width: 320 }}
+              items={[
+                {
+                  label: 'Редактировать',
+                  icon: <EditIcon width={24} height={24} color={c.text.secondary} />,
+                  onPress: () => setMenuVisible(false),
+                },
+                {
+                  label: 'Удалить',
+                  icon: <DeleteIcon width={24} height={24} color={colors.red[500]} />,
+                  onPress: () => { setMenuVisible(false); onDelete(); },
+                  destructive: true,
+                },
+              ]}
+            />
+          </View>
+        </Pressable>
+      </Modal>
 
       {/* Content — без flex:1, естественная высота */}
       <View style={{ padding: 24, gap: 16 }}>
@@ -281,6 +321,7 @@ export default function HabitScreen() {
 
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' : 'dark-content';
+  const overlayColor = scheme === 'dark' ? 'rgba(0,0,0,0.7)' : 'rgba(18,18,18,0.24)';
 
   const load = useCallback(async () => {
     try {
@@ -442,19 +483,25 @@ export default function HabitScreen() {
     );
   }
 
+  async function handleDeleteSolo() {
+    Alert.alert('Удалить привычку?', 'Это действие необратимо.', [
+      { text: 'Отмена', style: 'cancel' },
+      { text: 'Удалить', style: 'destructive', onPress: async () => {
+        try { await closeHabit(habitId); router.back(); } catch (e: any) { Alert.alert('Ошибка', e.message); }
+      }},
+    ]);
+  }
+
   if (habit.type === 'solo') {
     return (
       <SoloHabitScreen
         habit={habit}
         onLog={handleSoloLog}
         logLoading={logLoading}
+        onDelete={handleDeleteSolo}
       />
     );
   }
-
-  const progressPercent = habit.goal_value
-    ? Math.min((myTodayLog?.value ?? 0) / habit.goal_value, 1)
-    : myTodayLog?.value ? 1 : 0;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }} edges={['bottom']}>
@@ -466,9 +513,9 @@ export default function HabitScreen() {
           title={habit.name}
           onBack={() => router.back()}
           right={
-            <Pressable onPress={() => setMenuVisible(v => !v)} hitSlop={8}>
+            <Pressable onPress={() => setMenuVisible(true)} hitSlop={8}>
               {({ pressed }) => (
-                <View style={{ opacity: pressed ? 0.7 : 1 }}>
+                <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1 }}>
                   <MoreVerticalIcon width={24} height={24} color={c.text.primary} />
                 </View>
               )}
@@ -477,142 +524,100 @@ export default function HabitScreen() {
         />
       </View>
 
-      {/* Dropdown menu */}
-      {menuVisible && (
-        <Pressable
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }}
-          onPress={() => setMenuVisible(false)}
-        >
-          <View
-            style={{
-              position: 'absolute',
-              top: insets.top + 56 - 8,
-              right: 16,
-              backgroundColor: c.surface.input,
-              borderRadius: 16,
-              paddingVertical: 8,
-              minWidth: 200,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.12,
-              shadowRadius: 16,
-              elevation: 8,
-              zIndex: 100,
-            }}
-          >
-            {habit.is_creator ? (
-              <>
-                <Pressable
-                  onPress={() => setMenuVisible(false)}
-                  style={({ pressed }) => ({
-                    paddingHorizontal: 20, paddingVertical: 16, opacity: pressed ? 0.6 : 1,
-                  })}
-                >
-                  <Text weight="medium" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-                    Передать права
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={handleCloseGroup}
-                  style={({ pressed }) => ({
-                    paddingHorizontal: 20, paddingVertical: 16, opacity: pressed ? 0.6 : 1,
-                  })}
-                >
-                  <Text weight="medium" style={{ fontSize: 16, color: colors.red[600], letterSpacing: 0.2 }}>
-                    Закрыть группу
-                  </Text>
-                </Pressable>
-              </>
-            ) : (
-              <Pressable
-                onPress={handleLeave}
-                style={({ pressed }) => ({
-                  paddingHorizontal: 20, paddingVertical: 16, opacity: pressed ? 0.6 : 1,
-                })}
-              >
-                <Text weight="medium" style={{ fontSize: 16, color: colors.red[600], letterSpacing: 0.2 }}>
-                  Выйти из привычки
-                </Text>
-              </Pressable>
-            )}
+      <Modal visible={menuVisible} transparent animationType="none" onRequestClose={() => setMenuVisible(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: overlayColor }} onPress={() => setMenuVisible(false)}>
+          <View style={{ position: 'absolute', top: insets.top + 56, right: 24 }} onStartShouldSetResponder={() => true}>
+            <DropdownMenu
+              style={{ width: 320 }}
+              items={[
+                {
+                  label: 'Пригласить в группу',
+                  icon: <ShareIcon width={24} height={24} color={c.text.secondary} />,
+                  onPress: () => { setMenuVisible(false); setInviteModal(true); },
+                },
+                {
+                  label: 'Передать права',
+                  icon: <SupervisorAccountIcon width={24} height={24} color={c.text.secondary} />,
+                  onPress: () => setMenuVisible(false),
+                },
+                {
+                  label: 'Выйти из привычки',
+                  icon: <LogoutIcon width={24} height={24} color={c.text.secondary} />,
+                  onPress: () => setMenuVisible(false),
+                },
+                {
+                  label: 'Удалить',
+                  icon: <DeleteForeverIcon width={24} height={24} color={colors.red[500]} />,
+                  onPress: () => { setMenuVisible(false); habit.is_creator ? handleCloseGroup() : handleLeave(); },
+                  destructive: true,
+                },
+              ]}
+            />
           </View>
         </Pressable>
-      )}
+      </Modal>
 
-      <ScrollView contentContainerStyle={{ padding: 24, gap: 16 }}>
-        <Text weight="bold" style={{ fontSize: 14, color: c.text.label, letterSpacing: 0.2 }}>
-          Достижения
-        </Text>
+      <ScrollView contentContainerStyle={{ paddingVertical: 24, gap: 8 }}>
+        <View style={{ paddingHorizontal: 24 }}>
+          <Calendar days={buildCalendarDays(habit)} />
+        </View>
 
-        <Calendar days={buildCalendarDays(habit)} />
-
-        {/* Stats */}
-        <View style={{ flexDirection: 'row', gap: 16 }}>
+        {/* Stats — горизонтальный скролл */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginHorizontal: 0 }}
+          contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 8, gap: 16 }}
+        >
           {habit.category === 'steps' && (
-            <Card style={{ flex: 1, gap: 16 }}>
-              <View>
-                <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-                  Шагов за сегодня
-                </Text>
-                <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-                  {(myTodayLog?.value ?? 0).toLocaleString('ru-RU')}
-                  {habit.goal_value ? ` / ${habit.goal_value.toLocaleString('ru-RU')}` : ''}
-                </Text>
-              </View>
-              <View style={{ height: 22 }}>
-                <View style={{ position: 'absolute', left: 0, right: 0, top: 4, height: 14,
-                  borderRadius: 12, borderWidth: 1, borderColor: c.border.input, backgroundColor: c.surface.disabled }} />
-                <View style={{ position: 'absolute', left: 4, top: 4, height: 14, borderRadius: 12,
-                  backgroundColor: progressPercent > 0 ? colors.green[500] : colors.neutral[600],
-                  width: Math.max(14, progressPercent * 100) }} />
-              </View>
+            <Card style={{ gap: 4 }}>
+              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                Шагов сегодня
+              </Text>
+              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+                {(myTodayLog?.value ?? 0).toLocaleString('ru-RU')}
+                {habit.goal_value ? ` / ${habit.goal_value.toLocaleString('ru-RU')}` : ''}
+              </Text>
             </Card>
           )}
 
-          <Card style={{ flex: 1, gap: 4 }}>
-            <View>
-              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-                Текущий стрик
-              </Text>
-              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-                {habit.streak.current}
-              </Text>
-            </View>
-            <View>
-              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-                Максимальный
-              </Text>
-              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-                {habit.streak.max}
-              </Text>
-            </View>
+          <Card style={{ gap: 4 }}>
+            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+              Стрик
+            </Text>
+            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+              {habit.streak.current}
+            </Text>
           </Card>
-        </View>
+
+          <Card style={{ gap: 4 }}>
+            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+              Максимальный
+            </Text>
+            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+              {habit.streak.max}
+            </Text>
+          </Card>
+        </ScrollView>
 
         {/* Участники */}
-        <Card style={{ gap: 16 }}>
-          <Text weight="bold" style={{ fontSize: 14, color: c.text.label, letterSpacing: 0.2 }}>
-            Участники
-          </Text>
-          {habit.members.map(m => (
-            <MemberRow
-              key={m.id}
-              member={m}
-              goalValue={habit.goal_value}
-              todayValue={todayValueFor(m.id)}
-              isCreator={habit.is_creator}
-              onExclude={setExcludeTarget}
-            />
-          ))}
-          <Pressable onPress={() => setInviteModal(true)}
-            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center',
-              justifyContent: 'center', gap: 12, height: 56, borderRadius: 12, opacity: pressed ? 0.7 : 1 })}>
-            <ShareIcon width={24} height={24} color={c.text.link} />
-            <Text weight="bold" style={{ fontSize: 16, color: c.text.link, letterSpacing: 0.2 }}>
-              Пригласить в группу
+        <View style={{ paddingHorizontal: 24 }}>
+          <Card style={{ gap: 16 }}>
+            <Text weight="bold" style={{ fontSize: 14, color: c.text.label, letterSpacing: 0.2 }}>
+              Участники
             </Text>
-          </Pressable>
-        </Card>
+            {habit.members.map(m => (
+              <MemberRow
+                key={m.id}
+                member={m}
+                goalValue={habit.goal_value}
+                todayValue={todayValueFor(m.id)}
+                isCreator={habit.is_creator}
+                onExclude={setExcludeTarget}
+              />
+            ))}
+          </Card>
+        </View>
       </ScrollView>
 
       <View style={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 16 }}>

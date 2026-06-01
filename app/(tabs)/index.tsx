@@ -4,11 +4,11 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 import Text from '@/components/Text';
-import Button from '@/components/Button';
 import Card from '@/components/Card';
 import HabitTag from '@/components/HabitTag';
+import Fab from '@/components/Fab';
 import MascotSvg from '@/assets/images/tapa_quest.png';
-import PlusIcon from '@/assets/icons/Plus.svg';
+import UserIcon from '@/assets/icons/User.svg';
 import GroupPlusIcon from '@/assets/icons/GroupPlus.svg';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
@@ -129,7 +129,7 @@ export default function HabitsScreen() {
   }, [load]));
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }} edges={['bottom']}>
       <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
 
       {/* Top panel */}
@@ -176,22 +176,22 @@ export default function HabitsScreen() {
         />
       )}
 
-      {/* Bottom buttons */}
-      <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 24, paddingBottom: insets.bottom + 16 }}>
-        <View style={{ flex: 1 }}>
-          <Button
-            label="Добавить"
-            onPress={() => router.push('/(tabs)/create-habit')}
-            icon={<PlusIcon width={20} height={20} color={c.icon.onPrimary} />}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Button
-            label="Вступить"
-            onPress={() => {}}
-            icon={<GroupPlusIcon width={20} height={20} color={c.icon.onPrimary} />}
-          />
-        </View>
+      {/* FAB */}
+      <View style={{ position: 'absolute', right: 24, bottom: insets.bottom + 24 }}>
+        <Fab
+          items={[
+            {
+              label: 'Создать привычку',
+              icon: <UserIcon width={24} height={24} color={c.text.secondary} />,
+              onPress: () => router.push('/(tabs)/create-habit'),
+            },
+            {
+              label: 'Вступить в группу',
+              icon: <GroupPlusIcon width={24} height={24} color={c.text.secondary} />,
+              onPress: () => {},
+            },
+          ]}
+        />
       </View>
     </SafeAreaView>
   );
