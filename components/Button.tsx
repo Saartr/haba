@@ -9,6 +9,8 @@ type Props = {
   icon?: React.ReactNode;
   loading?: boolean;
   disabled?: boolean;
+  /** Переопределяет цвет фона main-кнопки (например, красный для деструктивных действий). */
+  color?: string;
 };
 
 export default function Button({
@@ -18,6 +20,7 @@ export default function Button({
   icon,
   loading = false,
   disabled = false,
+  color,
 }: Props) {
   const c = useColors();
   const isDisabled = disabled || loading;
@@ -56,9 +59,12 @@ export default function Button({
             borderCurve: 'continuous',
             backgroundColor: disabled
               ? c.surface.disabled
+              : color
+              ? color
               : pressed
               ? c.brand.pressed
               : c.brand.primary,
+            opacity: color && pressed ? 0.85 : 1,
           }}
         >
           {loading ? (

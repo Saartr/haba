@@ -4,6 +4,8 @@
 - [Авторизация](project_auth_refactor.md) — два способа: Telegram (браузер + deeplink) и VK ID (нативный SDK 2.6.0, Expo Module, New Arch)
 - [Health Connect](project_health_connect.md) — реализовано, заблокировано Google Play верификацией; разблокируется после регистрации в Play Console ($25)
 - [Главный экран](project_main_screen.md) — реализован: шторка, аватар, имя с truncation, empty state, без таб-бара
+- [UI: модалки и меню](project_ui_modals.md) — BottomSheet, ConfirmModal/useConfirm, DropdownPopover; единая анимация, elevation:0 на Android
+- [Figma MCP](reference_figma_mcp.md) — как поднять Dev Mode MCP + curl-обход, get_design_context/screenshot, node-id формат
 - [SSH: редактирование файлов на сервере](feedback_ssh_file_edit.md) — серверный код правится локально в `backend/` и деплоится через `./deploy-backend.ps1`, никакой прямой правки на сервере
 - [Figma TapaDS — источник правды](feedback_figma_source_of_truth.md) — иконки/цвета/компоненты/отступы только из Figma TapaDS, не придумывать самостоятельно
 - [Стек проекта](project_stack.md) — Expo SDK 55, Express 5, postgres tag, PM2, grammy, BASE_URL, JWT TTL

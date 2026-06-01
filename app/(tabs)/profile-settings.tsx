@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useSettings } from '@/lib/settings-context';
 import { updateProfile } from '@/lib/api';
 
-import ArrowBackIcon from '@/assets/icons/arrow_back.svg';
+import ArrowBackIcon from '@/assets/icons/ArrowBack.svg';
 
 export default function ProfileSettingsScreen() {
   const c = useColors();

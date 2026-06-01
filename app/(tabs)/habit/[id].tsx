@@ -3,7 +3,6 @@ import {
   ScrollView,
   Pressable,
   Image,
-  Modal,
   TextInput,
   StatusBar,
   Alert,
@@ -11,10 +10,11 @@ import {
   ActivityIndicator,
   Platform,
   Linking,
+  Share,
 } from 'react-native';
 import Calendar, { CalendarDay } from '@/components/Calendar';
 import Card from '@/components/Card';
-import DropdownMenu from '@/components/DropdownMenu';
+import DropdownPopover from '@/components/DropdownPopover';
 import NavigationBar from '@/components/NavigationBar';
 import EditIcon from '@/assets/icons/Edit.svg';
 import DeleteIcon from '@/assets/icons/Delete.svg';
@@ -23,8 +23,11 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Text from '@/components/Text';
 import Button from '@/components/Button';
+import { useConfirm } from '@/components/ConfirmModal';
+import BottomSheet from '@/components/BottomSheet';
 import MoreVerticalIcon from '@/assets/icons/MoreVertical.svg';
 import ShareIcon from '@/assets/icons/Share.svg';
+import LinkIcon from '@/assets/icons/Link.svg';
 import BlockIcon from '@/assets/icons/Block.svg';
 import CloseIcon from '@/assets/icons/Close.svg';
 import FootprintIcon from '@/assets/icons/Footprint.svg';
@@ -117,7 +120,6 @@ function SoloHabitScreen({
   const calendarDays = buildCalendarDays(habit);
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
-  const overlayColor = scheme === 'dark' ? 'rgba(0,0,0,0.7)' : 'rgba(18,18,18,0.24)';
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }} edges={['bottom']}>
@@ -139,28 +141,23 @@ function SoloHabitScreen({
         />
       </View>
 
-      <Modal visible={menuVisible} transparent animationType="none" onRequestClose={() => setMenuVisible(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: overlayColor }} onPress={() => setMenuVisible(false)}>
-          <View style={{ position: 'absolute', top: insets.top + 56, right: 24 }} onStartShouldSetResponder={() => true}>
-            <DropdownMenu
-              style={{ width: 320 }}
-              items={[
-                {
-                  label: 'Редактировать',
-                  icon: <EditIcon width={24} height={24} color={c.text.secondary} />,
-                  onPress: () => setMenuVisible(false),
-                },
-                {
-                  label: 'Удалить',
-                  icon: <DeleteIcon width={24} height={24} color={colors.red[500]} />,
-                  onPress: () => { setMenuVisible(false); onDelete(); },
-                  destructive: true,
-                },
-              ]}
-            />
-          </View>
-        </Pressable>
-      </Modal>
+      <DropdownPopover
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        items={[
+          {
+            label: 'Редактировать',
+            icon: <EditIcon width={24} height={24} color={c.text.secondary} />,
+            onPress: () => {},
+          },
+          {
+            label: 'Удалить',
+            icon: <DeleteIcon width={24} height={24} color={colors.red[500]} />,
+            onPress: onDelete,
+            destructive: true,
+          },
+        ]}
+      />
 
       {/* Content — без flex:1, естественная высота */}
       <View style={{ padding: 24, gap: 16 }}>
@@ -275,36 +272,13 @@ function MemberRow({
   );
 }
 
-function BottomModal({ title, visible, onClose, children }: {
-  title: string; visible: boolean; onClose: () => void; children: React.ReactNode;
-}) {
-  const c = useColors();
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(18,18,18,0.24)' }}>
-        <View style={{ backgroundColor: c.surface.input, borderTopLeftRadius: 24,
-          borderTopRightRadius: 24, paddingTop: 32, paddingBottom: 56, paddingHorizontal: 24, gap: 32 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text weight="bold" style={{ fontSize: 24, color: c.text.primary, letterSpacing: 0.2 }}>
-              {title}
-            </Text>
-            <Pressable onPress={onClose} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-              <CloseIcon width={24} height={24} color={c.text.primary} />
-            </Pressable>
-          </View>
-          {children}
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 // ─── main ─────────────────────────────────────────────────────────────────────
 
 export default function HabitScreen() {
   const c = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const confirm = useConfirm();
   const { colorScheme: scheme } = useSettings();
   const { id } = useLocalSearchParams<{ id: string }>();
   const habitId = parseInt(id);
@@ -313,15 +287,14 @@ export default function HabitScreen() {
   const [loading, setLoading] = useState(true);
   const [logLoading, setLogLoading] = useState(false);
   const [trackerLoading, setTrackerLoading] = useState(false);
-  const [excludeTarget, setExcludeTarget] = useState<number | null>(null);
   const [inviteModal, setInviteModal] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [stepsModal, setStepsModal] = useState(false);
   const [stepsInput, setStepsInput] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
 
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' : 'dark-content';
-  const overlayColor = scheme === 'dark' ? 'rgba(0,0,0,0.7)' : 'rgba(18,18,18,0.24)';
 
   const load = useCallback(async () => {
     try {
@@ -366,29 +339,40 @@ export default function HabitScreen() {
 
   async function handleCloseGroup() {
     setMenuVisible(false);
-    Alert.alert('Закрыть группу?', 'Это действие необратимо.', [
-      { text: 'Отмена', style: 'cancel' },
-      { text: 'Закрыть', style: 'destructive', onPress: async () => {
-        try { await closeHabit(habitId); router.back(); } catch (e: any) { Alert.alert('Ошибка', e.message); }
-      }},
-    ]);
+    const ok = await confirm({
+      title: 'Закрыть группу?',
+      description: 'Это действие необратимо — вся информация о привычке будет стёрта.',
+      confirmLabel: 'Закрыть',
+      confirmIcon: <DeleteForeverIcon width={24} height={24} color={c.icon.onPrimary} />,
+      destructive: true,
+    });
+    if (!ok) return;
+    try { await closeHabit(habitId); router.back(); } catch (e: any) { Alert.alert('Ошибка', e.message); }
   }
 
   async function handleLeave() {
     setMenuVisible(false);
-    Alert.alert('Выйти из привычки?', '', [
-      { text: 'Отмена', style: 'cancel' },
-      { text: 'Выйти', style: 'destructive', onPress: async () => {
-        try { await excludeMember(habitId, me!.id); router.back(); } catch (e: any) { Alert.alert('Ошибка', e.message); }
-      }},
-    ]);
+    const ok = await confirm({
+      title: 'Выйти из привычки?',
+      description: 'Вы перестанете участвовать в этой групповой привычке.',
+      confirmLabel: 'Выйти',
+      confirmIcon: <LogoutIcon width={24} height={24} color={c.icon.onPrimary} />,
+      destructive: true,
+    });
+    if (!ok) return;
+    try { await excludeMember(habitId, me!.id); router.back(); } catch (e: any) { Alert.alert('Ошибка', e.message); }
   }
 
-  async function handleExclude() {
-    if (excludeTarget == null) return;
+  async function handleExclude(memberId: number) {
+    const ok = await confirm({
+      title: 'Исключить',
+      description: 'После исключения вся информация об участнике будет удалена из группы',
+      confirmLabel: 'Подтвердить',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
-      await excludeMember(habitId, excludeTarget);
-      setExcludeTarget(null);
+      await excludeMember(habitId, memberId);
       load();
     } catch (e: any) {
       Alert.alert('Ошибка', e.message);
@@ -455,12 +439,23 @@ export default function HabitScreen() {
     }
   }
 
+  const inviteLink = habit ? `https://bot.mihmih.pro/join/${habit.invite_code}` : '';
+
   function handleCopyInvite() {
     if (!habit) return;
-    const link = `https://bot.mihmih.pro/join/${habit.invite_code}`;
-    Clipboard.setString(link);
+    Clipboard.setString(inviteLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleShareInvite() {
+    if (!habit) return;
     setInviteModal(false);
-    Alert.alert('Скопировано', link);
+    try {
+      await Share.share({ message: inviteLink });
+    } catch (e: any) {
+      Alert.alert('Ошибка', e.message);
+    }
   }
 
   async function handleSoloLog(value: number) {
@@ -484,12 +479,15 @@ export default function HabitScreen() {
   }
 
   async function handleDeleteSolo() {
-    Alert.alert('Удалить привычку?', 'Это действие необратимо.', [
-      { text: 'Отмена', style: 'cancel' },
-      { text: 'Удалить', style: 'destructive', onPress: async () => {
-        try { await closeHabit(habitId); router.back(); } catch (e: any) { Alert.alert('Ошибка', e.message); }
-      }},
-    ]);
+    const ok = await confirm({
+      title: 'Удалить привычку?',
+      description: 'Это действие необратимо — вся информация о привычке будет стёрта.',
+      confirmLabel: 'Удалить',
+      confirmIcon: <DeleteForeverIcon width={24} height={24} color={c.icon.onPrimary} />,
+      destructive: true,
+    });
+    if (!ok) return;
+    try { await closeHabit(habitId); router.back(); } catch (e: any) { Alert.alert('Ошибка', e.message); }
   }
 
   if (habit.type === 'solo') {
@@ -524,38 +522,33 @@ export default function HabitScreen() {
         />
       </View>
 
-      <Modal visible={menuVisible} transparent animationType="none" onRequestClose={() => setMenuVisible(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: overlayColor }} onPress={() => setMenuVisible(false)}>
-          <View style={{ position: 'absolute', top: insets.top + 56, right: 24 }} onStartShouldSetResponder={() => true}>
-            <DropdownMenu
-              style={{ width: 320 }}
-              items={[
-                {
-                  label: 'Пригласить в группу',
-                  icon: <ShareIcon width={24} height={24} color={c.text.secondary} />,
-                  onPress: () => { setMenuVisible(false); setInviteModal(true); },
-                },
-                {
-                  label: 'Передать права',
-                  icon: <SupervisorAccountIcon width={24} height={24} color={c.text.secondary} />,
-                  onPress: () => setMenuVisible(false),
-                },
-                {
-                  label: 'Выйти из привычки',
-                  icon: <LogoutIcon width={24} height={24} color={c.text.secondary} />,
-                  onPress: () => setMenuVisible(false),
-                },
-                {
-                  label: 'Удалить',
-                  icon: <DeleteForeverIcon width={24} height={24} color={colors.red[500]} />,
-                  onPress: () => { setMenuVisible(false); habit.is_creator ? handleCloseGroup() : handleLeave(); },
-                  destructive: true,
-                },
-              ]}
-            />
-          </View>
-        </Pressable>
-      </Modal>
+      <DropdownPopover
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        items={[
+          {
+            label: 'Пригласить в группу',
+            icon: <ShareIcon width={24} height={24} color={c.text.secondary} />,
+            onPress: () => setInviteModal(true),
+          },
+          ...(habit.is_creator && habit.members.length > 1 ? [{
+            label: 'Передать права',
+            icon: <SupervisorAccountIcon width={24} height={24} color={c.text.secondary} />,
+            onPress: () => {},
+          }] : []),
+          ...(!habit.is_creator && habit.members.length > 1 ? [{
+            label: 'Выйти из привычки',
+            icon: <LogoutIcon width={24} height={24} color={c.text.secondary} />,
+            onPress: handleLeave,
+          }] : []),
+          ...(habit.is_creator ? [{
+            label: 'Удалить',
+            icon: <DeleteForeverIcon width={24} height={24} color={colors.red[500]} />,
+            onPress: handleCloseGroup,
+            destructive: true,
+          }] : []),
+        ]}
+      />
 
       <ScrollView contentContainerStyle={{ paddingVertical: 24, gap: 8 }}>
         <View style={{ paddingHorizontal: 24 }}>
@@ -613,7 +606,7 @@ export default function HabitScreen() {
                 goalValue={habit.goal_value}
                 todayValue={todayValueFor(m.id)}
                 isCreator={habit.is_creator}
-                onExclude={setExcludeTarget}
+                onExclude={handleExclude}
               />
             ))}
           </Card>
@@ -630,17 +623,38 @@ export default function HabitScreen() {
       </View>
 
       {/* Invite modal */}
-      <BottomModal title="Пригласить в группу" visible={inviteModal} onClose={() => setInviteModal(false)}>
+      <BottomSheet title="Пригласить в группу" visible={inviteModal} onClose={() => { setInviteModal(false); setCopied(false); }}>
         <View style={{ gap: 16 }}>
-          <Text weight="bold" style={{ fontSize: 16, color: c.text.secondary, letterSpacing: 0.2 }}>
+          <Text weight="bold" style={{ fontSize: 16, lineHeight: 16 * 1.6, color: c.text.secondary, letterSpacing: 0.2 }}>
             Любой человек может вступить в групповую привычку по этой ссылке
           </Text>
-          <Button label="Скопировать ссылку" onPress={handleCopyInvite} />
+          <Text
+            weight="bold"
+            numberOfLines={1}
+            style={{ fontSize: 16, lineHeight: 16 * 1.6, color: c.text.link, letterSpacing: 0.2 }}
+          >
+            {inviteLink}
+          </Text>
+          <Button
+            label={copied ? 'Ссылка скопирована' : 'Скопировать ссылку'}
+            icon={
+              copied
+                ? <CheckIcon width={24} height={24} color={c.icon.onPrimary} />
+                : <LinkIcon width={24} height={24} color={c.icon.onPrimary} />
+            }
+            color={copied ? colors.green[500] : undefined}
+            onPress={handleCopyInvite}
+          />
+          <Button
+            label="Пригласить"
+            icon={<ShareIcon width={24} height={24} color={c.icon.onPrimary} />}
+            onPress={handleShareInvite}
+          />
         </View>
-      </BottomModal>
+      </BottomSheet>
 
       {/* Steps modal */}
-      <BottomModal title="Внести шаги" visible={stepsModal} onClose={() => { setStepsModal(false); setStepsInput(''); }}>
+      <BottomSheet title="Внести шаги" visible={stepsModal} onClose={() => { setStepsModal(false); setStepsInput(''); }}>
         <View style={{ gap: 16 }}>
           {Platform.OS === 'android' && (
             <Button label="Подключить трекер" onPress={handleConnectTracker} loading={trackerLoading} />
@@ -669,21 +683,7 @@ export default function HabitScreen() {
             <Button label="Записать" onPress={handleLogManual} />
           </View>
         </View>
-      </BottomModal>
-
-      {/* Exclude modal */}
-      <BottomModal
-        title="Исключить"
-        visible={excludeTarget !== null}
-        onClose={() => setExcludeTarget(null)}
-      >
-        <View style={{ gap: 16 }}>
-          <Text weight="bold" style={{ fontSize: 16, color: c.text.secondary, letterSpacing: 0.2 }}>
-            После исключения вся информация об участнике будет удалена из группы
-          </Text>
-          <Button label="Подтвердить" onPress={handleExclude} />
-        </View>
-      </BottomModal>
+      </BottomSheet>
     </SafeAreaView>
   );
 }

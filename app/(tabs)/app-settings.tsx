@@ -7,7 +7,7 @@ import SegmentedControl from '@/components/SegmentedControl';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings, ThemePreference, Toggle } from '@/lib/settings-context';
 
-import ArrowBackIcon from '@/assets/icons/arrow_back.svg';
+import ArrowBackIcon from '@/assets/icons/ArrowBack.svg';
 
 const LANGUAGE_OPTIONS = [
   { label: 'Русский', value: 'ru' },

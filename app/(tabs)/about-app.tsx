@@ -6,7 +6,7 @@ import Text from '@/components/Text';
 import Lists from '@/components/Lists';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
-import ArrowBackIcon from '@/assets/icons/arrow_back.svg';
+import ArrowBackIcon from '@/assets/icons/ArrowBack.svg';
 
 const CARD_SHADOW = {
   shadowColor: '#121212',

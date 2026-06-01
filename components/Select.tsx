@@ -1,5 +1,6 @@
-import { View, Pressable, Modal, TouchableOpacity, FlatList } from 'react-native';
+import { View, Pressable, FlatList } from 'react-native';
 import Text from '@/components/Text';
+import BottomSheet from '@/components/BottomSheet';
 import { useColors } from '@/lib/colors';
 import ChevronDownIcon from '@/assets/icons/ChevronDown.svg';
 import { useState } from 'react';
@@ -77,47 +78,30 @@ export default function Select({ label, options, value, onChange, placeholder, d
         </Text>
       ) : null}
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <TouchableOpacity
-          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
-          activeOpacity={1}
-          onPress={() => setOpen(false)}
-        >
-          <TouchableOpacity activeOpacity={1}>
-            <View style={{
-              backgroundColor: c.surface.input,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              paddingTop: 12,
-              paddingBottom: 32,
-            }}>
-              <View style={{ alignItems: 'center', paddingBottom: 12 }}>
-                <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: c.surface.disabled }} />
-              </View>
-              <FlatList
-                data={options}
-                keyExtractor={o => o.value}
-                scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <Pressable
-                    onPress={() => handleSelect(item.value)}
-                    android_ripple={{ color: 'rgba(0,0,0,0.06)' }}
-                    style={{
-                      paddingVertical: 16,
-                      paddingHorizontal: 24,
-                      backgroundColor: item.value === value ? c.surface.disabled : 'transparent',
-                    }}
-                  >
-                    <Text weight="semibold" style={{ fontSize: 16, letterSpacing: 0.2, color: item.value === value ? c.text.link : c.text.primary }}>
-                      {item.label}
-                    </Text>
-                  </Pressable>
-                )}
-              />
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+      <BottomSheet visible={open} onClose={() => setOpen(false)}>
+        {/* отменяем горизонтальный padding шторки, чтобы подсветка строки шла от края до края */}
+        <FlatList
+          data={options}
+          keyExtractor={o => o.value}
+          scrollEnabled={false}
+          style={{ marginHorizontal: -24 }}
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => handleSelect(item.value)}
+              android_ripple={{ color: 'rgba(0,0,0,0.06)' }}
+              style={{
+                paddingVertical: 16,
+                paddingHorizontal: 24,
+                backgroundColor: item.value === value ? c.surface.disabled : 'transparent',
+              }}
+            >
+              <Text weight="semibold" style={{ fontSize: 16, letterSpacing: 0.2, color: item.value === value ? c.text.link : c.text.primary }}>
+                {item.label}
+              </Text>
+            </Pressable>
+          )}
+        />
+      </BottomSheet>
     </View>
   );
 }

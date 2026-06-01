@@ -23,7 +23,8 @@ $env:REACT_NATIVE_PACKAGER_HOSTNAME="192.168.1.143"; npx expo start
 ```powershell
 # Первый раз — генерация нативной папки:
 npx expo prebuild --platform android --clean
-# После prebuild обязательно обновить Gradle до 8.13 в android/gradle/wrapper/gradle-wrapper.properties
+# android/ в .gitignore — генерируется локально. Текущая версия Gradle wrapper: 9.0.0
+# (distributionUrl в android/gradle/wrapper/gradle-wrapper.properties)
 
 # Сборка и установка:
 cd C:\haba\android

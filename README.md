@@ -9,6 +9,16 @@
 - Бэкенд: Node.js v22, Express 5, PostgreSQL, PM2 (`bot.mihmih.pro`)
 - Telegram Bot: `@Step_Challenges_Bot` (grammy v1)
 
+## UI-компоненты
+
+Переиспользуемые модалки и меню (верстка по Figma TapaDS, единая анимация):
+
+- **`BottomSheet`** — базовая шторка снизу. Заголовок опционален (без него — только контент). Анимация: overlay fade-in + карточка slide (`translateY` 32→0). На ней построены «Пригласить в группу», «Внести шаги», выбор языка (`Select`).
+- **`ConfirmModal` + `useConfirm()`** — императивный диалог да/нет поверх `BottomSheet`. `const ok = await confirm({ title, description, confirmLabel, destructive })`. Заменяет `Alert.alert`. `ConfirmProvider` в `app/_layout.tsx`.
+- **`DropdownPopover`** — меню по «трём точкам» (правый верхний угол). Анимация overlay fade + меню slide сверху вниз.
+
+> На Android `DropdownMenu` внутри анимируемого контейнера передаётся со `style={{ elevation: 0 }}` — иначе тень рисуется мгновенно и даёт тёмную рамку при появлении.
+
 ## Авторизация
 
 Два способа входа: Telegram и VK ID.
@@ -60,6 +70,8 @@ Health Connect требует верификации приложения чер
 
 ## Сборка APK (debug)
 
+Папка `android/` в `.gitignore` — генерируется локально через prebuild.
+
 ```powershell
 # Первый раз — генерация нативной папки:
 npx expo prebuild --platform android --clean
@@ -71,6 +83,8 @@ $env:ANDROID_HOME="C:\Users\Saartr\AppData\Local\Android\Sdk"
 .\gradlew assembleDebug
 adb install app\build\outputs\apk\debug\app-debug.apk
 ```
+
+> ⚠️ После каждого `npm install` нужно вручную переналожить патч на `react-native-health-connect` (удаление `coroutineContext.cancel()` в `HealthConnectPermissionDelegate.kt`) — patch-package не настроен. Без патча запрос разрешений HC ломается после первого вызова.
 
 ## Запуск dev-сервера
 

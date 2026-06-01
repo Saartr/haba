@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useSettings } from '@/lib/settings-context';
 import { clearTokens } from '@/lib/auth';
 
-import ArrowBackIcon from '@/assets/icons/arrow_back.svg';
+import ArrowBackIcon from '@/assets/icons/ArrowBack.svg';
 import UserIcon from '@/assets/icons/User.svg';
 import SettingsIcon from '@/assets/icons/Settings.svg';
 import InfoCircleIcon from '@/assets/icons/InfoCircle.svg';

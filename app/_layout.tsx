@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 import { useFonts, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { SettingsProvider } from '@/lib/settings-context';
+import { ConfirmProvider } from '@/components/ConfirmModal';
 import { telegramAuth, TelegramUser } from '@/lib/api';
 import { saveTokens } from '@/lib/auth';
 
@@ -139,7 +140,9 @@ export default function RootLayout() {
   return (
     <SettingsProvider>
       <AuthProvider>
-        <RootLayoutNav />
+        <ConfirmProvider>
+          <RootLayoutNav />
+        </ConfirmProvider>
       </AuthProvider>
     </SettingsProvider>
   );

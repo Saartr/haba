@@ -14,7 +14,7 @@ metadata:
 - `plugins/with-health-permissions.js` — добавляет `android.permission.health.READ_STEPS` в AndroidManifest
 - Автосинк шагов в `app/(tabs)/habit/[id].tsx` через `useFocusEffect` — тихий, без Alert
 - Кнопка "Подключить трекер" в модалке "Внести шаги" (только Android)
-- Патч `node_modules/react-native-health-connect/.../HealthConnectPermissionDelegate.kt` — удалён `coroutineContext.cancel()` который убивал singleton coroutineScope после первого вызова
+- Патч `node_modules/react-native-health-connect/.../HealthConnectPermissionDelegate.kt` — удалён `coroutineContext.cancel()` который убивал singleton coroutineScope после первого вызова. ⚠️ Патч ручной, patch-package НЕ настроен — теряется при каждом `npm install`. После переустановки зависимостей патч надо накатывать заново (и затем пересобирать APK).
 
 **Известное ограничение:**
 `requestPermission()` возвращает пустой массив `[]` без показа диалога — Health Connect блокирует запросы от приложений не прошедших верификацию в Google Play Console.

@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import Text from '@/components/Text';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
-import ArrowBackIcon from '@/assets/icons/arrow_back.svg';
+import ArrowBackIcon from '@/assets/icons/ArrowBack.svg';
 
 const CONTENT: Record<string, { title: string; body: string }> = {
   privacy: {

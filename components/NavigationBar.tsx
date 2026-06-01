@@ -1,6 +1,6 @@
 import { View, Pressable } from 'react-native';
 import Text from '@/components/Text';
-import ArrowBackIcon from '@/assets/icons/arrow_back.svg';
+import ArrowBackIcon from '@/assets/icons/ArrowBack.svg';
 import { useColors } from '@/lib/colors';
 
 type Props = {
