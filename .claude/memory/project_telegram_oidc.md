@@ -49,14 +49,24 @@ Telegram Native Login = нативная Kotlin-библиотека `org.telegr
 
 **⚠️ Препятствие — GitHub Packages:** SDK лежит в GitHub Packages Maven, нужен GitHub PAT с `read:packages` в `gradle.properties` для сборки. Усложняет CI/чужие сборки.
 
-## Статус реализации
-- ✅ `.env` сервера: `TELEGRAM_CLIENT_ID`, `TELEGRAM_CLIENT_SECRET` добавлены
-- ✅ `backend/package.json`: добавлен `jose` (для JWKS-верификации id_token) — НУЖЕН (на сервере остаётся только верификация)
-- ❌ Серверные эндпоинты `/telegram-oidc-start` + `/telegram-oidc-callback` (браузерный PKCE-флоу) — НЕ НУЖНЫ при нативном SDK, откатить начатое в auth.js (oidcStore, putOidc/takeOidc, b64url, TG_OIDC_ISSUER/TG_REDIRECT_URI). Оставить только JWKS-верификацию id_token в новом `POST /auth/telegram-native`.
-- ⏳ Нативный модуль `modules/telegram-login/` (Expo Module на Kotlin, как vk-id) — обёртка над SDK
-- ⏳ Фронт `welcome.tsx`: кнопка → `signInWithTelegram()`
-- ⏳ Бэкенд `POST /auth/telegram-native {id_token}`: верифицировать через `jose` JWKS (`https://oauth.telegram.org/.well-known/jwks.json`, RS256, проверка iss/aud/exp) → claims → upsert → JWT
+## Статус реализации — ✅ РАБОТАЕТ (2026-06-02)
+- ✅ `.env` сервера: `TELEGRAM_CLIENT_ID`, `TELEGRAM_CLIENT_SECRET`
+- ✅ `backend`: `jose` + `POST /auth/telegram-native` (JWKS RS256, iss/aud) → claims → upsert → JWT
+- ✅ Нативный модуль `modules/telegram-login/` (Kotlin Expo Module: init/startLogin/OnNewIntent → handleLoginResponse → id_token)
+- ✅ Фронт `welcome.tsx`: `signInWithTelegram()` → `telegramNativeAuth(idToken)`
+- ✅ **Телефон приходит** — `scope=phone` → `claims.phone_number` пишется в `users.phone`. Подтверждено в БД (юзер `saartr` = 79818223244). Старый виджет телефон не умел вообще.
+- ✅ Legacy-флоу удалён: фронт (`_layout.tsx` tgAuthResult/decodeBase64Json/AppState, `telegramAuth` в `lib/api`). Бэкенд `/auth/telegram` (HMAC) + `/auth/telegram-callback` (HTML) пока висят, но не используются.
 
-**Новый OIDC даёт `scope=phone`** → телефон в claims id_token (старая нерешённая задача из [[project-auth-refactor]]).
+## ⚠️ SDK на деле БРАУЗЕРНЫЙ OIDC, не чисто нативный
+Декомпиляция `login-sdk-1.0.0.aar`: `BASE_URL = https://oauth.telegram.org`. `startLogin` → `fetchInAppUrl` (пробует `tg://` для нативного открытия Telegram) → при неудаче `openWebAuth` (Chrome **Custom Tab** на `oauth.telegram.org/auth?response_type=code&...&code_challenge=...S256`) → возврат на App Link `…/tglogin?code=` → `handleLoginResponse`→`exchangeCode` (PKCE, `/token`) → id_token. **Всё завязано на доступность `oauth.telegram.org`.**
 
-**How to apply:** Не legacy widget, не браузерный OIDC — нативный SDK. Перед каждой release-сборкой добавлять release SHA-256 в BotFather Native Login.
+## 🔴 ГЛАВНАЯ ЗАСАДА: `oauth.telegram.org` должен идти через VPN
+Симптом «вечный лоадер на кнопке + браузер открывается + возврат по кнопке не работает» = `oauth.telegram.org` недоступен с устройства → `fetchInAppUrl` висит → фоллбэк в браузер → возврат из Custom Tab по App Link не выходит из браузера (Chrome остаётся на странице с кнопкой).
+**Причина у нас была: Amnezia в режиме РАЗДЕЛЬНОГО ТУННЕЛИРОВАНИЯ** гнал `oauth.telegram.org` напрямую (мимо VPN) → блок в РФ. **Фикс: выключить split-tunnel / убедиться что домен идёт через VPN.** Тестерам в РФ — то же требование.
+Когда домен доступен — открывается нативно Telegram-приложение, логин мгновенный, возврат app→app работает.
+
+## Диагностика на этом устройстве
+- App Link верифицирован: `adb shell pm get-app-links pro.mihmih.haba` → `app4160742593-login.tg.dev: verified` (SHA-256 совпал). Манифест чистый.
+- ⚠️ **OPPO/ColorOS глушит логи сторонних приложений в logcat** — ни JS (`console.log`), ни нативные `Log.d` не видны через `adb logcat`. Дебажить через Metro-терминал, не logcat.
+
+**How to apply:** Перед release-сборкой добавлять release SHA-256 в BotFather Native Login. При жалобах «не возвращается в приложение» — первым делом проверять, что `oauth.telegram.org` доступен с телефона (VPN без split-tunnel). См. также [[project-android-config-plugins]] (репо/placeholders переживают `prebuild --clean`).
