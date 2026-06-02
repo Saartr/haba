@@ -42,7 +42,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
-modules/vk-id/android/build/
+modules/*/android/build/
 
 # backend
 backend/.env

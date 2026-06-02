@@ -41,16 +41,6 @@ async function request<T>(
   return res.json();
 }
 
-export type TelegramUser = {
-  id: number;
-  first_name: string;
-  last_name?: string;
-  username?: string;
-  photo_url?: string;
-  auth_date: number;
-  hash: string;
-};
-
 export type AuthResult = {
   accessToken: string;
   refreshToken: string;
@@ -61,13 +51,6 @@ export type AuthResult = {
     avatar_url: string | null;
   };
 };
-
-export async function telegramAuth(data: TelegramUser): Promise<AuthResult> {
-  return request('/auth/telegram', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
 
 // Нативный Telegram SDK отдаёт id_token (OIDC JWT) — сервер его верифицирует.
 export async function telegramNativeAuth(idToken: string): Promise<AuthResult> {

@@ -3,14 +3,14 @@ import '../global.css';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
-import { AppState, Linking, Alert } from 'react-native';
+import { Linking, Alert } from 'react-native';
 import 'react-native-reanimated';
 import { useFonts, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { SettingsProvider } from '@/lib/settings-context';
 import { ConfirmProvider } from '@/components/ConfirmModal';
-import { telegramAuth, TelegramUser, joinHabit } from '@/lib/api';
-import { saveTokens, savePendingInvite, getPendingInvite, clearPendingInvite } from '@/lib/auth';
+import { joinHabit } from '@/lib/api';
+import { savePendingInvite, getPendingInvite, clearPendingInvite } from '@/lib/auth';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -20,21 +20,11 @@ export const unstable_settings = {
   initialRouteName: '(auth)',
 };
 
-// tgAuthResult приходит из URL: percent-encoded + возможно base64url (без padding, с -/_).
-// atob ожидает обычный base64 — нормализуем перед декодом.
-function decodeBase64Json(raw: string): string {
-  let s = decodeURIComponent(raw).replace(/-/g, '+').replace(/_/g, '/');
-  const pad = s.length % 4;
-  if (pad) s += '='.repeat(4 - pad);
-  return atob(s);
-}
-
 function RootLayoutNav() {
-  const { authed, checked, setAuthed } = useAuth();
+  const { authed, checked } = useAuth();
   const [ready, setReady] = useState(false);
   const router = useRouter();
   const segments = useSegments();
-  const processingRef = useRef(false);
   const joiningRef = useRef(false);
 
   // listener регистрируется один раз — держим актуальный authed в ref
@@ -47,52 +37,12 @@ function RootLayoutNav() {
     setReady(true);
   }, []);
 
-  // Обрабатываем Telegram deeplink на уровне root layout — он всегда смонтирован,
-  // в отличие от welcome.tsx который может быть не активен при возврате из браузера
+  // Deeplink-инвайт в групповую привычку: haba://join/<code>.
+  // Обрабатываем на уровне root layout — он всегда смонтирован.
   function handleDeepLink(url: string | null) {
-    console.log('[DeepLink] handleDeepLink called, url:', url);
     if (!url) return;
-
-    // Инвайт в групповую привычку: haba://join/<code>
     if (url.startsWith('haba://join/')) {
       handleJoinDeepLink(url);
-      return;
-    }
-
-    if (!url.startsWith('haba://auth/callback')) {
-      console.log('[TgLogin] skip — not a callback url');
-      return;
-    }
-    if (processingRef.current) {
-      console.log('[TgLogin] skip — already processing');
-      return;
-    }
-    // Данные могут прийти как query (?tgAuthResult=) через intent:// редирект
-    // или как fragment (#tgAuthResult=) через старый флоу
-    const queryMatch = url.match(/[?&]tgAuthResult=([^&#]+)/);
-    const fragmentMatch = url.match(/#.*tgAuthResult=([^&]+)/);
-    const match = queryMatch || fragmentMatch;
-    console.log('[TgLogin] queryMatch:', !!queryMatch, 'fragmentMatch:', !!fragmentMatch);
-    if (!match) {
-      console.log('[TgLogin] skip — no tgAuthResult');
-      return;
-    }
-    try {
-      const decoded = JSON.parse(decodeBase64Json(match[1]));
-      console.log('[TgLogin] decoded ok, hash present:', !!decoded.hash);
-      if (!decoded.hash) return;
-      processingRef.current = true;
-      console.log('[TgLogin] calling telegramAuth...');
-      telegramAuth(decoded as TelegramUser)
-        .then(result => saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken }).then(() => result))
-        .then(result => {
-          console.log('[TgLogin] success, user:', result.user?.username);
-          setAuthed(true, result.user);
-        })
-        .catch(e => { console.error('[TgLogin] auth error:', e.message); })
-        .finally(() => { processingRef.current = false; });
-    } catch (e) {
-      console.error('[TgLogin] parse error:', e);
     }
   }
 
@@ -123,35 +73,11 @@ function RootLayoutNav() {
   }
 
   useEffect(() => {
-    console.log('[TgLogin] setting up listeners');
-
-    // Ловим deeplink если приложение уже на переднем плане
-    const linkSub = Linking.addEventListener('url', ({ url }) => {
-      console.log('[TgLogin] addEventListener fired:', url.slice(0, 80));
-      handleDeepLink(url);
-    });
-
-    // Ловим deeplink при холодном старте
-    Linking.getInitialURL().then(url => {
-      console.log('[TgLogin] getInitialURL:', url);
-      handleDeepLink(url);
-    });
-
-    // Ловим deeplink через AppState: когда приложение возвращается из фона
-    // (Oplus/OPPO замораживает процесс, onNewIntent не всегда срабатывает)
-    const appStateSub = AppState.addEventListener('change', state => {
-      console.log('[TgLogin] AppState change:', state);
-      if (state === 'active') {
-        Linking.getInitialURL().then(url => {
-          console.log('[TgLogin] AppState active, getInitialURL:', url);
-          handleDeepLink(url);
-        });
-      }
-    });
-
+    // Инвайт-deeplink на переднем плане и при холодном старте
+    const linkSub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
+    Linking.getInitialURL().then(handleDeepLink);
     return () => {
       linkSub.remove();
-      appStateSub.remove();
     };
   }, []);
 
