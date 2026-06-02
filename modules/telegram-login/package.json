@@ -1,0 +1,6 @@
+{
+  "name": "telegram-login",
+  "version": "1.0.0",
+  "description": "Telegram native login SDK module for Haba",
+  "main": "index.ts"
+}

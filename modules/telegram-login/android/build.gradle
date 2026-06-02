@@ -1,0 +1,29 @@
+apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+android {
+  compileSdkVersion 36
+  namespace "pro.mihmih.haba.tglogin"
+  defaultConfig {
+    minSdkVersion 26
+    targetSdkVersion 36
+  }
+}
+
+repositories {
+  google()
+  mavenCentral()
+  maven {
+    url "https://maven.pkg.github.com/TelegramMessenger/telegram-login-android"
+    credentials {
+      username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_USERNAME")
+      password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
+    }
+  }
+}
+
+dependencies {
+  implementation "org.telegram:login-sdk:1.0.0"
+  implementation project(':expo-modules-core')
+  implementation "androidx.activity:activity-ktx:1.9.0"
+}

@@ -2,6 +2,7 @@
 
 - [iOS Build Plan](project_ios_plan.md) — EAS Build when Apple Developer Account obtained; Android-only until then
 - [Авторизация](project_auth_refactor.md) — два способа: Telegram (браузер + deeplink) и VK ID (нативный SDK 2.6.0, Expo Module, New Arch)
+- [Telegram OIDC / Native Login](project_telegram_oidc.md) — legacy widget сломан (редиректит на MAX); переход на OIDC + Native Login. ⚠️ release-сборка требует release SHA-256 в BotFather
 - [Health Connect](project_health_connect.md) — ✅ работает на debug; причина бывшего пустого requestPermission — отсутствие Android-14 rationale activity-alias в манифесте, НЕ верификация
 - [Главный экран](project_main_screen.md) — реализован: шторка, аватар, имя с truncation, empty state, без таб-бара
 - [UI: модалки и меню](project_ui_modals.md) — BottomSheet, ConfirmModal/useConfirm, DropdownPopover; единая анимация, elevation:0 на Android

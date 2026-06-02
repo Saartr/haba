@@ -69,6 +69,14 @@ export async function telegramAuth(data: TelegramUser): Promise<AuthResult> {
   });
 }
 
+// Нативный Telegram SDK отдаёт id_token (OIDC JWT) — сервер его верифицирует.
+export async function telegramNativeAuth(idToken: string): Promise<AuthResult> {
+  return request('/auth/telegram-native', {
+    method: 'POST',
+    body: JSON.stringify({ id_token: idToken }),
+  });
+}
+
 export async function vkAuth(data: { accessToken: string; userId: string; firstName?: string; lastName?: string; photo200?: string; email?: string; phone?: string }): Promise<AuthResult> {
   return request('/auth/vk', {
     method: 'POST',

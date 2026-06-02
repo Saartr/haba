@@ -15,6 +15,15 @@ const REFRESH_TTL = '30d';
 const AVATARS_DIR = '/var/www/step-bot/public/avatars';
 const AVATARS_URL = 'https://bot.mihmih.pro/avatars';
 
+// Telegram Native Login (нативный SDK) — на сервере только верификация id_token.
+// Браузерный OIDC-флоу (PKCE/обмен code→token) НЕ используется: SDK отдаёт id_token напрямую.
+const jose = require('jose');
+const TG_CLIENT_ID = process.env.TELEGRAM_CLIENT_ID;
+const TG_OIDC_ISSUER = 'https://oauth.telegram.org';
+const TG_JWKS = jose.createRemoteJWKSet(
+  new URL('https://oauth.telegram.org/.well-known/jwks.json'),
+);
+
 function makeAccessToken(userId) {
   return jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: ACCESS_TTL });
 }
@@ -317,6 +326,83 @@ router.post('/telegram', async (req, res) => {
     });
   } catch (e) {
     console.error('telegram auth error:', e);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// POST /api/v1/auth/telegram-native — нативный Telegram SDK отдаёт id_token (OIDC JWT).
+// Верифицируем подпись через JWKS Telegram (RS256), проверяем iss/aud, достаём claims.
+router.post('/telegram-native', async (req, res) => {
+  const { id_token } = req.body;
+  if (!id_token) return res.status(400).json({ message: 'id_token обязателен' });
+
+  let claims;
+  try {
+    const { payload } = await jose.jwtVerify(id_token, TG_JWKS, {
+      issuer: TG_OIDC_ISSUER,
+      audience: TG_CLIENT_ID,
+    });
+    claims = payload;
+  } catch (e) {
+    console.error('telegram-native verify failed:', e.message);
+    return res.status(401).json({ message: 'Недействительный id_token' });
+  }
+
+  // OIDC claims: sub/id = tg user id, name, preferred_username, picture, phone_number
+  const tgId = String(claims.id ?? claims.sub);
+  if (!tgId || tgId === 'undefined') {
+    return res.status(400).json({ message: 'В токене нет идентификатора пользователя' });
+  }
+  const fullName = typeof claims.name === 'string' ? claims.name.trim() : '';
+  const firstName = fullName ? fullName.split(/\s+/)[0] : null;
+  const lastName = fullName && fullName.includes(' ')
+    ? fullName.slice(firstName.length).trim() || null
+    : null;
+  const username = claims.preferred_username || null;
+  const phone = claims.phone_number || null;
+
+  try {
+    const [user] = await sql`
+      INSERT INTO users (tg_id, username, first_name, last_name, phone)
+      VALUES (${tgId}, ${username}, ${firstName}, ${lastName}, ${phone})
+      ON CONFLICT (tg_id) DO UPDATE SET
+        username   = COALESCE(EXCLUDED.username,   users.username),
+        first_name = COALESCE(EXCLUDED.first_name, users.first_name),
+        last_name  = COALESCE(EXCLUDED.last_name,  users.last_name),
+        phone      = COALESCE(EXCLUDED.phone,      users.phone)
+      RETURNING id, username, first_name, last_name, avatar_url
+    `;
+
+    // Аватар: claims.picture — URL фото из Telegram. Скачиваем через тот же helper
+    // (по Bot API надёжнее, picture может протухать), fallback на текущий.
+    let avatarUrl = await fetchAndSaveAvatar(req.bot, tgId, user.id, claims.picture || null);
+    if (!avatarUrl) avatarUrl = user.avatar_url;
+    if (avatarUrl && avatarUrl !== user.avatar_url) {
+      await sql`UPDATE users SET avatar_url = ${avatarUrl} WHERE id = ${user.id}`;
+    }
+
+    const accessToken = makeAccessToken(user.id);
+    const refreshToken = makeRefreshToken(user.id);
+    const refreshExp = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    await sql`DELETE FROM refresh_tokens WHERE user_id = ${user.id}`;
+    await sql`
+      INSERT INTO refresh_tokens (user_id, token, expires_at)
+      VALUES (${user.id}, ${refreshToken}, ${refreshExp})
+    `;
+
+    res.json({
+      accessToken,
+      refreshToken,
+      user: {
+        username:   user.username,
+        first_name: user.first_name || null,
+        last_name:  user.last_name  || null,
+        avatar_url: avatarUrl || null,
+      },
+    });
+  } catch (e) {
+    console.error('telegram-native auth error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });

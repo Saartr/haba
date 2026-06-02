@@ -38,6 +38,7 @@
       "react-native-health-connect",
       "./plugins/with-health-permissions.js",
       "./plugins/with-tg-queries.js",
+      "./plugins/with-telegram-applink.js",
       [
         "expo-build-properties",
         {

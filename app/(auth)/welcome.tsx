@@ -1,4 +1,4 @@
-import { View, useWindowDimensions, Linking, Platform } from 'react-native';
+import { View, useWindowDimensions, Platform } from 'react-native';
 import { useState } from 'react';
 import Text from '@/components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,12 +6,11 @@ import TelegramIcon from '@/assets/icons/Telegram.svg';
 import TapaWelcome from '@/assets/images/tapa_welcome.svg';
 import Button from '@/components/Button';
 import { useColors } from '@/lib/colors';
-import { vkAuth } from '@/lib/api';
+import { vkAuth, telegramNativeAuth } from '@/lib/api';
 import { saveTokens } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
 import { signInWithVK } from '@/modules/vk-id';
-
-const TELEGRAM_AUTH_URL = 'https://oauth.telegram.org/auth?bot_id=8671249381&origin=https%3A%2F%2Fbot.mihmih.pro&return_to=https%3A%2F%2Fbot.mihmih.pro%2Fapi%2Fv1%2Fauth%2Ftelegram-callback&request_access=write';
+import { signInWithTelegram } from '@/modules/telegram-login';
 
 export default function WelcomeScreen() {
   const { width } = useWindowDimensions();
@@ -20,9 +19,19 @@ export default function WelcomeScreen() {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function openTelegram() {
+  async function handleTelegramLogin() {
     setError(null);
-    Linking.openURL(TELEGRAM_AUTH_URL).catch(() => setError('Не удалось открыть браузер'));
+    setProcessing(true);
+    try {
+      const idToken = await signInWithTelegram();
+      const result = await telegramNativeAuth(idToken);
+      await saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken });
+      setAuthed(true, result.user);
+    } catch (e: any) {
+      setError(e.message ?? 'Ошибка авторизации через Telegram');
+    } finally {
+      setProcessing(false);
+    }
   }
 
   async function handleVkLogin() {
@@ -71,7 +80,7 @@ export default function WelcomeScreen() {
       <View className="px-6 pb-8 gap-3">
         <Button
           label="Войти через Telegram"
-          onPress={openTelegram}
+          onPress={handleTelegramLogin}
           loading={processing}
           icon={<TelegramIcon width={20} height={20} color={c.text.onPrimary} />}
         />

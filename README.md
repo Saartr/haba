@@ -86,6 +86,23 @@ adb install app\build\outputs\apk\debug\app-debug.apk
 
 > ⚠️ После каждого `npm install` нужно вручную переналожить патч на `react-native-health-connect` (удаление `coroutineContext.cancel()` в `HealthConnectPermissionDelegate.kt`) — patch-package не настроен. Без патча запрос разрешений HC ломается после первого вызова.
 
+### 🚨 Release-сборка и Telegram Native Login
+
+Telegram Native Login проверяет подпись приложения по **SHA-256 fingerprint** ключа. В BotFather (Native Login → Android) зарегистрирован **debug**-ключ:
+```
+FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C
+```
+Он работает **только для debug-сборок**. При сборке **release** APK/AAB:
+
+1. У release-ключа **другой** SHA-256 → вычислить:
+   ```powershell
+   keytool -list -v -keystore <release.keystore> -alias <alias>   # строка SHA256:
+   ```
+2. Добавить этот SHA-256 в **BotFather → Web Login → Native Login → Android** (можно несколько fingerprint'ов одновременно — debug + release).
+3. Если публикуешь через **Google Play** — у Google свой ключ подписи (App Signing). Его SHA-256 взять в **Play Console → App Integrity → App signing key** и тоже добавить в BotFather.
+
+Без этого Telegram-логин в release-сборке **не заработает** (Telegram отклонит native-callback). Подробнее: `.claude/memory/project_telegram_oidc.md`.
+
 ## Запуск dev-сервера
 
 ```powershell
