@@ -5,26 +5,20 @@ metadata:
   type: project
 ---
 
-**Статус:** частично реализовано, заблокировано на Google Play верификации.
+**Статус:** ✅ РАБОТАЕТ на debug APK (2026-06-02). Диалог разрешений показывается, шаги читаются. Play-верификация для разработки НЕ нужна.
 
 **Что реализовано:**
 - `lib/health.ts` — `isHealthConnectAvailable`, `hasStepsPermission`, `requestStepsPermission`, `getTodaySteps`, `openHealthConnectPermissions`
 - `react-native-health-connect` v3.5.3
 - `android/app/src/main/java/pro/mihmih/haba/MainActivity.kt` — `HealthConnectPermissionDelegate.setPermissionDelegate(this)` в `onCreate`
-- `plugins/with-health-permissions.js` — добавляет `android.permission.health.READ_STEPS` в AndroidManifest
+- `plugins/with-health-permissions.js` — добавляет `READ_STEPS` permission **И** Android-14 rationale `<activity-alias>` (см. ниже)
 - Автосинк шагов в `app/(tabs)/habit/[id].tsx` через `useFocusEffect` — тихий, без Alert
-- Кнопка "Подключить трекер" в модалке "Внести шаги" (только Android)
+- Кнопка "Подключить трекер" в модалке "Внести шаги"
 - Патч `node_modules/react-native-health-connect/.../HealthConnectPermissionDelegate.kt` — удалён `coroutineContext.cancel()` который убивал singleton coroutineScope после первого вызова. ⚠️ Патч ручной, patch-package НЕ настроен — теряется при каждом `npm install`. После переустановки зависимостей патч надо накатывать заново (и затем пересобирать APK).
 
-**Известное ограничение:**
-`requestPermission()` возвращает пустой массив `[]` без показа диалога — Health Connect блокирует запросы от приложений не прошедших верификацию в Google Play Console.
+**РЕАЛЬНАЯ причина бывшего `requestPermission() = []` (НЕ верификация!):**
+На Android 14+ встроенный Health Connect требует, чтобы приложение объявило rationale-экран через **`<activity-alias>`** с action `android.intent.action.VIEW_PERMISSION_USAGE`, категорией `android.intent.category.HEALTH_PERMISSIONS` и permission `android.permission.START_VIEW_PERMISSION_USAGE`. Без него HC молча отклоняет приложение и возвращает `[]` БЕЗ показа диалога. Старый `<intent-filter>` с `androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE` работает только на Android ≤13. Тестовое устройство CPH2745 — Android 14+, поэтому нужен alias. История про «нужна Google Play верификация» оказалась ложным следом — дело было чисто в манифесте.
 
-**Why:** Google требует регистрацию в Play Console ($25 разово) и верификацию приложения перед тем как HC покажет диалог разрешений. Debug APK не проходит эту проверку. Developer Options в HC на данном устройстве не предоставляют обхода.
+`activity-alias` добавляется через `plugins/with-health-permissions.js` (функция `ensureRationaleAlias`). После правки плагина — `npx expo prebuild --platform android` (alias попадает в `android/app/src/main/AndroidManifest.xml`), затем пересобрать APK.
 
-**Что нужно для разблокировки:**
-1. Зарегистрировать Google Play Developer Account ($25)
-2. Собрать release AAB: `./gradlew bundleRelease`
-3. Залить в Play Console → Internal Testing
-4. Установить через Play Store (тестовая ссылка) — тогда HC начнёт доверять приложению
-
-**How to apply:** Не пытаться чинить `requestPermission` на debug APK — это ограничение Google, не баг кода. Когда появится Play Console — сразу собирать release AAB.
+**How to apply:** HC работает на debug — НЕ списывать проблемы с разрешениями на «верификацию Google». Если `requestPermission` возвращает `[]` на Android 14+ — проверять наличие rationale `activity-alias` в манифесте в первую очередь. Play-верификация ($25) нужна только для публикации в проде (release из Play Store), не для локальной разработки.

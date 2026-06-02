@@ -42,13 +42,19 @@ function requireAuth(req, res, next) {
 
 function verifyTelegramAuth(data) {
   const { hash, ...fields } = data;
+  if (typeof hash !== 'string' || !/^[a-f0-9]{64}$/i.test(hash)) return false;
+  // В data-check-string входят только реально присланные Telegram поля (без null/undefined),
+  // отсортированные по ключу, как `key=value` через '\n'. Значения приводим к строке —
+  // JSON.parse мог десериализовать id/auth_date в числа.
   const checkString = Object.keys(fields)
+    .filter(k => fields[k] !== null && fields[k] !== undefined)
     .sort()
     .map(k => `${k}=${fields[k]}`)
     .join('\n');
   const secretKey = crypto.createHash('sha256').update(TELEGRAM_TOKEN).digest();
   const hmac = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
-  return hmac === hash;
+  // timing-safe сравнение (обе строки гарантированно 64 hex-символа)
+  return crypto.timingSafeEqual(Buffer.from(hmac, 'hex'), Buffer.from(hash, 'hex'));
 }
 
 function downloadFile(url, dest) {
@@ -257,8 +263,8 @@ router.post('/telegram', async (req, res) => {
     return res.status(400).json({ message: 'Неверные данные' });
   }
 
-  const authDate = parseInt(data.auth_date);
-  if (Date.now() / 1000 - authDate > 86400) {
+  const authDate = parseInt(data.auth_date, 10);
+  if (Number.isNaN(authDate) || Date.now() / 1000 - authDate > 86400) {
     return res.status(400).json({ message: 'Данные авторизации устарели' });
   }
 

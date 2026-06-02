@@ -20,6 +20,15 @@ export const unstable_settings = {
   initialRouteName: '(auth)',
 };
 
+// tgAuthResult приходит из URL: percent-encoded + возможно base64url (без padding, с -/_).
+// atob ожидает обычный base64 — нормализуем перед декодом.
+function decodeBase64Json(raw: string): string {
+  let s = decodeURIComponent(raw).replace(/-/g, '+').replace(/_/g, '/');
+  const pad = s.length % 4;
+  if (pad) s += '='.repeat(4 - pad);
+  return atob(s);
+}
+
 function RootLayoutNav() {
   const { authed, checked, setAuthed } = useAuth();
   const [ready, setReady] = useState(false);
@@ -69,7 +78,7 @@ function RootLayoutNav() {
       return;
     }
     try {
-      const decoded = JSON.parse(atob(match[1]));
+      const decoded = JSON.parse(decodeBase64Json(match[1]));
       console.log('[TgLogin] decoded ok, hash present:', !!decoded.hash);
       if (!decoded.hash) return;
       processingRef.current = true;
