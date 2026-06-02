@@ -48,3 +48,6 @@ modules/vk-id/android/build/
 backend/.env
 backend/public/avatars/
 backend/*.log
+
+# build log artifact
+.build_log.txt
