@@ -148,7 +148,7 @@ router.post('/vk', async (req, res) => {
         last_name  = COALESCE(EXCLUDED.last_name,  users.last_name),
         email      = COALESCE(EXCLUDED.email,      users.email),
         phone      = COALESCE(EXCLUDED.phone,      users.phone)
-      RETURNING id, first_name, last_name, avatar_url
+      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id
     `;
 
     let avatarUrl = user.avatar_url;
@@ -178,10 +178,12 @@ router.post('/vk', async (req, res) => {
       accessToken: newAccessToken,
       refreshToken,
       user: {
-        username:   null,
+        username:   user.username || null,
         first_name: user.first_name || null,
         last_name:  user.last_name  || null,
         avatar_url: avatarUrl || null,
+        tg_id:      user.tg_id ? String(user.tg_id) : null,
+        vk_id:      user.vk_id || null,
       },
     });
   } catch (e) {
@@ -230,7 +232,7 @@ router.post('/telegram-native', async (req, res) => {
         first_name = COALESCE(EXCLUDED.first_name, users.first_name),
         last_name  = COALESCE(EXCLUDED.last_name,  users.last_name),
         phone      = COALESCE(EXCLUDED.phone,      users.phone)
-      RETURNING id, username, first_name, last_name, avatar_url
+      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id
     `;
 
     // Аватар: claims.picture — URL фото из Telegram. Скачиваем через тот же helper
@@ -255,10 +257,12 @@ router.post('/telegram-native', async (req, res) => {
       accessToken,
       refreshToken,
       user: {
-        username:   user.username,
+        username:   user.username || null,
         first_name: user.first_name || null,
         last_name:  user.last_name  || null,
         avatar_url: avatarUrl || null,
+        tg_id:      user.tg_id ? String(user.tg_id) : null,
+        vk_id:      user.vk_id || null,
       },
     });
   } catch (e) {

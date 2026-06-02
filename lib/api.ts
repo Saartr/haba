@@ -44,12 +44,7 @@ async function request<T>(
 export type AuthResult = {
   accessToken: string;
   refreshToken: string;
-  user: {
-    username: string | null;
-    first_name: string | null;
-    last_name: string | null;
-    avatar_url: string | null;
-  };
+  user: UserProfile;
 };
 
 // Нативный Telegram SDK отдаёт id_token (OIDC JWT) — сервер его верифицирует.
