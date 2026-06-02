@@ -3,14 +3,14 @@ import '../global.css';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
-import { AppState, Linking } from 'react-native';
+import { AppState, Linking, Alert } from 'react-native';
 import 'react-native-reanimated';
 import { useFonts, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { SettingsProvider } from '@/lib/settings-context';
 import { ConfirmProvider } from '@/components/ConfirmModal';
-import { telegramAuth, TelegramUser } from '@/lib/api';
-import { saveTokens } from '@/lib/auth';
+import { telegramAuth, TelegramUser, joinHabit } from '@/lib/api';
+import { saveTokens, savePendingInvite, getPendingInvite, clearPendingInvite } from '@/lib/auth';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -26,6 +26,11 @@ function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
   const processingRef = useRef(false);
+  const joiningRef = useRef(false);
+
+  // listener регистрируется один раз — держим актуальный authed в ref
+  const authedRef = useRef(authed);
+  authedRef.current = authed;
 
   const [fontsLoaded] = useFonts({ Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold });
 
@@ -36,8 +41,16 @@ function RootLayoutNav() {
   // Обрабатываем Telegram deeplink на уровне root layout — он всегда смонтирован,
   // в отличие от welcome.tsx который может быть не активен при возврате из браузера
   function handleDeepLink(url: string | null) {
-    console.log('[TgLogin] handleDeepLink called, url:', url);
-    if (!url || !url.startsWith('haba://auth/callback')) {
+    console.log('[DeepLink] handleDeepLink called, url:', url);
+    if (!url) return;
+
+    // Инвайт в групповую привычку: haba://join/<code>
+    if (url.startsWith('haba://join/')) {
+      handleJoinDeepLink(url);
+      return;
+    }
+
+    if (!url.startsWith('haba://auth/callback')) {
       console.log('[TgLogin] skip — not a callback url');
       return;
     }
@@ -72,6 +85,32 @@ function RootLayoutNav() {
     } catch (e) {
       console.error('[TgLogin] parse error:', e);
     }
+  }
+
+  function handleJoinDeepLink(url: string) {
+    const code = url.replace('haba://join/', '').split(/[?#]/)[0];
+    console.log('[Join] code:', code, 'authed:', authedRef.current);
+    if (!code) return;
+    if (joiningRef.current) return;
+
+    // Неавторизован — сохраняем код, отправляем на логин; вступим после входа
+    if (!authedRef.current) {
+      savePendingInvite(code);
+      router.replace('/(auth)/welcome');
+      return;
+    }
+
+    joiningRef.current = true;
+    joinHabit(code)
+      .then(habit => {
+        router.replace(`/(tabs)/habit/${habit.id}`);
+      })
+      .catch(e => {
+        console.error('[Join] error:', e.message);
+        Alert.alert('Не удалось вступить', e.message ?? 'Попробуйте позже');
+        router.replace('/(tabs)');
+      })
+      .finally(() => { joiningRef.current = false; });
   }
 
   useEffect(() => {
@@ -124,6 +163,27 @@ function RootLayoutNav() {
       router.replace('/(auth)/welcome');
     }
   }, [ready, fontsLoaded, checked, authed, segments]);
+
+  // После входа: если был отложенный invite (юзер пришёл по ссылке неавторизованным) —
+  // вступаем в группу и открываем её экран.
+  useEffect(() => {
+    if (!ready || !checked || !authed || joiningRef.current) return;
+    (async () => {
+      const code = await getPendingInvite();
+      if (!code) return;
+      joiningRef.current = true;
+      try {
+        const habit = await joinHabit(code);
+        router.replace(`/(tabs)/habit/${habit.id}`);
+      } catch (e: any) {
+        console.error('[Join] pending invite error:', e.message);
+        Alert.alert('Не удалось вступить', e.message ?? 'Попробуйте позже');
+      } finally {
+        await clearPendingInvite();
+        joiningRef.current = false;
+      }
+    })();
+  }, [ready, checked, authed]);
 
   if (!ready || !fontsLoaded) return null;
 

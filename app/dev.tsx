@@ -109,6 +109,26 @@ export default function DevScreen() {
           <Button variant="text" label="Изменить данные для входа" onPress={() => {}} disabled />
         </Section>
 
+        {/* BUTTON — SECONDARY */}
+        <Section title="Button / Secondary">
+          <Label text="Default" />
+          <Button variant="secondary" label="Изменить шаги" onPress={() => {}} />
+
+          <Label text="Default + icon" />
+          <Button
+            variant="secondary"
+            label="Вступить в группу"
+            onPress={() => {}}
+            icon={<GroupPlusIcon width={20} height={20} color={colors.purple[500]} />}
+          />
+
+          <Label text="Loading" />
+          <Button variant="secondary" label="Изменить шаги" onPress={() => {}} loading />
+
+          <Label text="Disabled" />
+          <Button variant="secondary" label="Изменить шаги" onPress={() => {}} disabled />
+        </Section>
+
         {/* ПРОФИЛЬ */}
         <Section title="Компоненты в профиле">
           <Label text="Segmented — 3 варианта (тема)" />

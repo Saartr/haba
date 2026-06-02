@@ -8,6 +8,7 @@
 - [Figma MCP](reference_figma_mcp.md) — как поднять Dev Mode MCP + curl-обход, get_design_context/screenshot, node-id формат
 - [SSH: редактирование файлов на сервере](feedback_ssh_file_edit.md) — серверный код правится локально в `backend/` и деплоится через `./deploy-backend.ps1`, никакой прямой правки на сервере
 - [Figma TapaDS — источник правды](feedback_figma_source_of_truth.md) — иконки/цвета/компоненты/отступы только из Figma TapaDS, не придумывать самостоятельно
+- [Иконки: fill=currentColor](feedback_icons_currentcolor.md) — менять fill на currentColor в SVG можно без спроса; fill="none" на <svg> не трогать
 - [Стек проекта](project_stack.md) — Expo SDK 55, Express 5, postgres tag, PM2, grammy, BASE_URL, JWT TTL
 - [Окружение разработки](project_dev_env.md) — IP компьютера/телефона, запуск dev-сервера, Android APK-сборка
 - [База данных](project_database.md) — схема всех таблиц: users, groups, habits, habit_members, habit_logs, refresh_tokens

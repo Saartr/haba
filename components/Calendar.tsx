@@ -2,7 +2,7 @@ import { View } from 'react-native';
 import Text from '@/components/Text';
 import CheckCircleIcon from '@/assets/icons/CheckCircle.svg';
 import DoNotDisturbIcon from '@/assets/icons/DoNotDisturb.svg';
-import CircleOutlineIcon from '@/assets/icons/CircleOutline.svg';
+import CircleOutlineIcon from '@/assets/icons/Circle.svg';
 import { useSettings } from '@/lib/settings-context';
 import { colors } from '@/lib/colors';
 

@@ -67,6 +67,40 @@ app.get('/miniapp', (req, res) => {
   res.sendFile(path.join(__dirname, 'miniapp/index.html'));
 });
 
+// GET /join/:code — страница-редирект инвайта в приложение.
+// По образцу telegram-callback: кнопка + авто-редирект на haba://join/<code>.
+// fallback-текст если приложение не установлено.
+app.get('/join/:code', (req, res) => {
+  const code = String(req.params.code).replace(/[^A-Za-z0-9_-]/g, '');
+  const deeplink = `haba://join/${code}`;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(`<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приглашение в Тапа</title>
+  <style>
+    body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #fafafa; font-family: sans-serif; gap: 20px; }
+    .btn { background: #6047ff; color: #fff; border: none; border-radius: 12px; padding: 16px 40px; font-size: 17px; font-weight: 700; cursor: pointer; text-decoration: none; }
+    p { color: #757575; font-size: 15px; margin: 0; text-align: center; padding: 0 32px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <p>Вас пригласили в групповую привычку</p>
+  <a class="btn" id="btn" href="${deeplink}">Открыть Тапа</a>
+  <p id="fallback" style="display:none">Если приложение не открылось — установите Тапа и откройте ссылку снова.</p>
+  <script>
+    var deeplink = ${JSON.stringify(deeplink)};
+    document.getElementById('btn').onclick = function() { window.location.href = deeplink; };
+    setTimeout(function() { window.location.href = deeplink; }, 500);
+    setTimeout(function() { document.getElementById('fallback').style.display = 'block'; }, 2000);
+  </script>
+</body>
+</html>`);
+});
+
 app.get('/miniapp/callback', async (req, res) => {
   const { code, state } = req.query;
   if (!code) return res.send('<script>window.close()</script>');

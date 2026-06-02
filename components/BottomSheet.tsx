@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Modal, Pressable, Animated } from 'react-native';
+import { View, Modal, Pressable, Animated, Keyboard, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Text from '@/components/Text';
 import CloseIcon from '@/assets/icons/Close.svg';
@@ -17,6 +17,7 @@ export default function BottomSheet({ visible, title, onClose, children }: Props
   const c = useColors();
   const insets = useSafeAreaInsets();
   const [mounted, setMounted] = useState(false);
+  const [kbHeight, setKbHeight] = useState(0);
 
   const anim = useRef(new Animated.Value(0)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
@@ -34,18 +35,34 @@ export default function BottomSheet({ visible, title, onClose, children }: Props
     }
   }, [visible]);
 
+  // Поднимаем шторку над клавиатурой через paddingBottom (не transform — чтобы не конфликтовать
+  // с анимацией появления и не мигать при сворачивании клавиатуры).
+  useEffect(() => {
+    if (!mounted) return;
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvt, (e) => setKbHeight(e.endCoordinates.height));
+    const hideSub = Keyboard.addListener(hideEvt, () => setKbHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [mounted]);
+
   return (
     <Modal
       visible={mounted}
       transparent
       animationType="none"
       statusBarTranslucent
+      navigationBarTranslucent
       onRequestClose={onClose}
     >
       <Animated.View
         style={{
           flex: 1,
           justifyContent: 'flex-end',
+          paddingBottom: kbHeight > 0 ? kbHeight + (Platform.OS === 'android' ? insets.bottom : 0) : 0,
           backgroundColor: 'rgba(18,18,18,0.24)',
           opacity: overlayAnim,
         }}
@@ -59,7 +76,7 @@ export default function BottomSheet({ visible, title, onClose, children }: Props
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
             paddingTop: 32,
-            paddingBottom: insets.bottom + 56,
+            paddingBottom: (kbHeight > 0 ? 32 : insets.bottom + 56),
             paddingHorizontal: 24,
             gap: 32,
             opacity: anim,

@@ -2,6 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 
 const ACCESS_KEY = 'haba_access_token';
 const REFRESH_KEY = 'haba_refresh_token';
+const PENDING_INVITE_KEY = 'haba_pending_invite';
 
 export async function saveTokens(tokens: {
   accessToken: string;
@@ -29,4 +30,18 @@ export async function clearTokens(): Promise<void> {
 export async function isAuthenticated(): Promise<boolean> {
   const tokens = await getTokens();
   return tokens !== null;
+}
+
+// Invite-код, по которому юзер перешёл будучи неавторизованным.
+// Сохраняем до логина, после входа — вступаем в группу и очищаем.
+export async function savePendingInvite(code: string): Promise<void> {
+  await SecureStore.setItemAsync(PENDING_INVITE_KEY, code);
+}
+
+export async function getPendingInvite(): Promise<string | null> {
+  return SecureStore.getItemAsync(PENDING_INVITE_KEY);
+}
+
+export async function clearPendingInvite(): Promise<void> {
+  await SecureStore.deleteItemAsync(PENDING_INVITE_KEY);
 }

@@ -3,7 +3,6 @@ import {
   ScrollView,
   Pressable,
   Image,
-  TextInput,
   StatusBar,
   Alert,
   Clipboard,
@@ -19,10 +18,12 @@ import NavigationBar from '@/components/NavigationBar';
 import EditIcon from '@/assets/icons/Edit.svg';
 import DeleteIcon from '@/assets/icons/Delete.svg';
 import CheckIcon from '@/assets/icons/Check.svg';
+import PlusIcon from '@/assets/icons/Plus.svg';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Text from '@/components/Text';
 import Button from '@/components/Button';
+import Input from '@/components/Input';
 import { useConfirm } from '@/components/ConfirmModal';
 import BottomSheet from '@/components/BottomSheet';
 import MoreVerticalIcon from '@/assets/icons/MoreVertical.svg';
@@ -290,7 +291,9 @@ export default function HabitScreen() {
   const [inviteModal, setInviteModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [stepsModal, setStepsModal] = useState(false);
+  const [stepsView, setStepsView] = useState<'menu' | 'edit' | 'add'>('menu');
   const [stepsInput, setStepsInput] = useState('');
+  const [stepsError, setStepsError] = useState<string | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
 
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
@@ -420,17 +423,35 @@ export default function HabitScreen() {
     }
   }
 
-  async function handleLogManual() {
-    const val = parseInt(stepsInput);
-    if (!val || val < 1 || val > 100000) {
-      Alert.alert('Ошибка', 'Введите число от 1 до 100 000');
+  function closeStepsModal() {
+    setStepsModal(false);
+    setStepsView('menu');
+    setStepsInput('');
+    setStepsError(null);
+  }
+
+  async function handleStepsSubmit() {
+    const input = parseInt(stepsInput);
+    if (stepsInput === '' || Number.isNaN(input)) {
+      setStepsError('Введите число');
       return;
     }
+    // add — прибавление, 0 бессмыслен; edit — перезапись, 0 допустим (обнулить)
+    if (stepsView === 'add' ? input < 1 : input < 0) {
+      setStepsError(stepsView === 'add' ? 'Введите число больше нуля' : 'Введите число');
+      return;
+    }
+    // edit — перезапись, add — прибавить к текущему (API logHabit перезаписывает)
+    const value = stepsView === 'add' ? (myTodayLog?.value ?? 0) + input : input;
+    if (value > 100000) {
+      setStepsError('Значение не должно превышать 100 000');
+      return;
+    }
+    setStepsError(null);
     setLogLoading(true);
-    setStepsModal(false);
-    setStepsInput('');
+    closeStepsModal();
     try {
-      await logHabit(habitId, val);
+      await logHabit(habitId, value);
       load();
     } catch (e: any) {
       Alert.alert('Ошибка', e.message);
@@ -616,7 +637,7 @@ export default function HabitScreen() {
       <View style={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 16 }}>
         <Button
           label="Внести шаги"
-          onPress={() => setStepsModal(true)}
+          onPress={() => { setStepsView('menu'); setStepsInput(''); setStepsModal(true); }}
           loading={logLoading}
           icon={<FootprintIcon width={20} height={20} color={c.icon.onPrimary} />}
         />
@@ -653,36 +674,52 @@ export default function HabitScreen() {
         </View>
       </BottomSheet>
 
-      {/* Steps modal */}
-      <BottomSheet title="Внести шаги" visible={stepsModal} onClose={() => { setStepsModal(false); setStepsInput(''); }}>
-        <View style={{ gap: 16 }}>
-          {Platform.OS === 'android' && (
+      {/* Steps modal — 3 состояния: menu / edit / add */}
+      <BottomSheet
+        title={stepsView === 'edit' ? 'Изменить шаги' : stepsView === 'add' ? 'Добавить шаги' : 'Внести шаги'}
+        visible={stepsModal}
+        onClose={closeStepsModal}
+      >
+        {stepsView === 'menu' ? (
+          <View style={{ gap: 16 }}>
             <Button label="Подключить трекер" onPress={handleConnectTracker} loading={trackerLoading} />
-          )}
-          <View style={{ gap: 8 }}>
-            <TextInput
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <View style={{ flex: 1 }}>
+                <Button variant="secondary" label="Изменить шаги" onPress={() => { setStepsInput(''); setStepsError(null); setStepsView('edit'); }} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button variant="secondary" label="Добавить шаги" onPress={() => { setStepsInput(''); setStepsError(null); setStepsView('add'); }} />
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View style={{ gap: 16 }}>
+            <Input
+              label="Текущее значение"
+              value={(myTodayLog?.value ?? 0).toLocaleString('ru-RU')}
+              onChangeText={() => {}}
+              disabled
+            />
+            <Input
+              label={stepsView === 'edit' ? 'Новое значение' : 'Количество шагов'}
               value={stepsInput}
-              onChangeText={t => setStepsInput(t.replace(/[^0-9]/g, ''))}
-              placeholder="Количество шагов"
-              placeholderTextColor={c.text.placeholder}
+              onChangeText={t => { setStepsInput(t.replace(/[^0-9]/g, '')); if (stepsError) setStepsError(null); }}
               keyboardType="number-pad"
               maxLength={6}
-              style={{
-                height: 56,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: c.border.input,
-                backgroundColor: c.surface.input,
-                paddingHorizontal: 20,
-                fontSize: 16,
-                fontFamily: 'Manrope_600SemiBold',
-                color: c.text.primary,
-                letterSpacing: 0.2,
-              }}
+              error={stepsError ?? undefined}
             />
-            <Button label="Записать" onPress={handleLogManual} />
+            <Button
+              label={stepsView === 'edit' ? 'Подтвердить' : 'Добавить'}
+              icon={
+                stepsView === 'edit'
+                  ? <CheckIcon width={24} height={24} color={c.icon.onPrimary} />
+                  : <PlusIcon width={24} height={24} color={c.icon.onPrimary} />
+              }
+              onPress={handleStepsSubmit}
+              loading={logLoading}
+            />
           </View>
-        </View>
+        )}
       </BottomSheet>
     </SafeAreaView>
   );

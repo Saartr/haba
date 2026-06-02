@@ -38,7 +38,7 @@ export default function DropdownPopover({ visible, onClose, items, width = 320 }
   const wrapped = items.map((item) => ({ ...item, onPress: () => { onClose(); item.onPress(); } }));
 
   return (
-    <Modal visible={mounted} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible={mounted} transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
       <Animated.View style={{ flex: 1, backgroundColor: overlayColor, opacity: overlayAnim }}>
         <Pressable style={{ flex: 1 }} onPress={onClose} />
       </Animated.View>
