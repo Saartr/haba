@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Text from '@/components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TelegramIcon from '@/assets/icons/Telegram.svg';
+import VKIcon from '@/assets/icons/VK.svg';
 import TapaWelcome from '@/assets/images/tapa_welcome.svg';
 import Button from '@/components/Button';
 import { useColors, colors } from '@/lib/colors';
@@ -82,14 +83,15 @@ export default function WelcomeScreen() {
           label="Войти через Telegram"
           onPress={handleTelegramLogin}
           loading={processing}
+          variant="secondary"
           icon={<TelegramIcon />}
         />
         {Platform.OS === 'android' && (
           <Button
-            label="Войти через VK"
+            label="Войти через VK ID"
             onPress={handleVkLogin}
             loading={processing}
-            variant="secondary"
+            icon={<VKIcon />}
           />
         )}
       </View>

@@ -265,6 +265,21 @@ router.post('/:id/logs/sync', async (req, res) => {
   }
 });
 
+// DELETE /api/v1/habits/:id/members/me — выйти из цели (любой участник)
+router.delete('/:id/members/me', async (req, res) => {
+  const habitId = parseInt(req.params.id);
+  try {
+    const [habit] = await sql`SELECT creator_id FROM habits WHERE id = ${habitId}`;
+    if (!habit) return res.status(404).json({ message: 'Не найдено' });
+    if (habit.creator_id === req.userId) return res.status(400).json({ message: 'Создатель не может покинуть цель — передайте права или удалите цель' });
+    await sql`DELETE FROM habit_members WHERE habit_id = ${habitId} AND user_id = ${req.userId}`;
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('leave habit error:', e);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
 // DELETE /api/v1/habits/:id/members/:userId — исключить участника
 router.delete('/:id/members/:userId', async (req, res) => {
   const habitId = parseInt(req.params.id);

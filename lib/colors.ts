@@ -82,7 +82,7 @@ export const colors = {
 
 export type SemanticColors = {
   brand:    { primary: string; pressed: string };
-  surface:  { bg: string; default: string; input: string; disabled: string };
+  surface:  { bg: string; default: string; input: string; disabled: string; cardGrey: string };
   text:     { primary: string; secondary: string; label: string; placeholder: string; onPrimary: string; link: string };
   icon:     { onPrimary: string; placeholder: string; error: string; pressed: string };
   border:   { input: string; error: string };
@@ -91,7 +91,7 @@ export type SemanticColors = {
 
 const light: SemanticColors = {
   brand:    { primary: '#6047ff', pressed: '#381aff' },
-  surface:  { bg: '#fafafa', default: '#ffffff', input: '#ffffff', disabled: '#e0e0e0' },
+  surface:  { bg: '#fafafa', default: '#ffffff', input: '#ffffff', disabled: '#e0e0e0', cardGrey: colors.neutral[100] },
   text:     { primary: '#212121', secondary: '#757575', label: '#424242', placeholder: '#9e9e9e', onPrimary: '#ffffff', link: '#6047ff' },
   icon:     { onPrimary: '#ffffff', placeholder: '#9e9e9e', error: '#f44336', pressed: '#ffffff' },
   border:   { input: '#9e9e9e', error: '#f44336' },
@@ -100,7 +100,7 @@ const light: SemanticColors = {
 
 const dark: SemanticColors = {
   brand:    { primary: '#8370ff', pressed: '#6047ff' },
-  surface:  { bg: '#121212', default: '#121212', input: '#212121', disabled: '#323232' },
+  surface:  { bg: '#121212', default: '#121212', input: '#212121', disabled: '#323232', cardGrey: colors.neutral[700] },
   text:     { primary: '#ffffff', secondary: '#b5b5b5', label: '#c9c9c9', placeholder: '#757575', onPrimary: '#ffffff', link: '#8370ff' },
   icon:     { onPrimary: '#ffffff', placeholder: '#757575', error: '#f76e64', pressed: '#ffffff' },
   border:   { input: '#757575', error: '#f76e64' },

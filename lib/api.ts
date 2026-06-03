@@ -177,6 +177,10 @@ export async function syncHabitSteps(
   );
 }
 
+export async function leaveHabit(habitId: number): Promise<void> {
+  return request(`/habits/${habitId}/members/me`, { method: 'DELETE' }, true);
+}
+
 export async function excludeMember(habitId: number, userId: number): Promise<void> {
   return request(`/habits/${habitId}/members/${userId}`, { method: 'DELETE' }, true);
 }

@@ -96,14 +96,14 @@ export default function Select({ label, options, value, onChange, placeholder, d
                 gap: 12,
                 paddingVertical: 16,
                 paddingHorizontal: 24,
-                backgroundColor: item.value === value ? c.surface.disabled : 'transparent',
+                backgroundColor: item.value === value ? c.surface.cardGrey : 'transparent',
               }}
             >
               {item.value === value
-                ? <CheckIcon width={24} height={24} color={c.text.link} />
+                ? <CheckIcon width={24} height={24} color={c.text.secondary} />
                 : <View style={{ width: 24 }} />
               }
-              <Text weight="semibold" style={{ fontSize: 16, letterSpacing: 0.2, color: item.value === value ? c.text.link : c.text.primary }}>
+              <Text weight="semibold" style={{ fontSize: 16, letterSpacing: 0.2, color: c.text.secondary }}>
                 {item.label}
               </Text>
             </Pressable>

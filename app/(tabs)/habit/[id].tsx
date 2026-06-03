@@ -42,6 +42,7 @@ import {
   getHabit,
   logHabit,
   syncHabitSteps,
+  leaveHabit,
   excludeMember,
   closeHabit,
   getStepHabits,
@@ -354,7 +355,7 @@ export default function HabitScreen() {
       destructive: true,
     });
     if (!ok) return;
-    try { await excludeMember(habitId, me!.id); router.back(); showSnackbar('Вы вышли из цели', 'success'); } catch (e: any) { Alert.alert('Ошибка', e.message); }
+    try { await leaveHabit(habitId); router.back(); showSnackbar('Вы вышли из цели', 'success'); } catch (e: any) { Alert.alert('Ошибка', e.message); }
   }
 
   async function handleExclude(memberId: number) {
