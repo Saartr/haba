@@ -198,7 +198,7 @@ export default function HabitsScreen() {
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 32, paddingHorizontal: 24 }}>
           <Image source={MascotSvg} style={{ width: 171, height: 224 }} resizeMode="contain" />
           <Text weight="semibold" style={{ fontSize: 16, color: c.text.secondary, textAlign: 'center', letterSpacing: 0.2 }}>
-            Нет активных привычек
+            Нет активных целей
           </Text>
         </View>
       ) : (
@@ -217,7 +217,7 @@ export default function HabitsScreen() {
         <Fab
           items={[
             {
-              label: 'Создать привычку',
+              label: 'Создать цель',
               icon: <UserIcon width={24} height={24} color={c.text.secondary} />,
               onPress: () => router.push('/(tabs)/create-habit'),
             },

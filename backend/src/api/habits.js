@@ -177,7 +177,7 @@ router.post('/join', async (req, res) => {
     const [habit] = await sql`
       SELECT * FROM habits WHERE invite_code = ${invite_code} AND closed_at IS NULL
     `;
-    if (!habit) return res.status(404).json({ message: 'Привычка не найдена' });
+    if (!habit) return res.status(404).json({ message: 'Цель не найдена' });
     await sql`
       INSERT INTO habit_members (habit_id, user_id) VALUES (${habit.id}, ${req.userId})
       ON CONFLICT DO NOTHING

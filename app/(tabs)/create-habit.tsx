@@ -68,7 +68,7 @@ export default function CreateHabitScreen() {
 
   async function handleCreate() {
     if (type === 'solo' && !category) {
-      Alert.alert('Ошибка', 'Выберите категорию привычки');
+      Alert.alert('Ошибка', 'Выберите категорию цели');
       return;
     }
 
@@ -90,7 +90,7 @@ export default function CreateHabitScreen() {
       });
 
       router.replace(`/(tabs)/habit/${habit.id}`);
-      showSnackbar('Привычка создана', 'success');
+      showSnackbar('Цель создана', 'success');
 
       // Перепланируем WorkManager если создана step-привычка и есть разрешение HC
       if (Platform.OS === 'android' && habit.category === 'steps') {
@@ -100,7 +100,7 @@ export default function CreateHabitScreen() {
         }).catch(() => {});
       }
     } catch (e: any) {
-      Alert.alert('Ошибка', e.message ?? 'Не удалось создать привычку');
+      Alert.alert('Ошибка', e.message ?? 'Не удалось создать цель');
     } finally {
       setLoading(false);
     }
@@ -111,7 +111,7 @@ export default function CreateHabitScreen() {
       <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
 
       <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>
-        <NavigationBar title="Новая привычка" onBack={() => router.back()} />
+        <NavigationBar title="Новая цель" onBack={() => router.back()} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 24, gap: 16 }} style={{ flex: 1 }}>

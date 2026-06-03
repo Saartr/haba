@@ -28,6 +28,9 @@ export default function BottomSheet({ visible, title, onClose, children }: Props
       Animated.timing(anim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
       Animated.timing(overlayAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
     } else {
+      // Сбрасываем высоту клавиатуры, иначе при следующем открытии stale-значение
+      // поднимет шторку в середину экрана (клавиатуры уже нет, а отступ остался).
+      setKbHeight(0);
       Animated.timing(anim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
       Animated.timing(overlayAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(
         () => setMounted(false),
