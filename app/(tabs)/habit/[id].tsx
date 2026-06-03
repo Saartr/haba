@@ -346,26 +346,26 @@ export default function HabitScreen() {
     setMenuVisible(false);
     const ok = await confirm({
       title: 'Закрыть группу?',
-      description: 'Это действие необратимо — вся информация о привычке будет стёрта.',
+      description: 'Это действие необратимо — вся информация о цели будет стёрта.',
       confirmLabel: 'Закрыть',
       confirmIcon: <DeleteForeverIcon width={24} height={24} color={c.icon.onPrimary} />,
       destructive: true,
     });
     if (!ok) return;
-    try { await closeHabit(habitId); router.back(); showSnackbar('Привычка удалена', 'success'); } catch (e: any) { Alert.alert('Ошибка', e.message); }
+    try { await closeHabit(habitId); router.back(); showSnackbar('Цель удалена', 'success'); } catch (e: any) { Alert.alert('Ошибка', e.message); }
   }
 
   async function handleLeave() {
     setMenuVisible(false);
     const ok = await confirm({
-      title: 'Выйти из привычки?',
-      description: 'Вы перестанете участвовать в этой групповой привычке.',
+      title: 'Выйти из цели?',
+      description: 'Вы перестанете участвовать в этой групповой цели.',
       confirmLabel: 'Выйти',
       confirmIcon: <LogoutIcon width={24} height={24} color={c.icon.onPrimary} />,
       destructive: true,
     });
     if (!ok) return;
-    try { await excludeMember(habitId, me!.id); router.back(); showSnackbar('Вы вышли из привычки', 'success'); } catch (e: any) { Alert.alert('Ошибка', e.message); }
+    try { await excludeMember(habitId, me!.id); router.back(); showSnackbar('Вы вышли из цели', 'success'); } catch (e: any) { Alert.alert('Ошибка', e.message); }
   }
 
   async function handleExclude(memberId: number) {
@@ -503,14 +503,14 @@ export default function HabitScreen() {
 
   async function handleDeleteSolo() {
     const ok = await confirm({
-      title: 'Удалить привычку?',
-      description: 'Это действие необратимо — вся информация о привычке будет стёрта.',
+      title: 'Удалить цель?',
+      description: 'Это действие необратимо — вся информация о цели будет стёрта.',
       confirmLabel: 'Удалить',
       confirmIcon: <DeleteForeverIcon width={24} height={24} color={c.icon.onPrimary} />,
       destructive: true,
     });
     if (!ok) return;
-    try { await closeHabit(habitId); router.back(); showSnackbar('Привычка удалена', 'success'); } catch (e: any) { Alert.alert('Ошибка', e.message); }
+    try { await closeHabit(habitId); router.back(); showSnackbar('Цель удалена', 'success'); } catch (e: any) { Alert.alert('Ошибка', e.message); }
   }
 
   if (habit.type === 'solo') {
@@ -560,7 +560,7 @@ export default function HabitScreen() {
             onPress: () => {},
           }] : []),
           ...(!habit.is_creator && habit.members.length > 1 ? [{
-            label: 'Выйти из привычки',
+            label: 'Выйти из цели',
             icon: <LogoutIcon width={24} height={24} color={c.text.secondary} />,
             onPress: handleLeave,
           }] : []),
@@ -649,7 +649,7 @@ export default function HabitScreen() {
       <BottomSheet title="Пригласить в группу" visible={inviteModal} onClose={() => { setInviteModal(false); setCopied(false); }}>
         <View style={{ gap: 16 }}>
           <Text weight="bold" style={{ fontSize: 16, lineHeight: 16 * 1.6, color: c.text.secondary, letterSpacing: 0.2 }}>
-            Любой человек может вступить в групповую привычку по этой ссылке
+            Любой человек может вступить в групповую цель по этой ссылке
           </Text>
           <Text
             weight="bold"

@@ -88,7 +88,7 @@ app.get('/join/:code', (req, res) => {
   </style>
 </head>
 <body>
-  <p>Вас пригласили в групповую привычку</p>
+  <p>Вас пригласили в групповую цель</p>
   <a class="btn" id="btn" href="${deeplink}">Открыть Тапа</a>
   <p id="fallback" style="display:none">Если приложение не открылось — установите Тапа и откройте ссылку снова.</p>
   <script>

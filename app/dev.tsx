@@ -346,7 +346,7 @@ export default function DevScreen() {
           <DropdownMenu
             items={[
               { label: 'Передать права', icon: <UserIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
-              { label: 'Выйти из привычки', icon: <LogoutIcon width={24} height={24} color={colors.red[500]} />, onPress: () => {}, destructive: true },
+              { label: 'Выйти из цели', icon: <LogoutIcon width={24} height={24} color={colors.red[500]} />, onPress: () => {}, destructive: true },
             ]}
           />
         </Section>
