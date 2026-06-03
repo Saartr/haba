@@ -25,6 +25,7 @@ import Text from '@/components/Text';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
 import { useConfirm } from '@/components/ConfirmModal';
+import { useSnackbar } from '@/lib/snackbar-context';
 import BottomSheet from '@/components/BottomSheet';
 import MoreVerticalIcon from '@/assets/icons/MoreVertical.svg';
 import ShareIcon from '@/assets/icons/Share.svg';
@@ -280,6 +281,7 @@ export default function HabitScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const confirm = useConfirm();
+  const showSnackbar = useSnackbar();
   const { colorScheme: scheme } = useSettings();
   const { id } = useLocalSearchParams<{ id: string }>();
   const habitId = parseInt(id);
@@ -350,7 +352,7 @@ export default function HabitScreen() {
       destructive: true,
     });
     if (!ok) return;
-    try { await closeHabit(habitId); router.back(); } catch (e: any) { Alert.alert('Ошибка', e.message); }
+    try { await closeHabit(habitId); router.back(); showSnackbar('Привычка удалена', 'success'); } catch (e: any) { Alert.alert('Ошибка', e.message); }
   }
 
   async function handleLeave() {
@@ -363,7 +365,7 @@ export default function HabitScreen() {
       destructive: true,
     });
     if (!ok) return;
-    try { await excludeMember(habitId, me!.id); router.back(); } catch (e: any) { Alert.alert('Ошибка', e.message); }
+    try { await excludeMember(habitId, me!.id); router.back(); showSnackbar('Вы вышли из привычки', 'success'); } catch (e: any) { Alert.alert('Ошибка', e.message); }
   }
 
   async function handleExclude(memberId: number) {
@@ -508,7 +510,7 @@ export default function HabitScreen() {
       destructive: true,
     });
     if (!ok) return;
-    try { await closeHabit(habitId); router.back(); } catch (e: any) { Alert.alert('Ошибка', e.message); }
+    try { await closeHabit(habitId); router.back(); showSnackbar('Привычка удалена', 'success'); } catch (e: any) { Alert.alert('Ошибка', e.message); }
   }
 
   if (habit.type === 'solo') {

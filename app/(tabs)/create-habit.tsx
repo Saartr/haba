@@ -9,6 +9,7 @@ import CheckIcon from '@/assets/icons/Check.svg';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import { createHabit } from '@/lib/api';
+import { useSnackbar } from '@/lib/snackbar-context';
 import { useState } from 'react';
 
 const TYPE_OPTIONS = [
@@ -47,6 +48,7 @@ export default function CreateHabitScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colorScheme } = useSettings();
+  const showSnackbar = useSnackbar();
 
   const [type, setType] = useState<'solo' | 'group'>('solo');
   const [category, setCategory] = useState('smoking');
@@ -83,6 +85,7 @@ export default function CreateHabitScreen() {
       });
 
       router.replace(`/(tabs)/habit/${habit.id}`);
+      showSnackbar('Привычка создана', 'success');
     } catch (e: any) {
       Alert.alert('Ошибка', e.message ?? 'Не удалось создать привычку');
     } finally {

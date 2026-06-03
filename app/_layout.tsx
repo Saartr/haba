@@ -9,6 +9,7 @@ import { useFonts, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } fro
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { SettingsProvider } from '@/lib/settings-context';
 import { ConfirmProvider } from '@/components/ConfirmModal';
+import { SnackbarProvider } from '@/lib/snackbar-context';
 import { joinHabit } from '@/lib/api';
 import { savePendingInvite, getPendingInvite, clearPendingInvite } from '@/lib/auth';
 
@@ -136,7 +137,9 @@ export default function RootLayout() {
     <SettingsProvider>
       <AuthProvider>
         <ConfirmProvider>
-          <RootLayoutNav />
+          <SnackbarProvider>
+            <RootLayoutNav />
+          </SnackbarProvider>
         </ConfirmProvider>
       </AuthProvider>
     </SettingsProvider>

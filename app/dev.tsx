@@ -13,6 +13,7 @@ import Card from '@/components/Card';
 import HabitTag from '@/components/HabitTag';
 import DropdownMenu from '@/components/DropdownMenu';
 import Fab from '@/components/Fab';
+import Snackbar from '@/components/Snackbar';
 import LogoutIcon from '@/assets/icons/Logout.svg';
 import ShareIcon from '@/assets/icons/Share.svg';
 import GroupPlusIcon from '@/assets/icons/GroupPlus.svg';
@@ -26,6 +27,8 @@ import TelegramIcon from '@/assets/icons/Telegram.svg';
 import UserIcon from '@/assets/icons/User.svg';
 import SettingsIcon from '@/assets/icons/Settings.svg';
 import InfoCircleIcon from '@/assets/icons/InfoCircle.svg';
+import CheckCircleIcon from '@/assets/icons/CheckCircle.svg';
+import DoNotDisturbIcon from '@/assets/icons/DoNotDisturb.svg';
 
 if (!__DEV__) {
   // В проде роут недоступен
@@ -379,6 +382,31 @@ export default function DevScreen() {
               </Text>
             </Card>
           </View>
+        </Section>
+
+        {/* SNACKBAR */}
+        <Section title="Snackbar">
+          <Label text="Success с иконкой" />
+          <Snackbar
+            type="success"
+            text="Single-line snackbar"
+            icon={<CheckCircleIcon width={24} height={24} color={colors.neutral[0]} />}
+            onClose={() => {}}
+          />
+
+          <Label text="Success без иконки" />
+          <Snackbar type="success" text="Single-line snackbar" onClose={() => {}} />
+
+          <Label text="Error с иконкой" />
+          <Snackbar
+            type="error"
+            text="Single-line snackbar"
+            icon={<DoNotDisturbIcon width={24} height={24} color={colors.neutral[0]} />}
+            onClose={() => {}}
+          />
+
+          <Label text="Error без иконки" />
+          <Snackbar type="error" text="Single-line snackbar" onClose={() => {}} />
         </Section>
 
       </ScrollView>
