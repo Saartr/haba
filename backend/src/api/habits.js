@@ -25,40 +25,48 @@ function toDateStr(d) {
 }
 
 function calcStreaks(rows) {
-  // rows: [{date}] sorted DESC
-  let current = 0, max = 0, streak = 0;
-  let prev = null;
-  for (const row of rows) {
-    const d = new Date(row.date);
-    d.setUTCHours(0, 0, 0, 0);
-    if (prev === null) {
-      const today = new Date();
-      today.setUTCHours(0, 0, 0, 0);
-      const diff = Math.round((today - d) / 86400000);
-      if (diff > 1) break;
-      streak = 1;
-    } else {
-      const diff = Math.round((prev - d) / 86400000);
-      if (diff === 1) streak++;
-      else break;
-    }
-    prev = d;
-    current = streak;
-  }
-  // max streak — forward pass
-  let cur = 0;
+  // rows: [{date}] отфильтрованы по value >= goal_value, sorted DESC (новые → старые)
+  if (rows.length === 0) return { current: 0, max: 0 };
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  // max: проход вперёд по всей истории — самая длинная непрерывная серия
+  let max = 0, cur = 0;
   let prevD = null;
   for (const row of [...rows].reverse()) {
     const d = new Date(row.date);
     d.setUTCHours(0, 0, 0, 0);
-    if (prevD === null) { cur = 1; }
-    else {
+    if (prevD === null) {
+      cur = 1;
+    } else {
       const diff = Math.round((d - prevD) / 86400000);
       cur = diff === 1 ? cur + 1 : 1;
     }
     if (cur > max) max = cur;
     prevD = d;
   }
+
+  // current: считаем от самой последней записи назад пока дни идут подряд.
+  // Если последняя запись была позавчера или раньше — стрик = 0
+  // (сегодня не выполнено и вчера не выполнено — серия прервана).
+  // Если вчера или сегодня — считаем подряд идущие дни.
+  const lastDate = new Date(rows[0].date);
+  lastDate.setUTCHours(0, 0, 0, 0);
+  const diffFromToday = Math.round((today - lastDate) / 86400000);
+  if (diffFromToday > 1) return { current: 0, max };
+
+  let current = 1;
+  for (let i = 1; i < rows.length; i++) {
+    const prev = new Date(rows[i - 1].date);
+    const curr = new Date(rows[i].date);
+    prev.setUTCHours(0, 0, 0, 0);
+    curr.setUTCHours(0, 0, 0, 0);
+    const diff = Math.round((prev - curr) / 86400000);
+    if (diff === 1) current++;
+    else break;
+  }
+
   return { current, max };
 }
 
