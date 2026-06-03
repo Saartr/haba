@@ -25,11 +25,14 @@ $env:REACT_NATIVE_PACKAGER_HOSTNAME="192.168.1.143"; npx expo start
 npx expo prebuild --platform android --clean
 # android/ в .gitignore — генерируется локально. Текущая версия Gradle wrapper: 9.0.0
 # (distributionUrl в android/gradle/wrapper/gradle-wrapper.properties)
+# Обновление wrapper: ./gradlew wrapper --gradle-version 9.0.0 --distribution-type bin
+# Если daemon падает с native OOM при первой сборке на новой версии Gradle — освободить RAM
+# (закрыть эмулятор/Metro/Chrome), при необходимости rm -rf ~/.gradle/caches/<version> и повторить.
 
 # Сборка и установка:
 cd C:\haba\android
 $env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
-$env:ANDROID_HOME="C:\Users\Saartr\AppData\Local\Android\Sdk"
+$env:ANDROID_HOME="C:\Users\miron\AppData\Local\Android\Sdk"
 .\gradlew assembleDebug
 adb install app\build\outputs\apk\debug\app-debug.apk
 ```

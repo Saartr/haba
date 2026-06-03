@@ -7,13 +7,18 @@ import Text from '@/components/Text';
 import Card from '@/components/Card';
 import HabitTag from '@/components/HabitTag';
 import Fab from '@/components/Fab';
+import BottomSheet from '@/components/BottomSheet';
+import Input from '@/components/Input';
+import Button from '@/components/Button';
 import MascotSvg from '@/assets/images/tapa_quest.png';
 import UserIcon from '@/assets/icons/User.svg';
 import GroupPlusIcon from '@/assets/icons/GroupPlus.svg';
+import CheckIcon from '@/assets/icons/Check.svg';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import { useAuth } from '@/lib/auth-context';
-import { getHabits, getHabit, Habit } from '@/lib/api';
+import { useSnackbar } from '@/lib/snackbar-context';
+import { getHabits, getHabit, joinHabit, Habit } from '@/lib/api';
 
 function Avatar({ firstName, avatarUrl }: { firstName: string | null; avatarUrl: string | null }) {
   const initial = firstName ? firstName[0].toUpperCase() : '?';
@@ -35,6 +40,13 @@ function Avatar({ firstName, avatarUrl }: { firstName: string | null; avatarUrl:
 }
 
 type HabitExtra = { streak: number; today_value: number };
+
+// Пользователь может вставить полную ссылку (https://.../join/<code>, haba://join/<code>)
+// или просто код — берём последний сегмент пути без query/hash.
+function extractInviteCode(input: string): string {
+  const noQuery = input.trim().split(/[?#]/)[0].replace(/\/+$/, '');
+  return noQuery.split('/').pop() ?? '';
+}
 
 function pluralDays(n: number): string {
   const last = n % 10;
@@ -80,10 +92,34 @@ export default function HabitsScreen() {
   const { user } = useAuth();
   const { colorScheme: scheme } = useSettings();
   const insets = useSafeAreaInsets();
+  const showSnackbar = useSnackbar();
 
   const [habits, setHabits] = useState<Habit[]>([]);
   const [extras, setExtras] = useState<Record<number, HabitExtra>>({});
   const [loading, setLoading] = useState(true);
+
+  const [joinModal, setJoinModal] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+  const [joinLoading, setJoinLoading] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+
+  async function handleJoin() {
+    const code = extractInviteCode(joinCode);
+    if (!code) { setJoinError('Введите код или ссылку'); return; }
+    setJoinLoading(true);
+    setJoinError(null);
+    try {
+      const habit = await joinHabit(code);
+      setJoinModal(false);
+      setJoinCode('');
+      router.push(`/(tabs)/habit/${habit.id}`);
+      showSnackbar('Вы вступили в группу', 'success');
+    } catch (e: any) {
+      setJoinError(e.message ?? 'Не удалось вступить');
+    } finally {
+      setJoinLoading(false);
+    }
+  }
 
   const rawName = user?.first_name ?? user?.username ?? null;
   const displayName = rawName && rawName.length > 12 ? rawName.slice(0, 12) + '…' : rawName;
@@ -188,11 +224,36 @@ export default function HabitsScreen() {
             {
               label: 'Вступить в группу',
               icon: <GroupPlusIcon width={24} height={24} color={c.text.secondary} />,
-              onPress: () => {},
+              onPress: () => { setJoinError(null); setJoinModal(true); },
             },
           ]}
         />
       </View>
+
+      {/* Вступление в группу по коду/ссылке */}
+      <BottomSheet
+        visible={joinModal}
+        title="Вступить в группу"
+        onClose={() => { setJoinModal(false); setJoinCode(''); setJoinError(null); }}
+      >
+        <View style={{ gap: 16 }}>
+          <Input
+            label="Код-ссылка"
+            value={joinCode}
+            onChangeText={(t) => { setJoinCode(t); if (joinError) setJoinError(null); }}
+            placeholder="Вставьте ссылку или код"
+            error={joinError ?? undefined}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Button
+            label="Подтвердить"
+            onPress={handleJoin}
+            loading={joinLoading}
+            icon={<CheckIcon width={24} height={24} color={c.icon.onPrimary} />}
+          />
+        </View>
+      </BottomSheet>
     </SafeAreaView>
   );
 }

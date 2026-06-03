@@ -10,12 +10,21 @@ import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.Promise
 
 class VkIdModule : Module() {
+  companion object {
+    // VKID.init() допустимо вызывать только раз за процесс. Нативное состояние
+    // переживает JS-reload, поэтому статический флаг не даёт повторной инициализации.
+    private var initialized = false
+  }
+
   override fun definition() = ModuleDefinition {
     Name("VkIdModule")
 
     OnCreate {
-      val app = appContext.reactContext?.applicationContext ?: return@OnCreate
-      VKID.init(app)
+      if (!initialized) {
+        val app = appContext.reactContext?.applicationContext ?: return@OnCreate
+        VKID.init(app)
+        initialized = true
+      }
     }
 
     AsyncFunction("signIn") { promise: Promise ->
