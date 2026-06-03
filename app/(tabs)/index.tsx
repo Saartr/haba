@@ -250,7 +250,7 @@ export default function HabitsScreen() {
             label="Подтвердить"
             onPress={handleJoin}
             loading={joinLoading}
-            icon={<CheckIcon width={24} height={24} color={c.icon.onPrimary} />}
+            icon={<CheckIcon />}
           />
         </View>
       </BottomSheet>

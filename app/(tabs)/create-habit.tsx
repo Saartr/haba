@@ -96,7 +96,7 @@ export default function CreateHabitScreen() {
       if (Platform.OS === 'android' && habit.category === 'steps') {
         hasStepsPermission().then(granted => {
           if (!granted) return;
-          getStepHabits().then(({ ids, startDate }) => scheduleSync(BASE_URL, ids, startDate));
+          getStepHabits().then(({ ids, startDates }) => scheduleSync(BASE_URL, ids, startDates));
         }).catch(() => {});
       }
     } catch (e: any) {
@@ -191,7 +191,7 @@ export default function CreateHabitScreen() {
           label="Создать"
           onPress={handleCreate}
           loading={loading}
-          icon={<CheckIcon width={20} height={20} color={c.icon.onPrimary} />}
+          icon={<CheckIcon />}
         />
       </View>
     </SafeAreaView>

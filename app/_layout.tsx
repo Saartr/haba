@@ -119,8 +119,8 @@ function RootLayoutNav() {
       try {
         const granted = await hasStepsPermission();
         if (!granted) return;
-        const { ids, startDate } = await getStepHabits();
-        scheduleSync(BASE_URL, ids, startDate);
+        const { ids, startDates } = await getStepHabits();
+        scheduleSync(BASE_URL, ids, startDates);
       } catch (e) {
         console.warn('[health-sync] schedule error:', e);
       }

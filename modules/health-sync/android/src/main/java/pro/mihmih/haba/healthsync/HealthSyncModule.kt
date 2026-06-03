@@ -9,8 +9,8 @@ import java.util.concurrent.TimeUnit
 private const val PREFS_NAME = "health_sync_prefs"
 private const val PREFS_KEY_REFRESH_TOKEN = "refresh_token"
 private const val PREFS_KEY_BASE_URL = "base_url"
-private const val PREFS_KEY_HABIT_IDS = "habit_ids"
-private const val PREFS_KEY_START_DATE = "start_date"
+// Формат: "habitId:startDate,habitId:startDate" — startDate = дата создания каждой привычки
+private const val PREFS_KEY_HABITS = "habits"
 private const val WORK_TAG = "health_sync"
 private const val WORK_NAME = "health_sync_periodic"
 
@@ -19,27 +19,23 @@ class HealthSyncModule : Module() {
     Name("HealthSync")
 
     // Сохраняет refreshToken в незашифрованный SharedPreferences для Worker.
-    // Вызывается из lib/auth.ts при каждом saveTokens().
     Function("saveWorkerToken") { refreshToken: String ->
       val prefs = appContext.reactContext!!.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
       prefs.edit().putString(PREFS_KEY_REFRESH_TOKEN, refreshToken).apply()
     }
 
     // Регистрирует периодическую задачу WorkManager.
-    // Интервал 1 час, требует сеть, KEEP если уже запланирована.
-    // habitIds — только для привычек с category=steps.
-    // startDate — самая ранняя дата среди всех step-привычек ('2026-05-01'),
-    // Worker синкает с этой даты (но не более 90 дней назад).
-    Function("scheduleSync") { baseUrl: String, habitIds: List<Int>, startDate: String ->
+    // habits: список пар [habitId, startDate] — startDate = created_at каждой привычки.
+    // Worker синкает каждую привычку с её собственной даты создания.
+    Function("scheduleSync") { baseUrl: String, habitIds: List<Int>, startDates: List<String> ->
       if (habitIds.isEmpty()) return@Function
 
       val ctx = appContext.reactContext!!
 
-      // Сохраняем параметры для Worker
+      val habitsStr = habitIds.zip(startDates).joinToString(",") { (id, date) -> "$id:$date" }
       ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
         .putString(PREFS_KEY_BASE_URL, baseUrl)
-        .putString(PREFS_KEY_HABIT_IDS, habitIds.joinToString(","))
-        .putString(PREFS_KEY_START_DATE, startDate)
+        .putString(PREFS_KEY_HABITS, habitsStr)
         .apply()
 
       val constraints = Constraints.Builder()
@@ -59,8 +55,6 @@ class HealthSyncModule : Module() {
       )
     }
 
-    // Отменяет фоновую задачу.
-    // Вызывается при логауте или если нет step-привычек.
     Function("cancelSync") {
       val ctx = appContext.reactContext!!
       WorkManager.getInstance(ctx).cancelUniqueWork(WORK_NAME)

@@ -18,8 +18,7 @@ import java.time.ZoneId
 private const val PREFS_NAME = "health_sync_prefs"
 private const val PREFS_KEY_REFRESH_TOKEN = "refresh_token"
 private const val PREFS_KEY_BASE_URL = "base_url"
-private const val PREFS_KEY_HABIT_IDS = "habit_ids"
-private const val PREFS_KEY_START_DATE = "start_date"
+private const val PREFS_KEY_HABITS = "habits"
 
 class HealthSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
 
@@ -28,14 +27,23 @@ class HealthSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker
 
     val refreshToken = prefs.getString(PREFS_KEY_REFRESH_TOKEN, null) ?: return Result.success()
     val baseUrl = prefs.getString(PREFS_KEY_BASE_URL, null) ?: return Result.success()
-    val habitIdsRaw = prefs.getString(PREFS_KEY_HABIT_IDS, null) ?: return Result.success()
-    val habitIds = habitIdsRaw.split(",").mapNotNull { it.trim().toIntOrNull() }
-    if (habitIds.isEmpty()) return Result.success()
+    val habitsRaw = prefs.getString(PREFS_KEY_HABITS, null) ?: return Result.success()
 
-    // 1. Получаем свежий accessToken через refreshToken
+    // Парсим "habitId:startDate,habitId:startDate"
+    val habits = habitsRaw.split(",").mapNotNull { entry ->
+      val parts = entry.trim().split(":")
+      if (parts.size == 2) {
+        val id = parts[0].toIntOrNull() ?: return@mapNotNull null
+        val date = parts[1]
+        Pair(id, date)
+      } else null
+    }
+    if (habits.isEmpty()) return Result.success()
+
+    // 1. Получаем свежий accessToken
     val accessToken = refreshAccessToken(baseUrl, refreshToken) ?: return Result.success()
 
-    // 2. Проверяем доступность Health Connect и разрешение READ_STEPS
+    // 2. Проверяем Health Connect и разрешение
     val client = try {
       HealthConnectClient.getOrCreate(applicationContext)
     } catch (e: Exception) {
@@ -43,51 +51,49 @@ class HealthSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker
     }
 
     val granted = client.permissionController.getGrantedPermissions()
-    val hasSteps = granted.contains(HealthPermission.getReadPermission(StepsRecord::class))
-    if (!hasSteps) return Result.success()
-
-    // 3. Читаем шаги с даты создания самой ранней привычки (но не более 90 дней)
-    val today = LocalDate.now(ZoneId.systemDefault())
-    val stepsByDate = mutableMapOf<String, Long>()
-
-    try {
-      val startDateRaw = prefs.getString(PREFS_KEY_START_DATE, null)
-      val habitStart = if (startDateRaw != null) {
-        try { LocalDate.parse(startDateRaw) } catch (e: Exception) { today.minusDays(6) }
-      } else { today.minusDays(6) }
-      // Не синкаем более 90 дней назад
-      val startDate = if (today.minusDays(90).isAfter(habitStart)) today.minusDays(90) else habitStart
-      val startInstant = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant()
-      val endInstant = today.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
-
-      val response = client.aggregateGroupByPeriod(
-        AggregateGroupByPeriodRequest(
-          metrics = setOf(StepsRecord.COUNT_TOTAL),
-          timeRangeFilter = TimeRangeFilter.between(startInstant, endInstant),
-          timeRangeSlicer = Period.ofDays(1),
-        )
-      )
-
-      for (bucket in response) {
-        val count = bucket.result[StepsRecord.COUNT_TOTAL] ?: continue
-        if (count <= 0) continue
-        val dateStr = bucket.startTime.atZone(ZoneId.systemDefault()).toLocalDate().toString()
-        stepsByDate[dateStr] = count
-      }
-    } catch (e: Exception) {
+    if (!granted.contains(HealthPermission.getReadPermission(StepsRecord::class))) {
       return Result.success()
     }
 
-    if (stepsByDate.isEmpty()) return Result.success()
+    val today = LocalDate.now(ZoneId.systemDefault())
 
-    // 4. Постим шаги на сервер для каждой привычки и каждого дня
-    for ((dateStr, steps) in stepsByDate) {
-      for (habitId in habitIds) {
-        try {
-          postSync(baseUrl, accessToken, habitId, steps.toInt(), dateStr)
+    // 3. Для каждой привычки — читаем шаги с её даты создания и синкаем
+    for ((habitId, startDateStr) in habits) {
+      try {
+        val habitStart = try {
+          LocalDate.parse(startDateStr)
         } catch (e: Exception) {
-          // Не ретраим весь Worker из-за одного неудачного дня
+          today
         }
+        // Не более 90 дней назад
+        val maxStart = today.minusDays(90)
+        val startDate = if (habitStart.isBefore(maxStart)) maxStart else habitStart
+
+        val startInstant = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant()
+        val endInstant = today.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
+
+        val response = client.aggregateGroupByPeriod(
+          AggregateGroupByPeriodRequest(
+            metrics = setOf(StepsRecord.COUNT_TOTAL),
+            timeRangeFilter = TimeRangeFilter.between(startInstant, endInstant),
+            timeRangeSlicer = Period.ofDays(1),
+          )
+        )
+
+        for (bucket in response) {
+          val count = bucket.result[StepsRecord.COUNT_TOTAL] ?: continue
+          if (count <= 0) continue
+          val dateStr = bucket.startTime.atZone(ZoneId.systemDefault()).toLocalDate().toString()
+          // Не синкаем дни раньше даты создания привычки
+          if (dateStr < startDateStr) continue
+          try {
+            postSync(baseUrl, accessToken, habitId, count.toInt(), dateStr)
+          } catch (e: Exception) {
+            // не ретраим весь Worker из-за одного дня
+          }
+        }
+      } catch (e: Exception) {
+        // продолжаем с следующей привычкой
       }
     }
 
@@ -103,14 +109,9 @@ class HealthSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker
       conn.doOutput = true
       conn.connectTimeout = 10_000
       conn.readTimeout = 10_000
-
-      val body = """{"refreshToken":"$refreshToken"}"""
-      conn.outputStream.use { it.write(body.toByteArray()) }
-
+      conn.outputStream.use { it.write("""{"refreshToken":"$refreshToken"}""".toByteArray()) }
       if (conn.responseCode != 200) return null
-
-      val response = conn.inputStream.bufferedReader().readText()
-      JSONObject(response).optString("accessToken", null)
+      JSONObject(conn.inputStream.bufferedReader().readText()).optString("accessToken", null)
     } catch (e: Exception) {
       null
     }
@@ -125,9 +126,7 @@ class HealthSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker
     conn.doOutput = true
     conn.connectTimeout = 10_000
     conn.readTimeout = 10_000
-
-    val body = """{"value":$value,"date":"$date","source":"health_connect"}"""
-    conn.outputStream.use { it.write(body.toByteArray()) }
+    conn.outputStream.use { it.write("""{"value":$value,"date":"$date","source":"health_connect"}""".toByteArray()) }
     conn.inputStream.close()
   }
 }

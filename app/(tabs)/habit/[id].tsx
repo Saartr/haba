@@ -158,30 +158,22 @@ function SoloHabitScreen({
 
       {/* Bottom buttons */}
       <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 24, paddingBottom: 16 }}>
-        <Pressable onPress={() => onLog(1)} disabled={logLoading} style={{ flex: 1, height: 56 }}>
-          {({ pressed }) => (
-            <View style={{
-              flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-              gap: 12, borderRadius: 12,
-              backgroundColor: pressed ? c.brand.pressed : c.brand.primary,
-            }}>
-              <CheckIcon width={16} height={16} color="#FFFFFF" />
-              <Text weight="bold" style={{ fontSize: 16, color: '#FFFFFF' }}>{successLabel}</Text>
-            </View>
-          )}
-        </Pressable>
-        <Pressable onPress={() => onLog(0)} disabled={logLoading} style={{ flex: 1, height: 56 }}>
-          {({ pressed }) => (
-            <View style={{
-              flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-              gap: 12, borderRadius: 12,
-              backgroundColor: pressed ? colors.red[600] : colors.red[500],
-            }}>
-              <CloseIcon width={14} height={14} color="#FFFFFF" />
-              <Text weight="bold" style={{ fontSize: 16, color: '#FFFFFF' }}>{failLabel}</Text>
-            </View>
-          )}
-        </Pressable>
+        <View style={{ flex: 1 }}>
+          <Button
+            label={successLabel}
+            icon={<CheckIcon />}
+            onPress={() => onLog(1)}
+            loading={logLoading}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button
+            label={failLabel}
+            icon={<CloseIcon />}
+            onPress={() => onLog(0)}
+            loading={logLoading}
+          />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -250,12 +242,18 @@ export default function HabitScreen() {
   const insets = useSafeAreaInsets();
   const confirm = useConfirm();
   const showSnackbar = useSnackbar();
-  const { colorScheme: scheme } = useSettings();
+  const { colorScheme: scheme, settings } = useSettings();
   const { id } = useLocalSearchParams<{ id: string }>();
   const habitId = parseInt(id);
 
   const [habit, setHabit] = useState<HabitDetail | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Сбрасываем стейт при смене habitId — чтобы не показывать данные предыдущей цели
+  useEffect(() => {
+    setHabit(null);
+    setLoading(true);
+  }, [habitId]);
   const [logLoading, setLogLoading] = useState(false);
   const [trackerLoading, setTrackerLoading] = useState(false);
   const [inviteModal, setInviteModal] = useState(false);
@@ -301,10 +299,12 @@ export default function HabitScreen() {
         const stepsByDay = await getStepsByDays(daysToSync);
         if (cancelled || Object.keys(stepsByDay).length === 0) return;
 
+        const createdDateStr = createdAt.toISOString().slice(0, 10);
         let synced = false;
         for (const [date, steps] of Object.entries(stepsByDay)) {
           if (cancelled) break;
-          // Синкаем любой день — сервер применит GREATEST, ручной ввод не перетрёт
+          // Не синкаем дни раньше даты создания привычки
+          if (date < createdDateStr) continue;
           await syncHabitSteps(habitId, steps, 'health_connect', date);
           synced = true;
         }
@@ -338,7 +338,7 @@ export default function HabitScreen() {
     try {
       await closeHabit(habitId);
       if (Platform.OS === 'android' && habit?.category === 'steps') {
-        getStepHabits().then(({ ids, startDate }) => ids.length > 0 ? scheduleSync(BASE_URL, ids, startDate) : cancelSync()).catch(() => {});
+        getStepHabits().then(({ ids, startDates }) => ids.length > 0 ? scheduleSync(BASE_URL, ids, startDates) : cancelSync()).catch(() => {});
       }
       router.back();
       showSnackbar('Цель удалена', 'success');
@@ -410,6 +410,24 @@ export default function HabitScreen() {
       load();
     } catch (e: any) {
       Alert.alert('Ошибка', e?.message ?? 'Не удалось подключить трекер');
+    } finally {
+      setTrackerLoading(false);
+    }
+  }
+
+  async function handleFetchFromHC() {
+    setTrackerLoading(true);
+    try {
+      const steps = await getTodaySteps();
+      if (steps === 0) {
+        Alert.alert('Нет данных', 'В Google Health нет шагов за сегодня.');
+        return;
+      }
+      await logHabit(habitId, steps);
+      setStepsModal(false);
+      load();
+    } catch (e: any) {
+      Alert.alert('Ошибка', e?.message ?? 'Не удалось получить данные');
     } finally {
       setTrackerLoading(false);
     }
@@ -503,7 +521,7 @@ export default function HabitScreen() {
     try {
       await closeHabit(habitId);
       if (Platform.OS === 'android' && habit?.category === 'steps') {
-        getStepHabits().then(({ ids, startDate }) => ids.length > 0 ? scheduleSync(BASE_URL, ids, startDate) : cancelSync()).catch(() => {});
+        getStepHabits().then(({ ids, startDates }) => ids.length > 0 ? scheduleSync(BASE_URL, ids, startDates) : cancelSync()).catch(() => {});
       }
       router.back();
       showSnackbar('Цель удалена', 'success');
@@ -643,7 +661,7 @@ export default function HabitScreen() {
           label="Внести шаги"
           onPress={() => { setStepsView('menu'); setStepsInput(''); setStepsModal(true); }}
           loading={logLoading}
-          icon={<FootprintIcon width={20} height={20} color={c.icon.onPrimary} />}
+          icon={<FootprintIcon />}
         />
       </View>
 
@@ -672,7 +690,7 @@ export default function HabitScreen() {
           />
           <Button
             label="Пригласить"
-            icon={<ShareIcon width={24} height={24} color={c.icon.onPrimary} />}
+            icon={<ShareIcon />}
             onPress={handleShareInvite}
           />
         </View>
@@ -686,7 +704,10 @@ export default function HabitScreen() {
       >
         {stepsView === 'menu' ? (
           <View style={{ gap: 16 }}>
-            <Button label="Подключить трекер" onPress={handleConnectTracker} loading={trackerLoading} />
+            {settings.googleFit === 'on'
+              ? <Button label="Взять данные из Google Health" onPress={handleFetchFromHC} loading={trackerLoading} />
+              : <Button label="Подключить трекер" onPress={handleConnectTracker} loading={trackerLoading} />
+            }
             <View style={{ flexDirection: 'row', gap: 16 }}>
               <View style={{ flex: 1 }}>
                 <Button variant="secondary" label="Изменить шаги" onPress={() => { setStepsInput(''); setStepsError(null); setStepsView('edit'); }} />

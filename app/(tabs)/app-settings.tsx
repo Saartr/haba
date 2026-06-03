@@ -68,8 +68,8 @@ export default function AppSettingsScreen() {
         const granted = await requestStepsPermission();
         updateSettings({ googleFit: granted ? 'on' : 'off' });
         if (granted) {
-          const { ids, startDate } = await getStepHabits();
-          scheduleSync(BASE_URL, ids, startDate);
+          const { ids, startDates } = await getStepHabits();
+          scheduleSync(BASE_URL, ids, startDates);
         }
       } else {
         openHealthConnectPermissions();

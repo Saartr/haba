@@ -19,8 +19,12 @@ import ShareIcon from '@/assets/icons/Share.svg';
 import GroupPlusIcon from '@/assets/icons/GroupPlus.svg';
 import MoreVerticalIcon from '@/assets/icons/MoreVertical.svg';
 import { useState } from 'react';
+import { Pressable } from 'react-native';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
+import { useRouter } from 'expo-router';
+import ArrowBackIcon from '@/assets/icons/ArrowBack.svg';
+import AutorenewIcon from '@/assets/icons/Autorenew.svg';
 import MailIcon from '@/assets/icons/Mail.svg';
 import PinIcon from '@/assets/icons/Pin.svg';
 import TelegramIcon from '@/assets/icons/Telegram.svg';
@@ -61,22 +65,37 @@ function Label({ text }: { text: string }) {
 
 export default function DevScreen() {
   const c = useColors();
-  const { colorScheme } = useSettings();
+  const { colorScheme, updateSettings } = useSettings();
   const [inputValue, setInputValue] = useState('');
   const [inputError, setInputError] = useState('');
   const [theme, setTheme] = useState('system');
   const [toggle2, setToggle2] = useState('on');
   const [selectValue, setSelectValue] = useState('');
 
+  const router = useRouter();
   const screenBg = colorScheme === 'dark' ? colors.neutral[950] : colors.neutral[100];
   const borderColor = colorScheme === 'dark' ? colors.neutral[800] : colors.neutral[200];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }}>
-      <View style={{ height: 56, paddingHorizontal: 24, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: borderColor }}>
-        <Text weight="bold" style={{ fontSize: 18, color: c.text.primary }}>
-          🧩 Component Gallery
+      <View style={{ height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: borderColor }}>
+        <Pressable onPress={() => router.back()} hitSlop={8}>
+          {({ pressed }) => (
+            <View style={{ padding: 4, opacity: pressed ? 0.6 : 1 }}>
+              <ArrowBackIcon width={24} height={24} color={c.text.primary} />
+            </View>
+          )}
+        </Pressable>
+        <Text weight="bold" style={{ flex: 1, textAlign: 'center', fontSize: 18, color: c.text.primary }}>
+          Component Gallery
         </Text>
+        <Pressable onPress={() => updateSettings({ theme: colorScheme === 'dark' ? 'light' : 'dark' })} hitSlop={8}>
+          {({ pressed }) => (
+            <View style={{ padding: 4, opacity: pressed ? 0.6 : 1 }}>
+              <AutorenewIcon width={24} height={24} color={c.text.primary} />
+            </View>
+          )}
+        </Pressable>
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24 }}>

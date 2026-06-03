@@ -1,4 +1,5 @@
 import { View, TextInput, TextInputProps } from 'react-native';
+import { cloneElement, isValidElement, ReactElement } from 'react';
 import Text from '@/components/Text';
 import { useState } from 'react';
 import { useColors } from '@/lib/colors';
@@ -52,7 +53,12 @@ export default function Input({
           backgroundColor: disabled ? c.surface.disabled : c.surface.input,
         }}
       >
-        {icon}
+        {isValidElement(icon)
+          ? cloneElement(icon as ReactElement<{ width?: number; height?: number; color?: string }>, {
+              width: 24, height: 24,
+              color: error ? c.border.error : disabled ? c.text.secondary : c.text.placeholder,
+            })
+          : icon}
         <TextInput
           className="flex-1 font-manrope-semibold text-body-16 tracking-default"
           placeholderTextColor={c.text.placeholder}

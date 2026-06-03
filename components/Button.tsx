@@ -14,6 +14,13 @@ type Props = {
   color?: string;
 };
 
+type IconProps = { width?: number; height?: number; color?: string };
+
+function sizedIcon(icon: React.ReactNode, color: string) {
+  if (!isValidElement(icon)) return icon;
+  return cloneElement(icon as ReactElement<IconProps>, { width: 24, height: 24, color });
+}
+
 export default function Button({
   label,
   onPress,
@@ -56,9 +63,7 @@ export default function Button({
                 <ActivityIndicator color={c.brand.primary} />
               ) : (
                 <>
-                  {isValidElement(icon)
-                    ? cloneElement(icon as ReactElement<{ color?: string }>, { color: accent })
-                    : icon}
+                  {sizedIcon(icon, accent)}
                   <Text weight="bold" className="text-body-16 tracking-default" style={{ color: accent }}>
                     {label}
                   </Text>
@@ -117,7 +122,7 @@ export default function Button({
             <ActivityIndicator color={disabled ? c.text.secondary : c.text.onPrimary} />
           ) : (
             <>
-              {icon}
+              {sizedIcon(icon, disabled ? c.text.secondary : c.text.onPrimary)}
               <Text
                 weight="bold"
                 className="text-body-16 tracking-default"

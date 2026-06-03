@@ -8,7 +8,7 @@ import { useSettings } from '@/lib/settings-context';
 import { colors } from '@/lib/colors';
 import { getHabitLogs, HabitLog } from '@/lib/api';
 
-export type DayStatus = 'check' | 'miss' | 'current' | 'future';
+export type DayStatus = 'check' | 'miss' | 'current' | 'future' | 'inactive';
 
 export type CalendarDay = {
   day: number;
@@ -18,22 +18,25 @@ export type CalendarDay = {
 type ColorConfig = { bg: string; color: string };
 
 const LIGHT: Record<DayStatus, ColorConfig> = {
-  check:   { bg: '#BBF7D0', color: colors.green[500] },
-  miss:    { bg: '#FBBFBB', color: colors.red[500] },
-  current: { bg: colors.neutral[100], color: colors.primary },
-  future:  { bg: colors.neutral[100], color: colors.neutral[500] },
+  check:    { bg: '#BBF7D0', color: colors.green[500] },
+  miss:     { bg: '#FBBFBB', color: colors.red[500] },
+  current:  { bg: colors.neutral[100], color: colors.primary },
+  future:   { bg: colors.neutral[100], color: colors.neutral[500] },
+  inactive: { bg: colors.neutral[100], color: colors.neutral[500] },
 };
 
 const DARK: Record<DayStatus, ColorConfig> = {
-  check:   { bg: colors.green[800], color: colors.green[500] },
-  miss:    { bg: colors.red[800], color: colors.red[400] },
-  current: { bg: colors.neutral[800], color: colors.purple[400] },
-  future:  { bg: colors.neutral[800], color: colors.neutral[500] },
+  check:    { bg: colors.green[800], color: colors.green[500] },
+  miss:     { bg: colors.red[800], color: colors.red[400] },
+  current:  { bg: colors.neutral[800], color: colors.purple[400] },
+  future:   { bg: colors.neutral[800], color: colors.neutral[500] },
+  inactive: { bg: colors.neutral[800], color: colors.neutral[500] },
 };
 
 function DayIcon({ status, color }: { status: DayStatus; color: string }) {
-  if (status === 'check') return <CheckCircleIcon width={28} height={28} color={color} />;
-  if (status === 'miss')  return <DoNotDisturbIcon width={28} height={28} color={color} />;
+  if (status === 'check')    return <CheckCircleIcon width={28} height={28} color={color} />;
+  if (status === 'miss')     return <DoNotDisturbIcon width={28} height={28} color={color} />;
+  if (status === 'inactive') return <View style={{ width: 28, height: 28 }} />;
   return <CircleOutlineIcon width={28} height={28} color={color} />;
 }
 
@@ -93,11 +96,9 @@ function buildDays(
     if (diff > 0) {
       status = 'future';
     } else if (beforeHabit) {
-      status = 'future'; // до создания привычки — серый
+      status = 'inactive';
     } else if (diff === 0) {
-      if (loggedValue === undefined)            status = 'current';
-      else if (loggedValue >= goalValue)        status = 'check';
-      else                                      status = 'miss';
+      status = loggedValue !== undefined && loggedValue >= goalValue ? 'check' : 'current';
     } else {
       status = loggedValue !== undefined && loggedValue >= goalValue ? 'check' : 'miss';
     }
@@ -110,6 +111,7 @@ function minWeekOffset(habitCreatedAt: Date): number {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
   const diffMs = today.getTime() - habitCreatedAt.getTime();
+  if (diffMs <= 0) return 0;
   const diffWeeks = Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000));
   return -diffWeeks;
 }
@@ -208,7 +210,7 @@ export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goa
   const pageWidth = screenWidth - 48;
 
   useEffect(() => {
-    // Стартуем на текущей неделе
+    if (currentIndex <= 0) return;
     listRef.current?.scrollToIndex({ index: currentIndex, animated: false });
   }, [currentIndex]);
 

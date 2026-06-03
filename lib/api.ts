@@ -136,21 +136,15 @@ export async function getHabits(): Promise<Habit[]> {
   return request('/habits', {}, true);
 }
 
-export async function getStepHabits(): Promise<{ ids: number[]; startDate: string }> {
+export async function getStepHabits(): Promise<{ ids: number[]; startDates: string[] }> {
   const habits = await getHabits();
   const stepHabits = habits.filter(h => h.category === 'steps');
   const ids = stepHabits.map(h => h.id);
-  // Самая ранняя дата создания среди всех step-привычек
-  const startDate = stepHabits.length > 0
-    ? stepHabits.reduce((earliest, h) =>
-        h.created_at < earliest ? h.created_at : earliest,
-        stepHabits[0].created_at
-      ).slice(0, 10)
-    : new Date().toISOString().slice(0, 10);
-  return { ids, startDate };
+  // Дата создания для каждой привычки отдельно
+  const startDates = stepHabits.map(h => h.created_at.slice(0, 10));
+  return { ids, startDates };
 }
 
-// Обратная совместимость для мест где нужны только id
 export async function getStepHabitIds(): Promise<number[]> {
   return (await getStepHabits()).ids;
 }

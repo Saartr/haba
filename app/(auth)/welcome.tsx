@@ -82,7 +82,7 @@ export default function WelcomeScreen() {
           label="Войти через Telegram"
           onPress={handleTelegramLogin}
           loading={processing}
-          icon={<TelegramIcon width={20} height={20} color={c.text.onPrimary} />}
+          icon={<TelegramIcon />}
         />
         {Platform.OS === 'android' && (
           <Button
