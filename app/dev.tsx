@@ -315,9 +315,9 @@ export default function DevScreen() {
           <Label text="С иконками (стиль профиля)" />
           <Lists
             items={[
-              { label: 'Настройки профиля', icon: <UserIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
-              { label: 'Настройки приложения', icon: <SettingsIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
-              { label: 'О приложении', icon: <InfoCircleIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+              { label: 'Настройки профиля', icon: () => <UserIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+              { label: 'Настройки приложения', icon: () => <SettingsIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+              { label: 'О приложении', icon: () => <InfoCircleIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
             ]}
             cardStyle={{ gap: 16 }}
           />
@@ -377,9 +377,9 @@ export default function DevScreen() {
           <View style={{ alignItems: 'flex-end' }}>
             <Fab
               items={[
-                { label: 'Создать цель', icon: <UserIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
-                { label: 'Создать групповую цель', icon: <GroupPlusIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
-                { label: 'Вступить в группу по коду', icon: <ShareIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+                { label: 'Создать цель', icon: () => <UserIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+                { label: 'Создать групповую цель', icon: () => <GroupPlusIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+                { label: 'Вступить в группу по коду', icon: () => <ShareIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
               ]}
             />
           </View>
@@ -390,16 +390,16 @@ export default function DevScreen() {
           <Label text="Обычные пункты" />
           <DropdownMenu
             items={[
-              { label: 'Передать права', icon: <UserIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
-              { label: 'Пригласить', icon: <ShareIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+              { label: 'Передать права', icon: () => <UserIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+              { label: 'Пригласить', icon: () => <ShareIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
             ]}
           />
 
           <Label text="С деструктивным пунктом" />
           <DropdownMenu
             items={[
-              { label: 'Передать права', icon: <UserIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
-              { label: 'Выйти из цели', icon: <LogoutIcon width={24} height={24} color={colors.red[500]} />, onPress: () => {}, destructive: true },
+              { label: 'Передать права', icon: () => <UserIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+              { label: 'Выйти из цели', icon: () => <LogoutIcon width={24} height={24} color={colors.red[500]} />, onPress: () => {}, destructive: true },
             ]}
           />
         </Section>

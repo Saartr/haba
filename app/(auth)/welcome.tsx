@@ -60,7 +60,7 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }}>
-      <TapaWelcome width={width} height={width} />
+      <TapaWelcome width={width} height={Math.round(width * 332 / 393)} />
 
       <View className="px-6 mt-4">
         <Text weight="bold" className="text-h2 mb-2" style={{ color: c.text.primary }}>

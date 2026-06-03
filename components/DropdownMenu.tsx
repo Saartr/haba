@@ -12,7 +12,7 @@ const SHADOW = {
 
 export type DropdownMenuItem = {
   label: string;
-  icon?: React.ReactNode;
+  icon?: () => React.ReactNode;
   onPress: () => void;
   destructive?: boolean;
 };
@@ -61,7 +61,7 @@ export default function DropdownMenu({ items, style }: Props) {
             </Text>
             {item.icon && (
               <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
-                {item.icon}
+                {item.icon()}
               </View>
             )}
           </View>

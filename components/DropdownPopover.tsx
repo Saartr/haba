@@ -53,7 +53,7 @@ export default function DropdownPopover({ visible, onClose, items, width = 320 }
           transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] }) }],
         }}
       >
-        <DropdownMenu items={wrapped} style={{ width, elevation: 0 }} />
+        {visible && <DropdownMenu items={wrapped} style={{ width, elevation: 0 }} />}
       </Animated.View>
     </Modal>
   );

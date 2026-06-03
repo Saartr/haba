@@ -10,9 +10,10 @@ import Fab from '@/components/Fab';
 import BottomSheet from '@/components/BottomSheet';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
-import MascotSvg from '@/assets/images/tapa_quest.png';
+import MascotSvg from '@/assets/images/chill.svg';
 import UserIcon from '@/assets/icons/User.svg';
 import GroupPlusIcon from '@/assets/icons/GroupPlus.svg';
+import PlusIcon from '@/assets/icons/Plus.svg';
 import CheckIcon from '@/assets/icons/Check.svg';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
@@ -195,10 +196,10 @@ export default function HabitsScreen() {
           <ActivityIndicator color={c.brand.primary} />
         </View>
       ) : habits.length === 0 ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 32, paddingHorizontal: 24 }}>
-          <Image source={MascotSvg} style={{ width: 171, height: 224 }} resizeMode="contain" />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+          <MascotSvg width={345} height={293} />
           <Text weight="semibold" style={{ fontSize: 16, color: c.text.secondary, textAlign: 'center', letterSpacing: 0.2 }}>
-            Нет активных целей
+            Нет активных привычек
           </Text>
         </View>
       ) : (
@@ -212,23 +213,45 @@ export default function HabitsScreen() {
         />
       )}
 
-      {/* FAB */}
-      <View style={{ position: 'absolute', right: 24, bottom: insets.bottom + 24 }}>
-        <Fab
-          items={[
-            {
-              label: 'Создать цель',
-              icon: <UserIcon width={24} height={24} color={c.text.secondary} />,
-              onPress: () => router.push('/(tabs)/create-habit'),
-            },
-            {
-              label: 'Вступить в группу',
-              icon: <GroupPlusIcon width={24} height={24} color={c.text.secondary} />,
-              onPress: () => { setJoinError(null); setJoinModal(true); },
-            },
-          ]}
-        />
-      </View>
+      {/* Кнопки снизу — только в empty state */}
+      {!loading && habits.length === 0 && (
+        <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 24, paddingBottom: 24 }}>
+          <View style={{ flex: 1 }}>
+            <Button
+              label="Добавить"
+              icon={<PlusIcon />}
+              onPress={() => router.push('/(tabs)/create-habit')}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button
+              label="Вступить"
+              icon={<GroupPlusIcon />}
+              onPress={() => { setJoinError(null); setJoinModal(true); }}
+            />
+          </View>
+        </View>
+      )}
+
+      {/* FAB — только когда есть цели */}
+      {!loading && habits.length > 0 && (
+        <View style={{ position: 'absolute', right: 24, bottom: insets.bottom + 24 }}>
+          <Fab
+            items={[
+              {
+                label: 'Создать цель',
+                icon: () => <UserIcon width={24} height={24} color={c.text.secondary} />,
+                onPress: () => router.push('/(tabs)/create-habit'),
+              },
+              {
+                label: 'Вступить в группу',
+                icon: () => <GroupPlusIcon width={24} height={24} color={c.text.secondary} />,
+                onPress: () => { setJoinError(null); setJoinModal(true); },
+              },
+            ]}
+          />
+        </View>
+      )}
 
       {/* Вступление в группу по коду/ссылке */}
       <BottomSheet

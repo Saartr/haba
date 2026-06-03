@@ -13,7 +13,7 @@ const SHADOW = {
 
 export type ListItemData = {
   label: string;
-  icon?: React.ReactNode;
+  icon?: () => React.ReactNode;
   onPress?: () => void;
 };
 
@@ -32,7 +32,7 @@ function Item({ label, icon, onPress }: ListItemData) {
           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
             {icon ? (
               <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
-                {icon}
+                {icon()}
               </View>
             ) : null}
             <Text weight="semibold" style={{ fontSize: 16, letterSpacing: 0.2, color: c.text.secondary }}>

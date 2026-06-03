@@ -101,22 +101,22 @@ export default function ProfileScreen() {
           items={[
             {
               label: 'Настройки профиля',
-              icon: <UserIcon width={24} height={24} color={c.text.secondary} />,
+              icon: () => <UserIcon width={24} height={24} color={c.text.secondary} />,
               onPress: () => router.push('/(tabs)/profile-settings'),
             },
             {
               label: 'Настройки приложения',
-              icon: <SettingsIcon width={24} height={24} color={c.text.secondary} />,
+              icon: () => <SettingsIcon width={24} height={24} color={c.text.secondary} />,
               onPress: () => router.push('/(tabs)/app-settings'),
             },
             {
               label: 'О приложении',
-              icon: <InfoCircleIcon width={24} height={24} color={c.text.secondary} />,
+              icon: () => <InfoCircleIcon width={24} height={24} color={c.text.secondary} />,
               onPress: () => router.push('/(tabs)/about-app'),
             },
             ...(__DEV__ ? [{
               label: 'Компоненты',
-              icon: <MoreVerticalIcon width={24} height={24} color={c.text.secondary} />,
+              icon: () => <MoreVerticalIcon width={24} height={24} color={c.text.secondary} />,
               onPress: () => router.push('/dev'),
             }] : []),
           ]}

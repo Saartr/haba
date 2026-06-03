@@ -113,25 +113,26 @@ function SoloHabitScreen({
         items={[
           {
             label: 'Редактировать',
-            icon: <EditIcon width={24} height={24} color={c.text.secondary} />,
+            icon: () => <EditIcon width={24} height={24} color={c.text.secondary} />,
             onPress: () => {},
           },
           {
             label: 'Удалить',
-            icon: <DeleteIcon width={24} height={24} color={colors.red[500]} />,
+            icon: () => <DeleteIcon width={24} height={24} color={colors.red[500]} />,
             onPress: onDelete,
             destructive: true,
           },
         ]}
       />
 
-      {/* Content — без flex:1, естественная высота */}
-      <Calendar
-        habitId={habit.id}
-        habitCreatedAt={habit.created_at}
-        currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
-        goalValue={habit.goal_value ?? 1}
-      />
+      <View style={{ marginTop: 24 }}>
+        <Calendar
+          habitId={habit.id}
+          habitCreatedAt={habit.created_at}
+          currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
+          goalValue={habit.goal_value ?? 1}
+        />
+      </View>
       <View style={{ padding: 24, gap: 16 }}>
 
         <View style={{ flexDirection: 'row', gap: 16 }}>
@@ -588,22 +589,22 @@ export default function HabitScreen() {
         items={[
           {
             label: 'Пригласить в группу',
-            icon: <ShareIcon width={24} height={24} color={c.text.secondary} />,
+            icon: () => <ShareIcon width={24} height={24} color={c.text.secondary} />,
             onPress: () => setInviteModal(true),
           },
           ...(habit.is_creator && habit.members.length > 1 ? [{
             label: 'Передать права',
-            icon: <SupervisorAccountIcon width={24} height={24} color={c.text.secondary} />,
+            icon: () => <SupervisorAccountIcon width={24} height={24} color={c.text.secondary} />,
             onPress: () => { setMenuVisible(false); setTransferModal(true); },
           }] : []),
           ...(!habit.is_creator && habit.members.length > 1 ? [{
             label: 'Выйти из цели',
-            icon: <LogoutIcon width={24} height={24} color={c.text.secondary} />,
+            icon: () => <LogoutIcon width={24} height={24} color={c.text.secondary} />,
             onPress: handleLeave,
           }] : []),
           ...(habit.is_creator ? [{
             label: 'Удалить',
-            icon: <DeleteForeverIcon width={24} height={24} color={colors.red[500]} />,
+            icon: () => <DeleteForeverIcon width={24} height={24} color={colors.red[500]} />,
             onPress: handleCloseGroup,
             destructive: true,
           }] : []),

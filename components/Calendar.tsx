@@ -98,7 +98,9 @@ function buildDays(
     } else if (beforeHabit) {
       status = 'inactive';
     } else if (diff === 0) {
-      status = loggedValue !== undefined && loggedValue >= goalValue ? 'check' : 'current';
+      if (loggedValue !== undefined && loggedValue >= goalValue) status = 'check';
+      else if (loggedValue !== undefined) status = 'miss';
+      else status = 'current';
     } else {
       status = loggedValue !== undefined && loggedValue >= goalValue ? 'check' : 'miss';
     }
