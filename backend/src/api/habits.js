@@ -242,9 +242,14 @@ router.post('/:id/logs/sync', async (req, res) => {
       INSERT INTO habit_logs (habit_id, user_id, date, value, source)
       VALUES (${habitId}, ${req.userId}, ${logDate}, ${value}, ${source})
       ON CONFLICT (habit_id, user_id, date) DO UPDATE
-        SET value = GREATEST(habit_logs.value, EXCLUDED.value),
-            source = CASE WHEN habit_logs.value >= EXCLUDED.value
-                          THEN habit_logs.source ELSE EXCLUDED.source END
+        SET value = CASE
+              WHEN habit_logs.source = 'manual' THEN habit_logs.value
+              ELSE GREATEST(habit_logs.value, EXCLUDED.value)
+            END,
+            source = CASE
+              WHEN habit_logs.source = 'manual' THEN 'manual'
+              ELSE EXCLUDED.source
+            END
       RETURNING *
     `;
     if (source === 'health_connect' || source === 'healthkit') {
