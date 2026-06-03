@@ -11,6 +11,8 @@ import BottomSheet from '@/components/BottomSheet';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
 import MascotSvg from '@/assets/images/chill.svg';
+import FunBg from '@/assets/images/fun_bg.svg';
+import AngryBg from '@/assets/images/angry_bg.svg';
 import UserIcon from '@/assets/icons/User.svg';
 import GroupPlusIcon from '@/assets/icons/GroupPlus.svg';
 import PlusIcon from '@/assets/icons/Plus.svg';
@@ -66,9 +68,15 @@ function HabitCard({ habit, extra, onPress }: { habit: Habit; extra: HabitExtra 
     ? pluralDays(extra?.streak ?? 0)
     : `${extra?.today_value ?? 0}/${habit.goal_value ?? 0}`;
 
+  // Цель за сегодня выполнена → радостная иллюстрация, иначе — недовольная.
+  const done = habit.category === 'smoking'
+    ? (extra?.streak ?? 0) > 0
+    : (extra?.today_value ?? 0) >= (habit.goal_value ?? 0) && (habit.goal_value ?? 0) > 0;
+  const Illustration = done ? FunBg : AngryBg;
+
   return (
     <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
-      <Card>
+      <Card style={{ overflow: 'hidden' }}>
         <View style={{ flexDirection: 'row' }}>
           <View style={{ gap: 8, flex: 1 }}>
             <HabitTag type={habit.type} />
@@ -81,6 +89,10 @@ function HabitCard({ habit, extra, onPress }: { habit: Habit; extra: HabitExtra 
               </Text>
             </View>
           </View>
+        </View>
+        {/* Иллюстрация справа, прижата к правому нижнему краю карточки, обрезается по overflow */}
+        <View pointerEvents="none" style={{ position: 'absolute', right: 0, bottom: 0, width: 180, height: 118 }}>
+          <Illustration width={180} height={118} />
         </View>
       </Card>
     </Pressable>
