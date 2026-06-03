@@ -1,11 +1,12 @@
 import { View } from 'react-native';
 import Text from '@/components/Text';
+import { colors } from '@/lib/colors';
 
 type Variant = 'group' | 'solo';
 
 const CONFIG: Record<Variant, { bg: string; color: string; label: string }> = {
-  group: { bg: '#E0DBFF', color: '#6047FF', label: 'ГРУППОВАЯ' },
-  solo:  { bg: '#FEF9C3', color: '#CA8A04', label: 'ПЕРСОНАЛЬНАЯ' },
+  group: { bg: colors.purple[100], color: colors.purple[500], label: 'ГРУППОВАЯ' },
+  solo:  { bg: colors.yellow[100], color: colors.yellow[600], label: 'ПЕРСОНАЛЬНАЯ' },
 };
 
 type Props = {

@@ -376,5 +376,58 @@ router.patch('/me', requireAuth, async (req, res) => {
   }
 });
 
+// DELETE /api/v1/auth/me — удалить аккаунт
+// Удаляет: токены, логи, членство в привычках, привычки где user — единственный участник,
+// аватар с диска, сам аккаунт.
+// Групповые привычки с несколькими участниками: передаём права следующему по joined_at,
+// либо soft-close если участников > 1 и все остальные — тоже удаляемые (не наш случай).
+router.delete('/me', requireAuth, async (req, res) => {
+  const userId = req.userId;
+  try {
+    // 1. Получаем путь к аватару до удаления
+    const [user] = await sql`SELECT avatar_url FROM users WHERE id = ${userId}`;
+
+    // 2. Привычки, где пользователь — создатель
+    const creatorHabits = await sql`
+      SELECT h.id, h.closed_at FROM habits h
+      WHERE h.creator_id = ${userId} AND h.closed_at IS NULL
+    `;
+
+    for (const habit of creatorHabits) {
+      // Есть ли другие участники?
+      const others = await sql`
+        SELECT user_id FROM habit_members
+        WHERE habit_id = ${habit.id} AND user_id != ${userId}
+        ORDER BY joined_at ASC
+        LIMIT 1
+      `;
+      if (others.length > 0) {
+        // Передаём права следующему участнику
+        await sql`UPDATE habits SET creator_id = ${others[0].user_id} WHERE id = ${habit.id}`;
+      } else {
+        // Единственный участник — soft-close
+        await sql`UPDATE habits SET closed_at = now() WHERE id = ${habit.id}`;
+      }
+    }
+
+    // 3. Удаляем все данные пользователя (каскад через FK DELETE CASCADE на habit_members/habit_logs)
+    await sql`DELETE FROM refresh_tokens WHERE user_id = ${userId}`;
+    await sql`DELETE FROM habit_logs WHERE user_id = ${userId}`;
+    await sql`DELETE FROM habit_members WHERE user_id = ${userId}`;
+    await sql`DELETE FROM users WHERE id = ${userId}`;
+
+    // 4. Удаляем аватар с диска (не критично если нет файла)
+    if (user?.avatar_url) {
+      const avatarPath = path.join(AVATARS_DIR, `${userId}.jpg`);
+      fs.unlink(avatarPath, () => {});
+    }
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('delete account error:', e);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
 module.exports = router;
 module.exports.requireAuth = requireAuth;

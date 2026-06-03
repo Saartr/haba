@@ -1,6 +1,5 @@
 import { getTokens, saveTokens, clearTokens } from './auth';
-
-const BASE_URL = 'https://bot.mihmih.pro/api/v1';
+import { BASE_URL } from './config';
 
 async function request<T>(
   path: string,
@@ -188,6 +187,10 @@ export async function transferHabit(habitId: number, userId: number): Promise<vo
 
 export async function closeHabit(habitId: number): Promise<void> {
   return request(`/habits/${habitId}`, { method: 'DELETE' }, true);
+}
+
+export async function deleteAccount(): Promise<void> {
+  return request('/auth/me', { method: 'DELETE' }, true);
 }
 
 // ── Internal ──────────────────────────────────────────────────────────────────

@@ -18,8 +18,8 @@ export type CalendarDay = {
 type ColorConfig = { bg: string; color: string };
 
 const LIGHT: Record<DayStatus, ColorConfig> = {
-  check:    { bg: '#BBF7D0', color: colors.green[500] },
-  miss:     { bg: '#FBBFBB', color: colors.red[500] },
+  check:    { bg: colors.green[200], color: colors.green[500] },
+  miss:     { bg: colors.red[200],   color: colors.red[500] },
   current:  { bg: colors.neutral[100], color: colors.primary },
   future:   { bg: colors.neutral[100], color: colors.neutral[500] },
   inactive: { bg: colors.neutral[100], color: colors.neutral[500] },

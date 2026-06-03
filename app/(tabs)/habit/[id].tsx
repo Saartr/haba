@@ -5,12 +5,12 @@ import {
   Image,
   StatusBar,
   Alert,
-  Clipboard,
   ActivityIndicator,
   Platform,
   Linking,
   Share,
 } from 'react-native';
+import { Clipboard } from 'react-native';
 import Calendar from '@/components/Calendar';
 import Card from '@/components/Card';
 import DropdownPopover from '@/components/DropdownPopover';
@@ -49,8 +49,7 @@ import {
   HabitMember,
 } from '@/lib/api';
 import { scheduleSync, cancelSync } from '@/modules/health-sync';
-
-const BASE_URL = 'https://bot.mihmih.pro/api/v1';
+import { BASE_URL } from '@/lib/config';
 import {
   isHealthConnectAvailable,
   hasStepsPermission,
@@ -678,11 +677,7 @@ export default function HabitScreen() {
           </Text>
           <Button
             label={copied ? 'Ссылка скопирована' : 'Скопировать ссылку'}
-            icon={
-              copied
-                ? <CheckIcon width={24} height={24} color={c.icon.onPrimary} />
-                : <LinkIcon width={24} height={24} color={c.icon.onPrimary} />
-            }
+            icon={copied ? <CheckIcon /> : <LinkIcon />}
             color={copied ? colors.green[500] : undefined}
             onPress={handleCopyInvite}
           />
@@ -733,11 +728,7 @@ export default function HabitScreen() {
             />
             <Button
               label={stepsView === 'edit' ? 'Подтвердить' : 'Добавить'}
-              icon={
-                stepsView === 'edit'
-                  ? <CheckIcon width={24} height={24} color={c.icon.onPrimary} />
-                  : <PlusIcon width={24} height={24} color={c.icon.onPrimary} />
-              }
+              icon={stepsView === 'edit' ? <CheckIcon /> : <PlusIcon />}
               onPress={handleStepsSubmit}
               loading={logLoading}
             />

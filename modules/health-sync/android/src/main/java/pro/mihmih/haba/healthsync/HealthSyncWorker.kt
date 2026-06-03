@@ -40,8 +40,11 @@ class HealthSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker
     }
     if (habits.isEmpty()) return Result.success()
 
-    // 1. Получаем свежий accessToken
-    val accessToken = refreshAccessToken(baseUrl, refreshToken) ?: return Result.success()
+    // 1. Получаем свежий accessToken + сохраняем новый refreshToken (ротация)
+    val (accessToken, newRefreshToken) = refreshAccessToken(baseUrl, refreshToken) ?: return Result.success()
+    if (newRefreshToken != refreshToken) {
+      prefs.edit().putString(PREFS_KEY_REFRESH_TOKEN, newRefreshToken).apply()
+    }
 
     // 2. Проверяем Health Connect и разрешение
     val client = try {
@@ -100,7 +103,7 @@ class HealthSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker
     return Result.success()
   }
 
-  private fun refreshAccessToken(baseUrl: String, refreshToken: String): String? {
+  private fun refreshAccessToken(baseUrl: String, refreshToken: String): Pair<String, String>? {
     return try {
       val url = URL("$baseUrl/auth/refresh")
       val conn = url.openConnection() as HttpURLConnection
@@ -111,7 +114,10 @@ class HealthSyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker
       conn.readTimeout = 10_000
       conn.outputStream.use { it.write("""{"refreshToken":"$refreshToken"}""".toByteArray()) }
       if (conn.responseCode != 200) return null
-      JSONObject(conn.inputStream.bufferedReader().readText()).optString("accessToken", null)
+      val json = JSONObject(conn.inputStream.bufferedReader().readText())
+      val accessToken = json.optString("accessToken", null) ?: return null
+      val newRefresh = json.optString("refreshToken", null) ?: refreshToken
+      Pair(accessToken, newRefresh)
     } catch (e: Exception) {
       null
     }

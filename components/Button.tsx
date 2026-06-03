@@ -3,6 +3,8 @@ import { Pressable, ActivityIndicator, View } from 'react-native';
 import Text from '@/components/Text';
 import { useColors, colors } from '@/lib/colors';
 
+type IconProps = { width?: number; height?: number; color?: string };
+
 type Props = {
   label: string;
   onPress: () => void;
@@ -10,13 +12,10 @@ type Props = {
   icon?: React.ReactNode;
   loading?: boolean;
   disabled?: boolean;
-  /** Переопределяет цвет фона main-кнопки (например, красный для деструктивных действий). */
   color?: string;
 };
 
-type IconProps = { width?: number; height?: number; color?: string };
-
-function sizedIcon(icon: React.ReactNode, color: string) {
+function iconWithColor(icon: React.ReactNode, color: string) {
   if (!isValidElement(icon)) return icon;
   return cloneElement(icon as ReactElement<IconProps>, { width: 24, height: 24, color });
 }
@@ -34,41 +33,23 @@ export default function Button({
   const isDisabled = disabled || loading;
 
   if (variant === 'secondary') {
-    // TapaDS Secondary: фон surface.bg, обводка 2px, текст/иконка brand-цветом
     return (
       <Pressable onPress={onPress} disabled={isDisabled} style={{ height: 56 }}>
         {({ pressed }) => {
-          const accent = disabled
-            ? c.text.secondary
-            : pressed
-            ? c.brand.pressed
-            : c.brand.primary;
+          const accent = disabled ? c.text.secondary : pressed ? c.brand.pressed : c.brand.primary;
           return (
-            <View
-              style={{
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 12,
-                borderRadius: 12,
-                borderWidth: 2,
-                borderColor: disabled ? colors.neutral[300] : accent,
-                backgroundColor: c.surface.bg,
-                // @ts-ignore — iOS only, ignored on Android
-                borderCurve: 'continuous',
-              }}
-            >
-              {loading ? (
-                <ActivityIndicator color={c.brand.primary} />
-              ) : (
-                <>
-                  {sizedIcon(icon, accent)}
-                  <Text weight="bold" className="text-body-16 tracking-default" style={{ color: accent }}>
-                    {label}
-                  </Text>
-                </>
-              )}
+            <View style={{
+              flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+              gap: 12, borderRadius: 12, borderWidth: 2,
+              borderColor: disabled ? colors.neutral[300] : accent,
+              backgroundColor: c.surface.bg,
+              // @ts-ignore
+              borderCurve: 'continuous',
+            }}>
+              {loading
+                ? <ActivityIndicator color={c.brand.primary} />
+                : <>{iconWithColor(icon, accent)}<Text weight="bold" className="text-body-16 tracking-default" style={{ color: accent }}>{label}</Text></>
+              }
             </View>
           );
         }}
@@ -78,62 +59,35 @@ export default function Button({
 
   if (variant === 'text') {
     return (
-      <Pressable
-        onPress={onPress}
-        disabled={isDisabled}
-        className="h-14 items-center justify-center"
-        style={{ opacity: isDisabled ? 0.5 : 1 }}
-      >
-        {loading ? (
-          <ActivityIndicator color={c.text.link} />
-        ) : (
-          <Text weight="bold" className="text-body-16 tracking-default" style={{ color: c.text.link }}>
-            {label}
-          </Text>
-        )}
+      <Pressable onPress={onPress} disabled={isDisabled} className="h-14 items-center justify-center" style={{ opacity: isDisabled ? 0.5 : 1 }}>
+        {loading
+          ? <ActivityIndicator color={c.text.link} />
+          : <Text weight="bold" className="text-body-16 tracking-default" style={{ color: c.text.link }}>{label}</Text>
+        }
       </Pressable>
     );
   }
 
   return (
     <Pressable onPress={onPress} disabled={isDisabled} style={{ height: 56 }}>
-      {({ pressed }) => (
-        <View
-          style={{
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 12,
-            borderRadius: 12,
-            // @ts-ignore — iOS only, ignored on Android
+      {({ pressed }) => {
+        const iconColor = disabled ? c.text.secondary : c.text.onPrimary;
+        return (
+          <View style={{
+            flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+            gap: 12, borderRadius: 12,
+            // @ts-ignore
             borderCurve: 'continuous',
-            backgroundColor: disabled
-              ? c.surface.disabled
-              : color
-              ? color
-              : pressed
-              ? c.brand.pressed
-              : c.brand.primary,
+            backgroundColor: disabled ? c.surface.disabled : color ? color : pressed ? c.brand.pressed : c.brand.primary,
             opacity: color && pressed ? 0.85 : 1,
-          }}
-        >
-          {loading ? (
-            <ActivityIndicator color={disabled ? c.text.secondary : c.text.onPrimary} />
-          ) : (
-            <>
-              {sizedIcon(icon, disabled ? c.text.secondary : c.text.onPrimary)}
-              <Text
-                weight="bold"
-                className="text-body-16 tracking-default"
-                style={{ color: disabled ? c.text.secondary : c.text.onPrimary }}
-              >
-                {label}
-              </Text>
-            </>
-          )}
-        </View>
-      )}
+          }}>
+            {loading
+              ? <ActivityIndicator color={iconColor} />
+              : <>{iconWithColor(icon, iconColor)}<Text weight="bold" className="text-body-16 tracking-default" style={{ color: iconColor }}>{label}</Text></>
+            }
+          </View>
+        );
+      }}
     </Pressable>
   );
 }

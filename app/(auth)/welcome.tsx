@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import TelegramIcon from '@/assets/icons/Telegram.svg';
 import TapaWelcome from '@/assets/images/tapa_welcome.svg';
 import Button from '@/components/Button';
-import { useColors } from '@/lib/colors';
+import { useColors, colors } from '@/lib/colors';
 import { vkAuth, telegramNativeAuth } from '@/lib/api';
 import { saveTokens } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';

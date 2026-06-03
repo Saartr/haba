@@ -7,7 +7,7 @@ import DropdownMenu, { DropdownMenuItem } from '@/components/DropdownMenu';
 import PlusIcon from '@/assets/icons/Plus.svg';
 
 const SHADOW = {
-  shadowColor: '#121212',
+  shadowColor: colors.neutral[950],
   shadowOffset: { width: 1, height: 2 },
   shadowOpacity: 0.08,
   shadowRadius: 12,
@@ -24,7 +24,7 @@ export default function Fab({ items }: Props) {
   const [mounted, setMounted] = useState(false);
   const insets = useSafeAreaInsets();
   const { colorScheme } = useSettings();
-  const overlayColor = colorScheme === 'dark' ? 'rgba(0,0,0,0.7)' : 'rgba(18,18,18,0.24)';
+  const overlayColor = colorScheme === 'dark' ? colors.blackTransparent[80] : colors.blackTransparent[24];
   const anim = useRef(new Animated.Value(0)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
   const rotate = anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '45deg'] });

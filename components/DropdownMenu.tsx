@@ -3,7 +3,7 @@ import Text from '@/components/Text';
 import { useColors, colors } from '@/lib/colors';
 
 const SHADOW = {
-  shadowColor: '#121212',
+  shadowColor: colors.neutral[950],
   shadowOffset: { width: 1, height: 2 },
   shadowOpacity: 0.08,
   shadowRadius: 12,

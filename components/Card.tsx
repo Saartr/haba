@@ -1,8 +1,8 @@
 import { View, ViewStyle } from 'react-native';
-import { useColors } from '@/lib/colors';
+import { useColors, colors } from '@/lib/colors';
 
 const SHADOW = {
-  shadowColor: '#787878',
+  shadowColor: colors.neutral[950],
   shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.2,
   shadowRadius: 6,

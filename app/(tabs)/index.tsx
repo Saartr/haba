@@ -126,7 +126,7 @@ export default function HabitsScreen() {
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' : 'dark-content';
   const panelShadow = scheme === 'dark' ? {} : {
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: colors.neutral[950], shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04, shadowRadius: 12, elevation: 4,
   };
 
@@ -182,7 +182,7 @@ export default function HabitsScreen() {
               </Text>
             )}
           </View>
-          <Pressable onPress={() => router.push('/(tabs)/two')}
+          <Pressable onPress={() => router.push('/(tabs)/profile')}
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })} hitSlop={8}>
             <Avatar firstName={user?.first_name ?? null} avatarUrl={user?.avatar_url ?? null} />
           </Pressable>

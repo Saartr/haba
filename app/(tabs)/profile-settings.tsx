@@ -1,18 +1,16 @@
-import { View, Pressable, Alert } from 'react-native';
+import { View, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import Text from '@/components/Text';
 import Input from '@/components/Input';
-import { useColors, colors } from '@/lib/colors';
+import { colors } from '@/lib/colors';
 import { useAuth } from '@/lib/auth-context';
 import { useSettings } from '@/lib/settings-context';
 import { updateProfile } from '@/lib/api';
-
-import ArrowBackIcon from '@/assets/icons/ArrowBack.svg';
+import NavigationBar from '@/components/NavigationBar';
 
 export default function ProfileSettingsScreen() {
-  const c = useColors();
+
   const router = useRouter();
   const { user, updateUser } = useAuth();
   const { colorScheme } = useSettings();
@@ -41,23 +39,7 @@ export default function ProfileSettingsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }} edges={['top']}>
-      {/* Navigation bar */}
-      <View style={{ height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          {({ pressed }) => (
-            <View style={{ padding: 4, opacity: pressed ? 0.6 : 1 }}>
-              <ArrowBackIcon width={24} height={24} color={c.text.primary} />
-            </View>
-          )}
-        </Pressable>
-        <Text weight="bold" style={{
-          flex: 1, textAlign: 'center',
-          fontSize: 16, color: c.text.primary, letterSpacing: 0.2,
-        }}>
-          Настройки профиля
-        </Text>
-        <View style={{ width: 32 }} />
-      </View>
+      <NavigationBar title="Настройки профиля" onBack={() => router.back()} />
 
       {/* Content */}
       <View style={{ paddingHorizontal: 24, paddingTop: 24 }}>

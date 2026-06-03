@@ -8,3 +8,4 @@
 @.claude/memory/project_ios_plan.md
 @.claude/memory/feedback_ssh_file_edit.md
 @.claude/memory/feedback_figma_source_of_truth.md
+@.claude/memory/feedback_design_system_usage.md

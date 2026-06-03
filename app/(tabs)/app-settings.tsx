@@ -1,12 +1,11 @@
-import { View, Pressable, Platform } from 'react-native';
+import { View, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
-import Text from '@/components/Text';
 import Select from '@/components/Select';
 import SegmentedControl from '@/components/SegmentedControl';
-import { useColors, colors } from '@/lib/colors';
+import { colors } from '@/lib/colors';
 import { useSettings, ThemePreference, Toggle } from '@/lib/settings-context';
 import {
   isHealthConnectAvailable,
@@ -16,10 +15,9 @@ import {
 } from '@/lib/health';
 import { scheduleSync, cancelSync } from '@/modules/health-sync';
 import { getStepHabits } from '@/lib/api';
+import { BASE_URL } from '@/lib/config';
 
-const BASE_URL = 'https://bot.mihmih.pro/api/v1';
-
-import ArrowBackIcon from '@/assets/icons/ArrowBack.svg';
+import NavigationBar from '@/components/NavigationBar';
 
 const LANGUAGE_OPTIONS = [
   { label: 'Русский', value: 'ru' },
@@ -37,7 +35,7 @@ const TOGGLE_OPTIONS = [
 ];
 
 export default function AppSettingsScreen() {
-  const c = useColors();
+
   const router = useRouter();
   const { settings, colorScheme, updateSettings } = useSettings();
 
@@ -85,23 +83,7 @@ export default function AppSettingsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }} edges={['top']}>
-      {/* Navigation bar */}
-      <View style={{ height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          {({ pressed }) => (
-            <View style={{ padding: 4, opacity: pressed ? 0.6 : 1 }}>
-              <ArrowBackIcon width={24} height={24} color={c.text.primary} />
-            </View>
-          )}
-        </Pressable>
-        <Text weight="bold" style={{
-          flex: 1, textAlign: 'center',
-          fontSize: 16, color: c.text.primary, letterSpacing: 0.2,
-        }}>
-          Настройки приложения
-        </Text>
-        <View style={{ width: 32 }} />
-      </View>
+      <NavigationBar title="Настройки приложения" onBack={() => router.back()} />
 
       {/* Content */}
       <View style={{ paddingHorizontal: 24, paddingTop: 24, gap: 16 }}>
@@ -122,6 +104,7 @@ export default function AppSettingsScreen() {
           options={TOGGLE_OPTIONS}
           value={settings.notifications}
           onChange={v => updateSettings({ notifications: v as Toggle })}
+          disabled
         />
         <SegmentedControl
           label="Доступ к Health Connect"

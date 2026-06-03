@@ -1,15 +1,13 @@
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Pressable } from 'react-native';
-import Text from '@/components/Text';
 import Lists from '@/components/Lists';
-import { useColors, colors } from '@/lib/colors';
+import { colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
-import ArrowBackIcon from '@/assets/icons/ArrowBack.svg';
+import NavigationBar from '@/components/NavigationBar';
 
 const CARD_SHADOW = {
-  shadowColor: '#121212',
+  shadowColor: colors.neutral[950],
   shadowOffset: { width: 1, height: 2 },
   shadowOpacity: 0.08,
   shadowRadius: 12,
@@ -17,7 +15,7 @@ const CARD_SHADOW = {
 } as const;
 
 export default function AboutAppScreen() {
-  const c = useColors();
+
   const router = useRouter();
   const { colorScheme } = useSettings();
 
@@ -31,23 +29,7 @@ export default function AboutAppScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }} edges={['top']}>
-      {/* Navigation bar */}
-      <View style={{ height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          {({ pressed }) => (
-            <View style={{ padding: 4, opacity: pressed ? 0.6 : 1 }}>
-              <ArrowBackIcon width={24} height={24} color={c.text.primary} />
-            </View>
-          )}
-        </Pressable>
-        <Text weight="semibold" style={{
-          flex: 1, textAlign: 'center',
-          fontSize: 16, color: c.text.primary, letterSpacing: 0.2,
-        }}>
-          О приложении
-        </Text>
-        <View style={{ width: 32 }} />
-      </View>
+      <NavigationBar title="О приложении" onBack={() => router.back()} />
 
       <View style={{ paddingHorizontal: 24, paddingTop: 24 }}>
         <Lists

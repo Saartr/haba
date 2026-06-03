@@ -13,8 +13,7 @@ import { useSnackbar } from '@/lib/snackbar-context';
 import { scheduleSync } from '@/modules/health-sync';
 import { hasStepsPermission } from '@/lib/health';
 import { Platform } from 'react-native';
-
-const BASE_URL = 'https://bot.mihmih.pro/api/v1';
+import { BASE_URL } from '@/lib/config';
 import { useState } from 'react';
 
 const TYPE_OPTIONS = [

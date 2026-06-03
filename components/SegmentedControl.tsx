@@ -1,11 +1,11 @@
 import { useRef, useEffect, useState } from 'react';
 import { View, Pressable, Animated, Easing } from 'react-native';
 import Text from '@/components/Text';
-import { useColors } from '@/lib/colors';
+import { useColors, colors } from '@/lib/colors';
 import CheckIcon from '@/assets/icons/Check.svg';
 
 const SEGMENT_SHADOW = {
-  shadowColor: '#111827',
+  shadowColor: colors.neutral[950],
   shadowOffset: { width: 1, height: 2 },
   shadowOpacity: 0.03,
   shadowRadius: 6,

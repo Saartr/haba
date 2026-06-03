@@ -146,7 +146,7 @@ export default function DevScreen() {
           <Button
             label="Войти через Telegram"
             onPress={() => {}}
-            icon={<TelegramIcon width={20} height={20} color={colors.neutral[0]} />}
+            icon={<TelegramIcon />}
           />
 
           <Label text="Loading" />
@@ -178,7 +178,7 @@ export default function DevScreen() {
             variant="secondary"
             label="Вступить в группу"
             onPress={() => {}}
-            icon={<GroupPlusIcon width={20} height={20} color={colors.purple[500]} />}
+            icon={<GroupPlusIcon />}
           />
 
           <Label text="Loading" />
@@ -460,6 +460,7 @@ export default function DevScreen() {
           />
 
           <Label text="Success без иконки" />
+
           <Snackbar type="success" text="Single-line snackbar" onClose={() => {}} />
 
           <Label text="Error с иконкой" />

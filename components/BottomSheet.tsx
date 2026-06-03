@@ -3,7 +3,7 @@ import { View, Modal, Pressable, Animated, Keyboard, Platform } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Text from '@/components/Text';
 import CloseIcon from '@/assets/icons/Close.svg';
-import { useColors } from '@/lib/colors';
+import { useColors, colors } from '@/lib/colors';
 
 type Props = {
   visible: boolean;
@@ -66,7 +66,7 @@ export default function BottomSheet({ visible, title, onClose, children }: Props
           flex: 1,
           justifyContent: 'flex-end',
           paddingBottom: kbHeight > 0 ? kbHeight + (Platform.OS === 'android' ? insets.bottom : 0) : 0,
-          backgroundColor: 'rgba(18,18,18,0.24)',
+          backgroundColor: colors.blackTransparent[24],
           opacity: overlayAnim,
         }}
       >

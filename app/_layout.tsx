@@ -15,8 +15,7 @@ import { savePendingInvite, getPendingInvite, clearPendingInvite } from '@/lib/a
 import { scheduleSync, cancelSync } from '@/modules/health-sync';
 import { hasStepsPermission } from '@/lib/health';
 import { Platform } from 'react-native';
-
-const BASE_URL = 'https://bot.mihmih.pro/api/v1';
+import { BASE_URL } from '@/lib/config';
 
 SplashScreen.preventAutoHideAsync();
 

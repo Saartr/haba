@@ -1,4 +1,4 @@
-import { View, Pressable, Image } from 'react-native';
+import { View, Image, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -10,8 +10,11 @@ import { useColors, colors } from '@/lib/colors';
 import { useAuth } from '@/lib/auth-context';
 import { useSettings } from '@/lib/settings-context';
 import { clearTokens } from '@/lib/auth';
+import { deleteAccount } from '@/lib/api';
+import { cancelSync } from '@/modules/health-sync';
+import { Platform } from 'react-native';
 
-import ArrowBackIcon from '@/assets/icons/ArrowBack.svg';
+import NavigationBar from '@/components/NavigationBar';
 import UserIcon from '@/assets/icons/User.svg';
 import SettingsIcon from '@/assets/icons/Settings.svg';
 import InfoCircleIcon from '@/assets/icons/InfoCircle.svg';
@@ -50,6 +53,8 @@ export default function ProfileScreen() {
 
   const displayName = user?.first_name ?? user?.username ?? null;
   const [logoutVisible, setLogoutVisible] = useState(false);
+  const [deleteVisible, setDeleteVisible] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const confirmLogout = async () => {
     setLogoutVisible(false);
@@ -57,25 +62,24 @@ export default function ProfileScreen() {
     setAuthed(false);
   };
 
+  const confirmDelete = async () => {
+    setDeleteLoading(true);
+    try {
+      await deleteAccount();
+      if (Platform.OS === 'android') cancelSync();
+      await clearTokens();
+      setAuthed(false);
+    } catch (e: any) {
+      setDeleteVisible(false);
+      Alert.alert('Ошибка', e.message ?? 'Не удалось удалить аккаунт');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }} edges={['top']}>
-      {/* Navigation bar */}
-      <View style={{ height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          {({ pressed }) => (
-            <View style={{ padding: 4, opacity: pressed ? 0.6 : 1 }}>
-              <ArrowBackIcon width={24} height={24} color={c.text.primary} />
-            </View>
-          )}
-        </Pressable>
-        <Text weight="bold" style={{
-          flex: 1, textAlign: 'center',
-          fontSize: 18, color: c.text.primary, letterSpacing: 0.2,
-        }}>
-          Профиль
-        </Text>
-        <View style={{ width: 32 }} />
-      </View>
+      <NavigationBar title="Профиль" onBack={() => router.back()} />
 
       <View style={{ flex: 1, paddingBottom: insets.bottom + 24 }}>
         {/* Avatar + name */}
@@ -123,42 +127,17 @@ export default function ProfileScreen() {
 
         {/* Action buttons */}
         <View style={{ marginHorizontal: 24, gap: 16 }}>
-          <Pressable onPress={() => setLogoutVisible(true)} style={{ height: 56 }}>
-            {({ pressed }) => (
-              <View style={{
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 12,
-                borderRadius: 12,
-                backgroundColor: pressed ? c.brand.pressed : c.brand.primary,
-              }}>
-                <LogoutIcon width={24} height={24} color={colors.neutral[0]} />
-                <Text weight="bold" style={{ fontSize: 16, color: colors.neutral[0], letterSpacing: 0.2 }}>
-                  Выйти из аккаунта
-                </Text>
-              </View>
-            )}
-          </Pressable>
-
-          <Pressable onPress={() => {}} style={{ height: 56 }}>
-            {({ pressed }) => (
-              <View style={{
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 12,
-                opacity: pressed ? 0.7 : 1,
-              }}>
-                <DeleteForeverIcon width={24} height={24} color={colors.red[500]} />
-                <Text weight="bold" style={{ fontSize: 16, color: colors.red[500], letterSpacing: 0.2 }}>
-                  Удалить аккаунт
-                </Text>
-              </View>
-            )}
-          </Pressable>
+          <Button
+            label="Выйти из аккаунта"
+            icon={<LogoutIcon />}
+            onPress={() => setLogoutVisible(true)}
+          />
+          <Button
+            label="Удалить аккаунт"
+            icon={<DeleteForeverIcon />}
+            variant="secondary"
+            onPress={() => setDeleteVisible(true)}
+          />
         </View>
       </View>
       <BottomSheet
@@ -172,6 +151,29 @@ export default function ProfileScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Button label="Выйти" onPress={confirmLogout} />
+          </View>
+        </View>
+      </BottomSheet>
+
+      <BottomSheet
+        visible={deleteVisible}
+        title="Удалить аккаунт?"
+        onClose={() => !deleteLoading && setDeleteVisible(false)}
+      >
+        <Text weight="semibold" style={{ fontSize: 16, lineHeight: 16 * 1.6, color: c.text.secondary, letterSpacing: 0.2, marginBottom: 16 }}>
+          Все данные будут удалены безвозвратно: привычки, прогресс, история. Это действие нельзя отменить.
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 16 }}>
+          <View style={{ flex: 1 }}>
+            <Button label="Отмена" onPress={() => setDeleteVisible(false)} disabled={deleteLoading} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button
+              label="Удалить"
+              color={colors.red[500]}
+              onPress={confirmDelete}
+              loading={deleteLoading}
+            />
           </View>
         </View>
       </BottomSheet>

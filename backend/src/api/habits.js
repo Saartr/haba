@@ -132,7 +132,7 @@ router.get('/:id', async (req, res) => {
 
     const { mon, sun } = weekRange(new Date());
     const week_logs = await sql`
-      SELECT user_id, date, value FROM habit_logs
+      SELECT id, habit_id, user_id, date, value, source FROM habit_logs
       WHERE habit_id = ${habitId}
         AND date BETWEEN ${toDateStr(mon)} AND ${toDateStr(sun)}
     `;
@@ -166,7 +166,7 @@ router.get('/:id/logs', async (req, res) => {
     if (!membership) return res.status(403).json({ message: 'Нет доступа' });
 
     const logs = await sql`
-      SELECT user_id, date, value, source FROM habit_logs
+      SELECT id, habit_id, user_id, date, value, source FROM habit_logs
       WHERE habit_id = ${habitId} AND user_id = ${req.userId}
         AND date BETWEEN ${from} AND ${to}
     `;

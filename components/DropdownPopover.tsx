@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSettings } from '@/lib/settings-context';
+import { colors } from '@/lib/colors';
 import DropdownMenu, { DropdownMenuItem } from '@/components/DropdownMenu';
 
 type Props = {
@@ -15,7 +16,7 @@ type Props = {
 export default function DropdownPopover({ visible, onClose, items, width = 320 }: Props) {
   const insets = useSafeAreaInsets();
   const { colorScheme } = useSettings();
-  const overlayColor = colorScheme === 'dark' ? 'rgba(0,0,0,0.7)' : 'rgba(18,18,18,0.24)';
+  const overlayColor = colorScheme === 'dark' ? colors.blackTransparent[80] : colors.blackTransparent[24];
   const [mounted, setMounted] = useState(false);
 
   const anim = useRef(new Animated.Value(0)).current;
