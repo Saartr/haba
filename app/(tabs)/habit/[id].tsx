@@ -125,13 +125,13 @@ function SoloHabitScreen({
       />
 
       {/* Content — без flex:1, естественная высота */}
+      <Calendar
+        habitId={habit.id}
+        habitCreatedAt={habit.created_at}
+        currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
+        goalValue={habit.goal_value ?? 1}
+      />
       <View style={{ padding: 24, gap: 16 }}>
-        <Calendar
-            habitId={habit.id}
-            habitCreatedAt={habit.created_at}
-            currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
-            goalValue={habit.goal_value ?? 1}
-          />
 
         <View style={{ flexDirection: 'row', gap: 16 }}>
           <Card style={{ flex: 1, gap: 4 }}>
@@ -157,7 +157,7 @@ function SoloHabitScreen({
       <View style={{ flex: 1 }} />
 
       {/* Bottom buttons */}
-      <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 24, paddingBottom: 16 }}>
+      <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 24, paddingBottom: 24 }}>
         <View style={{ flex: 1 }}>
           <Button
             label={successLabel}
@@ -589,14 +589,12 @@ export default function HabitScreen() {
       />
 
       <ScrollView contentContainerStyle={{ paddingVertical: 24, gap: 8 }}>
-        <View style={{ paddingHorizontal: 24 }}>
-          <Calendar
-            habitId={habit.id}
-            habitCreatedAt={habit.created_at}
-            currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
-            goalValue={habit.goal_value ?? 1}
-          />
-        </View>
+        <Calendar
+          habitId={habit.id}
+          habitCreatedAt={habit.created_at}
+          currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
+          goalValue={habit.goal_value ?? 1}
+        />
 
         {/* Stats — горизонтальный скролл */}
         <ScrollView
@@ -656,7 +654,7 @@ export default function HabitScreen() {
         </View>
       </ScrollView>
 
-      <View style={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 16 }}>
+      <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
         <Button
           label="Внести шаги"
           onPress={() => { setStepsView('menu'); setStepsInput(''); setStepsModal(true); }}

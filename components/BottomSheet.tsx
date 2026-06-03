@@ -79,7 +79,7 @@ export default function BottomSheet({ visible, title, onClose, children }: Props
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
             paddingTop: 32,
-            paddingBottom: (kbHeight > 0 ? 32 : insets.bottom + 56),
+            paddingBottom: (kbHeight > 0 ? 32 : insets.bottom + 24),
             paddingHorizontal: 24,
             gap: 32,
             opacity: anim,

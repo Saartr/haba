@@ -14,6 +14,9 @@ import HabitTag from '@/components/HabitTag';
 import DropdownMenu from '@/components/DropdownMenu';
 import Fab from '@/components/Fab';
 import Snackbar from '@/components/Snackbar';
+import BottomSheet from '@/components/BottomSheet';
+import { ConfirmProvider, useConfirm } from '@/components/ConfirmModal';
+import DeleteIcon from '@/assets/icons/Delete.svg';
 import LogoutIcon from '@/assets/icons/Logout.svg';
 import ShareIcon from '@/assets/icons/Share.svg';
 import GroupPlusIcon from '@/assets/icons/GroupPlus.svg';
@@ -60,6 +63,40 @@ function Label({ text }: { text: string }) {
     <Text style={{ fontSize: 12, color: c.text.placeholder, marginBottom: 4 }}>
       {text}
     </Text>
+  );
+}
+
+function BottomSheetDemo() {
+  const [visible, setVisible] = useState(false);
+  return (
+    <>
+      <Label text="С заголовком и контентом" />
+      <Button label="Открыть BottomSheet" onPress={() => setVisible(true)} />
+      <BottomSheet title="Заголовок" visible={visible} onClose={() => setVisible(false)}>
+        <Text style={{ fontSize: 16 }}>Контент шторки</Text>
+        <Button label="Закрыть" onPress={() => setVisible(false)} />
+      </BottomSheet>
+    </>
+  );
+}
+
+function ConfirmDemo() {
+  const confirm = useConfirm();
+  const [result, setResult] = useState<string | null>(null);
+  return (
+    <>
+      <Label text="Обычное подтверждение" />
+      <Button label="Подтвердить действие" onPress={async () => {
+        const ok = await confirm({ title: 'Подтвердить?', description: 'Это действие нельзя отменить', confirmLabel: 'Подтвердить' });
+        setResult(ok ? 'Подтверждено' : 'Отменено');
+      }} />
+      <Label text="Деструктивное действие" />
+      <Button label="Удалить цель" onPress={async () => {
+        const ok = await confirm({ title: 'Удалить цель?', description: 'Все данные будут потеряны', confirmLabel: 'Удалить', confirmIcon: <DeleteIcon />, destructive: true });
+        setResult(ok ? 'Удалено' : 'Отменено');
+      }} />
+      {result && <Text style={{ fontSize: 14 }}>Результат: {result}</Text>}
+    </>
   );
 }
 
@@ -298,18 +335,15 @@ export default function DevScreen() {
 
         {/* CALENDAR */}
         <Section title="Calendar">
-          <Label text="7 дней (check / miss / current / future)" />
-          <Calendar
-            days={[
-              { day: 18, status: 'check' },
-              { day: 19, status: 'miss' },
-              { day: 20, status: 'check' },
-              { day: 21, status: 'check' },
-              { day: 22, status: 'current' },
-              { day: 23, status: 'future' },
-              { day: 24, status: 'future' },
-            ]}
-          />
+          <Label text="Живой календарь (данные не загружаются в галерее)" />
+          <View style={{ marginHorizontal: -24 }}>
+            <Calendar
+              habitId={-1}
+              habitCreatedAt={new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()}
+              currentWeekLogs={[]}
+              goalValue={7000}
+            />
+          </View>
         </Section>
 
         {/* NAVIGATION BAR */}
@@ -401,6 +435,18 @@ export default function DevScreen() {
               </Text>
             </Card>
           </View>
+        </Section>
+
+        {/* BOTTOM SHEET */}
+        <Section title="BottomSheet">
+          <BottomSheetDemo />
+        </Section>
+
+        {/* CONFIRM MODAL */}
+        <Section title="ConfirmModal">
+          <ConfirmProvider>
+            <ConfirmDemo />
+          </ConfirmProvider>
         </Section>
 
         {/* SNACKBAR */}

@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { View, FlatList, Dimensions, ActivityIndicator } from 'react-native';
+import { View, FlatList, Dimensions, ActivityIndicator, Animated, Easing } from 'react-native';
 import Text from '@/components/Text';
 import CheckCircleIcon from '@/assets/icons/CheckCircle.svg';
 import DoNotDisturbIcon from '@/assets/icons/DoNotDisturb.svg';
@@ -34,10 +34,10 @@ const DARK: Record<DayStatus, ColorConfig> = {
 };
 
 function DayIcon({ status, color }: { status: DayStatus; color: string }) {
-  if (status === 'check')    return <CheckCircleIcon width={28} height={28} color={color} />;
-  if (status === 'miss')     return <DoNotDisturbIcon width={28} height={28} color={color} />;
-  if (status === 'inactive') return <View style={{ width: 28, height: 28 }} />;
-  return <CircleOutlineIcon width={28} height={28} color={color} />;
+  if (status === 'check')    return <CheckCircleIcon width={24} height={24} color={color} />;
+  if (status === 'miss')     return <DoNotDisturbIcon width={24} height={24} color={color} />;
+  if (status === 'inactive') return <View style={{ width: 24, height: 24 }} />;
+  return <CircleOutlineIcon width={24} height={24} color={color} />;
 }
 
 function DayCell({ day, status }: CalendarDay) {
@@ -116,8 +116,6 @@ function minWeekOffset(habitCreatedAt: Date): number {
   return -diffWeeks;
 }
 
-// Отступ чтобы был виден край предыдущей недели
-const SIDE_PEEK = 20;
 
 type WeekPageProps = {
   weekOffset: number;
@@ -167,19 +165,18 @@ function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalVa
   const mon = getWeekMonday(weekOffset);
   const days = logs ? buildDays(mon, logs, habitCreatedAt, goalValue) : [];
 
-  if (loading) {
-    return (
-      <View style={{ width: pageWidth, paddingHorizontal: SIDE_PEEK, alignItems: 'center', justifyContent: 'center', height: 88 }}>
-        <ActivityIndicator color={colorScheme === 'dark' ? colors.neutral[400] : colors.neutral[500]} />
-      </View>
-    );
-  }
-
   return (
-    <View style={{ width: pageWidth, paddingHorizontal: SIDE_PEEK }}>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        {days.map((d, i) => <DayCell key={i} {...d} />)}
-      </View>
+    <View style={{ width: pageWidth, paddingHorizontal: 24, height: 64 }}>
+      {loading ? (
+        <ActivityIndicator
+          style={{ flex: 1 }}
+          color={colorScheme === 'dark' ? colors.neutral[400] : colors.neutral[500]}
+        />
+      ) : (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {days.map((d, i) => <DayCell key={i} {...d} />)}
+        </View>
+      )}
     </View>
   );
 }
@@ -206,13 +203,26 @@ export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goa
 
   const listRef = useRef<FlatList>(null);
   const { width: screenWidth } = Dimensions.get('window');
-  // Ширина страницы = ширина экрана минус горизонтальные отступы карточки (24px * 2)
-  const pageWidth = screenWidth - 48;
 
   useEffect(() => {
     if (currentIndex <= 0) return;
     listRef.current?.scrollToIndex({ index: currentIndex, animated: false });
   }, [currentIndex]);
+
+  // Welcome-анимация с ease-in-out через Animated listener → scrollToOffset
+  useEffect(() => {
+    const baseOffset = currentIndex * screenWidth;
+    const anim = new Animated.Value(0);
+    anim.addListener(({ value }) => {
+      listRef.current?.scrollToOffset({ offset: baseOffset + value, animated: false });
+    });
+    setTimeout(() => {
+      Animated.sequence([
+        Animated.timing(anim, { toValue: -80, duration: 350, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(anim, { toValue: 0,   duration: 400, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+      ]).start(() => anim.removeAllListeners());
+    }, 800);
+  }, []);
 
   return (
     <FlatList
@@ -222,15 +232,11 @@ export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goa
       horizontal
       pagingEnabled
       showsHorizontalScrollIndicator={false}
-      // snapToInterval позволяет видеть край соседней карточки
-      snapToInterval={pageWidth}
-      snapToAlignment="start"
       decelerationRate="fast"
-      // Отрицательный inset чтобы peek был виден
-      contentInset={{ left: 0, right: SIDE_PEEK }}
+      style={{ flexGrow: 0 }}
       getItemLayout={(_, index) => ({
-        length: pageWidth,
-        offset: pageWidth * index,
+        length: screenWidth,
+        offset: screenWidth * index,
         index,
       })}
       initialScrollIndex={currentIndex}
@@ -241,7 +247,7 @@ export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goa
           habitCreatedAt={createdAt}
           currentWeekLogs={currentWeekLogs}
           goalValue={goalValue}
-          pageWidth={pageWidth}
+          pageWidth={screenWidth}
         />
       )}
     />

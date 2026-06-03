@@ -77,7 +77,7 @@ export default function ProfileScreen() {
         <View style={{ width: 32 }} />
       </View>
 
-      <View style={{ flex: 1, paddingBottom: insets.bottom + 16 }}>
+      <View style={{ flex: 1, paddingBottom: insets.bottom + 24 }}>
         {/* Avatar + name */}
         <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 24 }}>
           <ProfileAvatar firstName={user?.first_name ?? null} avatarUrl={user?.avatar_url ?? null} />

@@ -3,6 +3,7 @@ import Text from '@/components/Text';
 import BottomSheet from '@/components/BottomSheet';
 import { useColors } from '@/lib/colors';
 import ChevronDownIcon from '@/assets/icons/ChevronDown.svg';
+import CheckIcon from '@/assets/icons/Check.svg';
 import { useState } from 'react';
 
 type Option = { label: string; value: string };
@@ -90,11 +91,18 @@ export default function Select({ label, options, value, onChange, placeholder, d
               onPress={() => handleSelect(item.value)}
               android_ripple={{ color: 'rgba(0,0,0,0.06)' }}
               style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
                 paddingVertical: 16,
                 paddingHorizontal: 24,
                 backgroundColor: item.value === value ? c.surface.disabled : 'transparent',
               }}
             >
+              {item.value === value
+                ? <CheckIcon width={24} height={24} color={c.text.link} />
+                : <View style={{ width: 24 }} />
+              }
               <Text weight="semibold" style={{ fontSize: 16, letterSpacing: 0.2, color: item.value === value ? c.text.link : c.text.primary }}>
                 {item.label}
               </Text>

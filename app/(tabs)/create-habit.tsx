@@ -186,7 +186,7 @@ export default function CreateHabitScreen() {
         )}
       </ScrollView>
 
-      <View style={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 16 }}>
+      <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
         <Button
           label="Создать"
           onPress={handleCreate}
