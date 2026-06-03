@@ -59,6 +59,40 @@ export function openHealthConnectPermissions(): void {
   openHealthConnectSettings();
 }
 
+// Возвращает шаги за каждый из последних N дней: { '2026-06-01': 8432, ... }
+// Дни без данных в результат не включаются.
+export async function getStepsByDays(days: number): Promise<Record<string, number>> {
+  if (!(await ensureInitialized())) return {};
+  const result: Record<string, number> = {};
+  const now = new Date();
+
+  for (let i = 0; i < days; i++) {
+    const day = new Date(now);
+    day.setDate(day.getDate() - i);
+    day.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(day);
+    dayEnd.setHours(23, 59, 59, 999);
+    const dateStr = day.toISOString().slice(0, 10);
+
+    try {
+      const res = await aggregateRecord({
+        recordType: 'Steps',
+        timeRangeFilter: {
+          operator: 'between',
+          startTime: day.toISOString(),
+          endTime: dayEnd.toISOString(),
+        },
+      });
+      const total = (res as { COUNT_TOTAL?: number })?.COUNT_TOTAL ?? 0;
+      if (total > 0) result[dateStr] = Math.floor(total);
+    } catch {
+      // пропускаем день если не смогли прочитать
+    }
+  }
+
+  return result;
+}
+
 export async function getTodaySteps(): Promise<number> {
   if (!(await ensureInitialized())) return 0;
   const start = new Date();

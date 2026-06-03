@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { saveWorkerToken } from '@/modules/health-sync';
 
 const ACCESS_KEY = 'haba_access_token';
 const REFRESH_KEY = 'haba_refresh_token';
@@ -10,6 +11,7 @@ export async function saveTokens(tokens: {
 }): Promise<void> {
   await SecureStore.setItemAsync(ACCESS_KEY, tokens.accessToken);
   await SecureStore.setItemAsync(REFRESH_KEY, tokens.refreshToken);
+  saveWorkerToken(tokens.refreshToken);
 }
 
 export async function getTokens(): Promise<{

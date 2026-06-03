@@ -7,7 +7,7 @@
 //    refuses the app and requestPermission() returns [] with no dialog.
 // 3. De-duplicates the legacy ACTION_SHOW_PERMISSIONS_RATIONALE intent-filter on MainActivity.
 
-const { withAndroidManifest } = require('@expo/config-plugins');
+const { withAndroidManifest, withMainActivity } = require('@expo/config-plugins');
 
 const PERMISSIONS = ['android.permission.health.READ_STEPS'];
 const RATIONALE_ACTION = 'androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE';
@@ -58,7 +58,38 @@ function ensureRationaleAlias(application) {
   });
 }
 
+function withHealthConnectDelegate(config) {
+  return withMainActivity(config, (cfg) => {
+    const src = cfg.modResults.contents;
+
+    const importLine = 'import dev.matinzd.healthconnect.permissions.HealthConnectPermissionDelegate';
+    const delegateCall = '    HealthConnectPermissionDelegate.setPermissionDelegate(this)';
+
+    let result = src;
+
+    if (!result.includes(importLine)) {
+      // Вставляем импорт после последнего существующего import
+      result = result.replace(
+        /(import [^\n]+\n)(?!import )/,
+        `$1${importLine}\n`,
+      );
+    }
+
+    if (!result.includes('setPermissionDelegate')) {
+      // Вставляем вызов в начало onCreate, после super.onCreate(...)
+      result = result.replace(
+        /(super\.onCreate\([^)]*\)\n)/,
+        `$1${delegateCall}\n`,
+      );
+    }
+
+    cfg.modResults.contents = result;
+    return cfg;
+  });
+}
+
 module.exports = function withHealthPermissions(config) {
+  config = withHealthConnectDelegate(config);
   return withAndroidManifest(config, (cfg) => {
     const manifest = cfg.modResults.manifest;
     PERMISSIONS.forEach((p) => ensurePermission(manifest, p));

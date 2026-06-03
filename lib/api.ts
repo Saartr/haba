@@ -136,12 +136,35 @@ export async function getHabits(): Promise<Habit[]> {
   return request('/habits', {}, true);
 }
 
+export async function getStepHabits(): Promise<{ ids: number[]; startDate: string }> {
+  const habits = await getHabits();
+  const stepHabits = habits.filter(h => h.category === 'steps');
+  const ids = stepHabits.map(h => h.id);
+  // Самая ранняя дата создания среди всех step-привычек
+  const startDate = stepHabits.length > 0
+    ? stepHabits.reduce((earliest, h) =>
+        h.created_at < earliest ? h.created_at : earliest,
+        stepHabits[0].created_at
+      ).slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
+  return { ids, startDate };
+}
+
+// Обратная совместимость для мест где нужны только id
+export async function getStepHabitIds(): Promise<number[]> {
+  return (await getStepHabits()).ids;
+}
+
 export async function getHabit(id: number): Promise<HabitDetail> {
   return request(`/habits/${id}`, {}, true);
 }
 
 export async function joinHabit(invite_code: string): Promise<Habit> {
   return request('/habits/join', { method: 'POST', body: JSON.stringify({ invite_code }) }, true);
+}
+
+export async function getHabitLogs(id: number, from: string, to: string): Promise<HabitLog[]> {
+  return request(`/habits/${id}/logs?from=${from}&to=${to}`, {}, true);
 }
 
 export async function logHabit(id: number, value: number, date?: string): Promise<HabitLog> {

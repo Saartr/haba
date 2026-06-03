@@ -1,0 +1,6 @@
+{
+  "name": "health-sync",
+  "version": "1.0.0",
+  "description": "Background Health Connect sync via WorkManager",
+  "main": "index.ts"
+}

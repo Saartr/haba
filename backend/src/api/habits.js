@@ -129,9 +129,10 @@ router.get('/:id', async (req, res) => {
         AND date BETWEEN ${toDateStr(mon)} AND ${toDateStr(sun)}
     `;
 
+    const minValue = habit.goal_value ?? 1;
     const streakRows = await sql`
       SELECT date FROM habit_logs
-      WHERE habit_id = ${habitId} AND user_id = ${req.userId} AND value > 0
+      WHERE habit_id = ${habitId} AND user_id = ${req.userId} AND value >= ${minValue}
       ORDER BY date DESC
     `;
     const streak = calcStreaks(streakRows);
@@ -139,6 +140,31 @@ router.get('/:id', async (req, res) => {
     res.json({ ...habit, members, week_logs, streak });
   } catch (e) {
     console.error('get habit error:', e);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// GET /api/v1/habits/:id/logs?from=2026-05-19&to=2026-05-25 — логи текущего юзера за период
+router.get('/:id/logs', async (req, res) => {
+  const habitId = parseInt(req.params.id);
+  const { from, to } = req.query;
+  if (!from || !to || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return res.status(400).json({ message: 'Параметры from и to обязательны (YYYY-MM-DD)' });
+  }
+  try {
+    const [membership] = await sql`
+      SELECT 1 FROM habit_members WHERE habit_id = ${habitId} AND user_id = ${req.userId}
+    `;
+    if (!membership) return res.status(403).json({ message: 'Нет доступа' });
+
+    const logs = await sql`
+      SELECT user_id, date, value, source FROM habit_logs
+      WHERE habit_id = ${habitId} AND user_id = ${req.userId}
+        AND date BETWEEN ${from} AND ${to}
+    `;
+    res.json(logs);
+  } catch (e) {
+    console.error('get habit logs error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });

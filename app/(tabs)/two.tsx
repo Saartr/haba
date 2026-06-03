@@ -1,8 +1,11 @@
-import { View, Pressable, Image, Alert } from 'react-native';
+import { View, Pressable, Image } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import Text from '@/components/Text';
 import Lists from '@/components/Lists';
+import BottomSheet from '@/components/BottomSheet';
+import Button from '@/components/Button';
 import { useColors, colors } from '@/lib/colors';
 import { useAuth } from '@/lib/auth-context';
 import { useSettings } from '@/lib/settings-context';
@@ -46,15 +49,12 @@ export default function ProfileScreen() {
   const cardBg = colorScheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
 
   const displayName = user?.first_name ?? user?.username ?? null;
+  const [logoutVisible, setLogoutVisible] = useState(false);
 
-  const handleLogout = () => {
-    Alert.alert('Выйти из аккаунта?', '', [
-      { text: 'Отмена', style: 'cancel' },
-      { text: 'Выйти', style: 'destructive', onPress: async () => {
-        await clearTokens();
-        setAuthed(false);
-      }},
-    ]);
+  const confirmLogout = async () => {
+    setLogoutVisible(false);
+    await clearTokens();
+    setAuthed(false);
   };
 
   return (
@@ -123,7 +123,7 @@ export default function ProfileScreen() {
 
         {/* Action buttons */}
         <View style={{ marginHorizontal: 24, gap: 16 }}>
-          <Pressable onPress={handleLogout} style={{ height: 56 }}>
+          <Pressable onPress={() => setLogoutVisible(true)} style={{ height: 56 }}>
             {({ pressed }) => (
               <View style={{
                 flex: 1,
@@ -161,6 +161,20 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
       </View>
+      <BottomSheet
+        visible={logoutVisible}
+        title="Выйти из аккаунта?"
+        onClose={() => setLogoutVisible(false)}
+      >
+        <View style={{ flexDirection: 'row', gap: 16 }}>
+          <View style={{ flex: 1 }}>
+            <Button label="Отмена" onPress={() => setLogoutVisible(false)} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button label="Выйти" onPress={confirmLogout} />
+          </View>
+        </View>
+      </BottomSheet>
     </SafeAreaView>
   );
 }

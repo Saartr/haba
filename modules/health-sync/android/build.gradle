@@ -1,0 +1,23 @@
+apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+android {
+  compileSdkVersion 36
+  namespace "pro.mihmih.haba.healthsync"
+  defaultConfig {
+    minSdkVersion 26
+    targetSdkVersion 36
+  }
+}
+
+repositories {
+  google()
+  mavenCentral()
+}
+
+dependencies {
+  implementation project(':expo-modules-core')
+  implementation "androidx.work:work-runtime-ktx:2.9.0"
+  implementation "androidx.health.connect:connect-client:1.1.0-rc01"
+  implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
+}

@@ -1,11 +1,23 @@
-import { View, Pressable } from 'react-native';
+import { View, Pressable, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import Text from '@/components/Text';
 import Select from '@/components/Select';
 import SegmentedControl from '@/components/SegmentedControl';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings, ThemePreference, Toggle } from '@/lib/settings-context';
+import {
+  isHealthConnectAvailable,
+  hasStepsPermission,
+  requestStepsPermission,
+  openHealthConnectPermissions,
+} from '@/lib/health';
+import { scheduleSync, cancelSync } from '@/modules/health-sync';
+import { getStepHabits } from '@/lib/api';
+
+const BASE_URL = 'https://bot.mihmih.pro/api/v1';
 
 import ArrowBackIcon from '@/assets/icons/ArrowBack.svg';
 
@@ -28,6 +40,46 @@ export default function AppSettingsScreen() {
   const c = useColors();
   const router = useRouter();
   const { settings, colorScheme, updateSettings } = useSettings();
+
+  const [hcAvailable, setHcAvailable] = useState(false);
+
+  // Перечитываем реальное состояние разрешения при каждом возврате на экран
+  // (пользователь мог отозвать разрешение в системных настройках HC)
+  useFocusEffect(useCallback(() => {
+    if (Platform.OS !== 'android') return;
+    (async () => {
+      try {
+        const available = await isHealthConnectAvailable();
+        setHcAvailable(available);
+        if (available) {
+          const granted = await hasStepsPermission();
+          updateSettings({ googleFit: granted ? 'on' : 'off' });
+        }
+      } catch (e) {
+        console.warn('[health] focus check error:', e);
+      }
+    })();
+  // updateSettings стабилен (useCallback в SettingsProvider), добавляем в deps для линтера
+  }, [updateSettings]));
+
+  const handleGoogleFitChange = async (v: string) => {
+    try {
+      if (v === 'on') {
+        const granted = await requestStepsPermission();
+        updateSettings({ googleFit: granted ? 'on' : 'off' });
+        if (granted) {
+          const { ids, startDate } = await getStepHabits();
+          scheduleSync(BASE_URL, ids, startDate);
+        }
+      } else {
+        openHealthConnectPermissions();
+        cancelSync();
+        // Тоггл не меняем здесь — useFocusEffect обновит реальное состояние при возврате
+      }
+    } catch (e) {
+      console.warn('[health] toggle error:', e);
+    }
+  };
 
   const screenBg = colorScheme === 'dark' ? colors.neutral[950] : colors.neutral[50];
 
@@ -72,10 +124,11 @@ export default function AppSettingsScreen() {
           onChange={v => updateSettings({ notifications: v as Toggle })}
         />
         <SegmentedControl
-          label="Доступ к Google Fit"
+          label="Доступ к Health Connect"
           options={TOGGLE_OPTIONS}
           value={settings.googleFit}
-          onChange={v => updateSettings({ googleFit: v as Toggle })}
+          onChange={handleGoogleFitChange}
+          disabled={!hcAvailable}
         />
       </View>
     </SafeAreaView>

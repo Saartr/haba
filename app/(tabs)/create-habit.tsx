@@ -8,8 +8,13 @@ import NavigationBar from '@/components/NavigationBar';
 import CheckIcon from '@/assets/icons/Check.svg';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
-import { createHabit } from '@/lib/api';
+import { createHabit, getStepHabits } from '@/lib/api';
 import { useSnackbar } from '@/lib/snackbar-context';
+import { scheduleSync } from '@/modules/health-sync';
+import { hasStepsPermission } from '@/lib/health';
+import { Platform } from 'react-native';
+
+const BASE_URL = 'https://bot.mihmih.pro/api/v1';
 import { useState } from 'react';
 
 const TYPE_OPTIONS = [
@@ -86,6 +91,14 @@ export default function CreateHabitScreen() {
 
       router.replace(`/(tabs)/habit/${habit.id}`);
       showSnackbar('Привычка создана', 'success');
+
+      // Перепланируем WorkManager если создана step-привычка и есть разрешение HC
+      if (Platform.OS === 'android' && habit.category === 'steps') {
+        hasStepsPermission().then(granted => {
+          if (!granted) return;
+          getStepHabits().then(({ ids, startDate }) => scheduleSync(BASE_URL, ids, startDate));
+        }).catch(() => {});
+      }
     } catch (e: any) {
       Alert.alert('Ошибка', e.message ?? 'Не удалось создать привычку');
     } finally {

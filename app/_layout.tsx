@@ -10,8 +10,13 @@ import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { SettingsProvider } from '@/lib/settings-context';
 import { ConfirmProvider } from '@/components/ConfirmModal';
 import { SnackbarProvider } from '@/lib/snackbar-context';
-import { joinHabit } from '@/lib/api';
+import { joinHabit, getStepHabits } from '@/lib/api';
 import { savePendingInvite, getPendingInvite, clearPendingInvite } from '@/lib/auth';
+import { scheduleSync, cancelSync } from '@/modules/health-sync';
+import { hasStepsPermission } from '@/lib/health';
+import { Platform } from 'react-native';
+
+const BASE_URL = 'https://bot.mihmih.pro/api/v1';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -22,7 +27,7 @@ export const unstable_settings = {
 };
 
 function RootLayoutNav() {
-  const { authed, checked } = useAuth();
+  const { authed, checked, user } = useAuth();
   const [ready, setReady] = useState(false);
   const router = useRouter();
   const segments = useSegments();
@@ -99,6 +104,28 @@ function RootLayoutNav() {
       router.replace('/(auth)/welcome');
     }
   }, [ready, fontsLoaded, checked, authed, segments]);
+
+  // Планируем/отменяем фоновый WorkManager-синк.
+  // Ждём user !== null — значит refreshUser() завершился и токены стабильны.
+  useEffect(() => {
+    if (!checked) return;
+    if (!authed) {
+      cancelSync();
+      return;
+    }
+    if (Platform.OS !== 'android') return;
+    if (!user) return; // ждём пока профиль загрузится (избегаем гонки с refreshTokens)
+    (async () => {
+      try {
+        const granted = await hasStepsPermission();
+        if (!granted) return;
+        const { ids, startDate } = await getStepHabits();
+        scheduleSync(BASE_URL, ids, startDate);
+      } catch (e) {
+        console.warn('[health-sync] schedule error:', e);
+      }
+    })();
+  }, [authed, checked, user]);
 
   // После входа: если был отложенный invite (юзер пришёл по ссылке неавторизованным) —
   // вступаем в группу и открываем её экран.

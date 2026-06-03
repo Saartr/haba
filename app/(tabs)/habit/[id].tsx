@@ -11,7 +11,7 @@ import {
   Linking,
   Share,
 } from 'react-native';
-import Calendar, { CalendarDay } from '@/components/Calendar';
+import Calendar from '@/components/Calendar';
 import Card from '@/components/Card';
 import DropdownPopover from '@/components/DropdownPopover';
 import NavigationBar from '@/components/NavigationBar';
@@ -44,14 +44,19 @@ import {
   syncHabitSteps,
   excludeMember,
   closeHabit,
+  getStepHabits,
   HabitDetail,
   HabitMember,
 } from '@/lib/api';
+import { scheduleSync, cancelSync } from '@/modules/health-sync';
+
+const BASE_URL = 'https://bot.mihmih.pro/api/v1';
 import {
   isHealthConnectAvailable,
   hasStepsPermission,
   requestStepsPermission,
   getTodaySteps,
+  getStepsByDays,
 } from '@/lib/health';
 import { useEffect, useState, useCallback } from 'react';
 
@@ -62,47 +67,6 @@ const CHECK_IN_LABELS: Record<string, [string, string]> = {
   smoking:    ['Не курил', 'Курил'],
   'no-smoking': ['Не курил', 'Курил'],
 };
-
-function buildCalendarDays(habit: HabitDetail): CalendarDay[] {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const dayOfWeek = today.getUTCDay() || 7;
-  const mon = new Date(today);
-  mon.setUTCDate(today.getUTCDate() - dayOfWeek + 1);
-
-  const selfId = habit.members.find(m => m.is_self)?.id;
-  const myLogs = new Map(
-    habit.week_logs
-      .filter(l => l.user_id === selfId)
-      .map(l => [l.date.slice(0, 10), l.value]),
-  );
-
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(mon);
-    d.setUTCDate(mon.getUTCDate() + i);
-    const dateStr = d.toISOString().slice(0, 10);
-    const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
-    const loggedValue = myLogs.get(dateStr);
-
-    let status: CalendarDay['status'];
-    if (diff > 0) {
-      status = 'future';
-    } else if (diff === 0) {
-      // Сегодня: зависит от того залогировано ли
-      if (loggedValue === undefined) {
-        status = 'current';       // ещё не отмечено
-      } else if (loggedValue > 0) {
-        status = 'check';         // не курил — зелёный
-      } else {
-        status = 'miss';          // курил — красный
-      }
-    } else {
-      // Прошлые дни
-      status = loggedValue !== undefined && loggedValue > 0 ? 'check' : 'miss';
-    }
-    return { day: d.getUTCDate(), status };
-  });
-}
 
 
 function SoloHabitScreen({
@@ -119,7 +83,6 @@ function SoloHabitScreen({
   const { colorScheme: scheme } = useSettings();
   const [menuVisible, setMenuVisible] = useState(false);
   const [successLabel, failLabel] = CHECK_IN_LABELS[habit.category ?? ''] ?? ['Выполнено', 'Пропустил'];
-  const calendarDays = buildCalendarDays(habit);
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
 
@@ -163,7 +126,12 @@ function SoloHabitScreen({
 
       {/* Content — без flex:1, естественная высота */}
       <View style={{ padding: 24, gap: 16 }}>
-        <Calendar days={calendarDays} />
+        <Calendar
+            habitId={habit.id}
+            habitCreatedAt={habit.created_at}
+            currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
+            goalValue={habit.goal_value ?? 1}
+          />
 
         <View style={{ flexDirection: 'row', gap: 16 }}>
           <Card style={{ flex: 1, gap: 4 }}>
@@ -314,7 +282,8 @@ export default function HabitScreen() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Автосинк шагов из Health Connect, если уже есть permission
+  // Автосинк шагов из Health Connect при загрузке:
+  // читаем шаги с даты создания привычки до сегодня и досинкаем все дни с данными.
   useEffect(() => {
     if (!habit || habit.category !== 'steps' || Platform.OS !== 'android') return;
     let cancelled = false;
@@ -322,12 +291,26 @@ export default function HabitScreen() {
       try {
         const granted = await hasStepsPermission();
         if (!granted || cancelled) return;
-        const steps = await getTodaySteps();
-        if (cancelled || steps <= 0) return;
-        await syncHabitSteps(habitId, steps, 'health_connect');
-        if (!cancelled) load();
+
+        const createdAt = new Date(habit.created_at);
+        const msPerDay = 24 * 60 * 60 * 1000;
+        const daysSinceCreation = Math.floor((Date.now() - createdAt.getTime()) / msPerDay) + 1;
+        // Не более 90 дней — разумный предел чтобы не читать HC за всю историю
+        const daysToSync = Math.min(daysSinceCreation, 90);
+
+        const stepsByDay = await getStepsByDays(daysToSync);
+        if (cancelled || Object.keys(stepsByDay).length === 0) return;
+
+        let synced = false;
+        for (const [date, steps] of Object.entries(stepsByDay)) {
+          if (cancelled) break;
+          // Синкаем любой день — сервер применит GREATEST, ручной ввод не перетрёт
+          await syncHabitSteps(habitId, steps, 'health_connect', date);
+          synced = true;
+        }
+
+        if (!cancelled && synced) load();
       } catch (e) {
-        // тихий автосинк — не дёргаем юзера Alert'ом
         console.warn('[health] auto-sync failed:', e);
       }
     })();
@@ -352,7 +335,14 @@ export default function HabitScreen() {
       destructive: true,
     });
     if (!ok) return;
-    try { await closeHabit(habitId); router.back(); showSnackbar('Привычка удалена', 'success'); } catch (e: any) { Alert.alert('Ошибка', e.message); }
+    try {
+      await closeHabit(habitId);
+      if (Platform.OS === 'android' && habit?.category === 'steps') {
+        getStepHabits().then(({ ids, startDate }) => ids.length > 0 ? scheduleSync(BASE_URL, ids, startDate) : cancelSync()).catch(() => {});
+      }
+      router.back();
+      showSnackbar('Привычка удалена', 'success');
+    } catch (e: any) { Alert.alert('Ошибка', e.message); }
   }
 
   async function handleLeave() {
@@ -510,7 +500,14 @@ export default function HabitScreen() {
       destructive: true,
     });
     if (!ok) return;
-    try { await closeHabit(habitId); router.back(); showSnackbar('Привычка удалена', 'success'); } catch (e: any) { Alert.alert('Ошибка', e.message); }
+    try {
+      await closeHabit(habitId);
+      if (Platform.OS === 'android' && habit?.category === 'steps') {
+        getStepHabits().then(({ ids, startDate }) => ids.length > 0 ? scheduleSync(BASE_URL, ids, startDate) : cancelSync()).catch(() => {});
+      }
+      router.back();
+      showSnackbar('Привычка удалена', 'success');
+    } catch (e: any) { Alert.alert('Ошибка', e.message); }
   }
 
   if (habit.type === 'solo') {
@@ -575,7 +572,12 @@ export default function HabitScreen() {
 
       <ScrollView contentContainerStyle={{ paddingVertical: 24, gap: 8 }}>
         <View style={{ paddingHorizontal: 24 }}>
-          <Calendar days={buildCalendarDays(habit)} />
+          <Calendar
+            habitId={habit.id}
+            habitCreatedAt={habit.created_at}
+            currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
+            goalValue={habit.goal_value ?? 1}
+          />
         </View>
 
         {/* Stats — горизонтальный скролл */}
