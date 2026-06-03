@@ -98,7 +98,7 @@ export default function BottomSheet({ visible, title, onClose, children }: Props
             </View>
           ) : null}
 
-          {children}
+          {visible ? children : null}
         </Animated.View>
       </Animated.View>
     </Modal>

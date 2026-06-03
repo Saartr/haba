@@ -43,6 +43,7 @@ import {
   logHabit,
   syncHabitSteps,
   leaveHabit,
+  transferHabit,
   excludeMember,
   closeHabit,
   getStepHabits,
@@ -263,6 +264,7 @@ export default function HabitScreen() {
   const [stepsInput, setStepsInput] = useState('');
   const [stepsError, setStepsError] = useState<string | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [transferModal, setTransferModal] = useState(false);
 
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' : 'dark-content';
@@ -343,6 +345,26 @@ export default function HabitScreen() {
       router.back();
       showSnackbar('Цель удалена', 'success');
     } catch (e: any) { Alert.alert('Ошибка', e.message); }
+  }
+
+  async function handleTransfer(memberId: number) {
+    setTransferModal(false);
+    const member = habit?.members.find(m => m.id === memberId);
+    const name = member?.first_name ?? member?.username ?? 'участника';
+    const ok = await confirm({
+      title: 'Передать права?',
+      description: `${name} станет создателем этой цели. Вы останетесь участником.`,
+      confirmLabel: 'Передать',
+      confirmIcon: <SupervisorAccountIcon width={24} height={24} color={c.icon.onPrimary} />,
+    });
+    if (!ok) return;
+    try {
+      await transferHabit(habitId, memberId);
+      load();
+      showSnackbar('Права переданы', 'success');
+    } catch (e: any) {
+      Alert.alert('Ошибка', e.message);
+    }
   }
 
   async function handleLeave() {
@@ -572,7 +594,7 @@ export default function HabitScreen() {
           ...(habit.is_creator && habit.members.length > 1 ? [{
             label: 'Передать права',
             icon: <SupervisorAccountIcon width={24} height={24} color={c.text.secondary} />,
-            onPress: () => {},
+            onPress: () => { setMenuVisible(false); setTransferModal(true); },
           }] : []),
           ...(!habit.is_creator && habit.members.length > 1 ? [{
             label: 'Выйти из цели',
@@ -687,6 +709,51 @@ export default function HabitScreen() {
             icon={<ShareIcon />}
             onPress={handleShareInvite}
           />
+        </View>
+      </BottomSheet>
+
+      {/* Transfer modal — выбор нового создателя */}
+      <BottomSheet title="Передать права" visible={transferModal} onClose={() => setTransferModal(false)}>
+        <View style={{ gap: 4, marginHorizontal: -24 }}>
+          {habit.members.map(member => {
+            const name = member.first_name ?? member.username ?? '?';
+            const initial = name[0].toUpperCase();
+            const isSelf = member.is_self;
+            return (
+              <Pressable
+                key={member.id}
+                onPress={() => !isSelf && handleTransfer(member.id)}
+                android_ripple={{ color: 'rgba(0,0,0,0.06)' }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 16,
+                  paddingVertical: 12,
+                  paddingHorizontal: 24,
+                  backgroundColor: isSelf ? c.surface.cardGrey : 'transparent',
+                }}
+              >
+                {member.avatar_url ? (
+                  <Image source={{ uri: member.avatar_url }}
+                    style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: colors.neutral[500] }} />
+                ) : (
+                  <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 2,
+                    borderColor: colors.neutral[500], backgroundColor: colors.neutral[50],
+                    alignItems: 'center', justifyContent: 'center' }}>
+                    <Text weight="bold" style={{ fontSize: 20, color: colors.neutral[500], lineHeight: 30 }}>
+                      {initial}
+                    </Text>
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text weight="semibold" style={{ fontSize: 16, color: isSelf ? c.text.secondary : c.text.primary, letterSpacing: 0.2 }}>
+                    {isSelf ? `${name} (Вы, создатель)` : name}
+                  </Text>
+                </View>
+                {isSelf && <CheckIcon width={24} height={24} color={c.text.secondary} />}
+              </Pressable>
+            );
+          })}
         </View>
       </BottomSheet>
 
