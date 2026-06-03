@@ -1,6 +1,8 @@
-# Haba — трекер привычек
+# Тапа — трекер привычек
 
 Мобильное приложение (Android) для отслеживания привычек с групповым соревнованием через Telegram.
+
+> **Имя приложения:** Тапа. В коде и системных идентификаторах — `haba` / `tapa` (scheme, package, SecureStore keys остаются `haba` для обратной совместимости).
 
 ## Стек
 
@@ -8,6 +10,31 @@
 - NativeWind v4, дизайн-система TapaDS
 - Бэкенд: Node.js v22, Express 5, PostgreSQL, PM2 (`bot.mihmih.pro`)
 - Telegram Bot: `@Step_Challenges_Bot` (grammy v1)
+
+## Архитектурная проверка (2026-06-03)
+
+Полная проверка целостности фронтенд↔бэкенд контракта. Найдено и исправлено:
+
+### Критические фиксы
+| Проблема | Файл | Исправление |
+|---|---|---|
+| `PATCH /auth/me` не возвращал `tg_id`/`vk_id` | `backend/src/api/auth.js` | Добавлены в RETURNING и ответ |
+| `DELETE /habits/:id` = hard DELETE (уничтожал данные) | `backend/src/api/habits.js` | Soft-close: `SET closed_at = now()` |
+| `AVATARS_DIR` = `/var/www/step-bot/...` (legacy path) | `auth.js`, `index.js` | Исправлен на `/var/www/haba/backend/public/avatars` |
+
+### Предупреждения
+| Проблема | Файл | Исправление |
+|---|---|---|
+| `POST /habits`, `POST /habits/join` не возвращали `is_creator` | `habits.js` | Добавлен `{ ...habit, is_creator }` |
+| `verifyVkToken` URL через string interpolation | `auth.js` | `URLSearchParams` для безопасного кодирования |
+| `updateProfile` тип: `first_name?` вместо `first_name` | `lib/api.ts` | Сделан обязательным |
+| `HabitLog` тип без `id`, `habit_id`, `source` | `lib/api.ts` | Поля добавлены |
+
+### Переименование Haba → Тапа
+- `app.json`: `name` → `"Tapa"`, `slug` → `"tapa"`
+- `package.json`: `name` → `"tapa"`
+- Юридические тексты: «приложения Haba» → «приложения Тапа»
+- Scheme `haba://`, package `pro.mihmih.haba`, SecureStore keys — **не меняются** (системные идентификаторы)
 
 ## UI-компоненты
 
@@ -25,16 +52,15 @@
 
 ### Telegram
 
-Флоу через системный браузер и Android deep link:
+Нативный Telegram Login SDK (OIDC):
 
-1. Приложение открывает `oauth.telegram.org` **напрямую** (без серверного redirect — иначе fragment теряется)
-2. Telegram показывает диалог подтверждения → redirect на `/api/v1/auth/telegram-callback#tgAuthResult=...`
-3. Страница callback показывает кнопку «Открыть Тапа» + авто-редирект через 500ms → `haba://auth/callback?tgAuthResult=...`
-4. `_layout.tsx` перехватывает deeplink → `POST /auth/telegram` (HMAC-верификация) → JWT
+1. `TelegramLoginModule.signIn()` → нативный SDK открывает Telegram для подтверждения
+2. SDK возвращает `id_token` (OIDC JWT, RS256, подпись верифицируется через JWKS)
+3. `POST /auth/telegram-native` → верификация JWT → upsert user → JWT
 
-**Важно:** `origin` = `https://bot.mihmih.pro` (с протоколом). Домен зарегистрирован в BotFather → `@Step_Challenges_Bot` → Domain.
+**Важно:** Release-сборка требует SHA-256 fingerprint ключа подписи в BotFather → Native Login → Android.
 
-Сохраняет: `tg_id`, `username`, `first_name`, `last_name`, `avatar_url`. Аватар обновляется при каждом логине через Bot API.
+Сохраняет: `tg_id`, `username`, `first_name`, `last_name`, `phone` (при scope=phone), `avatar_url`. Аватар обновляется при каждом логине через Bot API.
 
 ### VK ID
 
@@ -48,25 +74,24 @@
 
 > `phone` возвращается VK только для приложений с бизнес-аккаунтом VK ID Console — разблокируется после регистрации в RuStore.
 
-Схема `haba://` настроена в `app.json` и `android/app/src/main/AndroidManifest.xml`.
+Схема `haba://` настроена в `app.json` (нативная папка `android/` генерируется через `prebuild`).
 
 ## Трекер шагов (Health Connect)
 
 Интеграция с Google Health Connect для автоматического импорта шагов.
 
-**Текущий статус:** реализовано, но заблокировано политикой Google.
+**Текущий статус:** ✅ работает на debug APK.
 
-Health Connect требует верификации приложения через Google Play Console — без этого `requestPermission()` возвращает пустой массив не показав диалог. Debug APK не проходит эту проверку.
-
-**Что работает уже сейчас:**
+**Что реализовано:**
 - Ручной ввод шагов (кнопка «Внести шаги» → «Записать»)
-- Автосинк срабатывает тихо в фоне при наличии разрешения
+- Автосинк шагов в фоне при наличии разрешения (через `useFocusEffect` в экране привычки)
+- Кнопка «Подключить трекер» в модалке «Внести шаги»
 
-**Для разблокировки HC:**
-1. Зарегистрировать [Google Play Developer Account](https://play.google.com/console) ($25 разово)
-2. Собрать release AAB: `cd android && ./gradlew bundleRelease`
-3. Залить в Play Console → Internal Testing
-4. Установить через тестовую ссылку Play Store
+**Важно — Android 14+:** Health Connect требует `<activity-alias>` с `android.intent.action.VIEW_PERMISSION_USAGE` в манифесте. Без него `requestPermission()` молча возвращает `[]` без показа диалога. Alias добавляется через `plugins/with-health-permissions.js` (функция `ensureRationaleAlias`) — попадает в манифест автоматически при `prebuild`.
+
+**Ручной патч после `npm install`:** в `node_modules/react-native-health-connect/.../HealthConnectPermissionDelegate.kt` нужно удалить вызов `coroutineContext.cancel()` — иначе запрос разрешений сломается после первого вызова. patch-package не настроен, патч теряется при переустановке зависимостей.
+
+**Для публикации в Google Play** (не для разработки) потребуется Google Play Developer Account ($25 разово).
 
 ## Сборка APK (debug)
 

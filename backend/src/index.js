@@ -18,7 +18,7 @@ bot.catch((err) => {
 
 const app = express();
 app.use(express.json());
-app.use('/avatars', express.static('/var/www/step-bot/public/avatars'));
+app.use('/avatars', express.static('/var/www/haba/backend/public/avatars'));
 
 // Передаём bot в req для роутеров
 app.use((req, res, next) => {

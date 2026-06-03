@@ -36,4 +36,4 @@ async function runVkMigration() {
   console.log('VK migration complete');
 }
 
-runVkMigration().catch(e => { console.error(e); process.exit(1); });
+module.exports = runVkMigration;

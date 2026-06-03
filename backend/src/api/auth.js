@@ -12,7 +12,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change_me_in_env';
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const ACCESS_TTL = '15m';
 const REFRESH_TTL = '30d';
-const AVATARS_DIR = '/var/www/step-bot/public/avatars';
+const AVATARS_DIR = '/var/www/haba/backend/public/avatars';
 const AVATARS_URL = 'https://bot.mihmih.pro/avatars';
 
 // Telegram Native Login (нативный SDK) — на сервере только верификация id_token.
@@ -109,7 +109,13 @@ const VK_CLIENT_ID = '54615454';
 
 async function verifyVkToken(accessToken, userId) {
   // secure.checkToken не привязан к IP в отличие от users.get с user access token
-  const url = `https://api.vk.com/method/secure.checkToken?token=${accessToken}&client_secret=${process.env.VK_CLIENT_SECRET}&access_token=${VK_SERVICE_TOKEN}&v=5.199`;
+  const params = new URLSearchParams({
+    token: accessToken,
+    client_secret: process.env.VK_CLIENT_SECRET,
+    access_token: VK_SERVICE_TOKEN,
+    v: '5.199',
+  });
+  const url = `https://api.vk.com/method/secure.checkToken?${params}`;
   const res = await fetch(url);
   const data = await res.json();
   if (data.error) throw new Error(`VK API error: ${data.error.error_msg}`);
@@ -352,15 +358,17 @@ router.patch('/me', requireAuth, async (req, res) => {
     const [user] = await sql`
       UPDATE users SET first_name = ${first_name.trim()}
       WHERE id = ${req.userId}
-      RETURNING username, first_name, last_name, avatar_url
+      RETURNING username, first_name, last_name, avatar_url, tg_id, vk_id
     `;
     if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
 
     res.json({
-      username:   user.username,
+      username:   user.username   || null,
       first_name: user.first_name || null,
       last_name:  user.last_name  || null,
       avatar_url: user.avatar_url || null,
+      tg_id:      user.tg_id ? String(user.tg_id) : null,
+      vk_id:      user.vk_id     || null,
     });
   } catch (e) {
     console.error('patch me error:', e);

@@ -69,6 +69,19 @@ async function runMigrations() {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name  TEXT`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT`;
 
+  // VK auth: make tg_id nullable, add vk_id with partial unique index
+  await sql`ALTER TABLE users ALTER COLUMN tg_id DROP NOT NULL`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS vk_id TEXT`;
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS users_vk_id_unique
+      ON users (vk_id)
+      WHERE vk_id IS NOT NULL
+  `;
+
+  // Profile fields from VK/Telegram
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT`;
+
   const migrateHabits = require('./migrate_habits');
   await migrateHabits();
   console.log('Миграции применены');

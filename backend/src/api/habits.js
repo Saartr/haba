@@ -74,7 +74,7 @@ router.post('/', async (req, res) => {
       RETURNING *
     `;
     await sql`INSERT INTO habit_members (habit_id, user_id) VALUES (${habit.id}, ${req.userId})`;
-    res.status(201).json(habit);
+    res.status(201).json({ ...habit, is_creator: true });
   } catch (e) {
     console.error('create habit error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
@@ -156,7 +156,7 @@ router.post('/join', async (req, res) => {
       INSERT INTO habit_members (habit_id, user_id) VALUES (${habit.id}, ${req.userId})
       ON CONFLICT DO NOTHING
     `;
-    res.json(habit);
+    res.json({ ...habit, is_creator: habit.creator_id === req.userId });
   } catch (e) {
     console.error('join habit error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
@@ -264,16 +264,14 @@ router.post('/:id/transfer', async (req, res) => {
   }
 });
 
-// DELETE /api/v1/habits/:id — закрыть группу
+// DELETE /api/v1/habits/:id — закрыть привычку (soft-close via closed_at)
 router.delete('/:id', async (req, res) => {
   const habitId = parseInt(req.params.id);
   try {
     const [habit] = await sql`SELECT creator_id FROM habits WHERE id = ${habitId}`;
     if (!habit) return res.status(404).json({ message: 'Не найдено' });
     if (habit.creator_id !== req.userId) return res.status(403).json({ message: 'Только создатель' });
-    await sql`DELETE FROM habit_logs WHERE habit_id = ${habitId}`;
-    await sql`DELETE FROM habit_members WHERE habit_id = ${habitId}`;
-    await sql`DELETE FROM habits WHERE id = ${habitId}`;
+    await sql`UPDATE habits SET closed_at = now() WHERE id = ${habitId}`;
     res.json({ ok: true });
   } catch (e) {
     console.error('close habit error:', e);

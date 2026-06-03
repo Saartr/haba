@@ -75,7 +75,7 @@ export async function getMe(): Promise<UserProfile> {
   return request('/auth/me', {}, true);
 }
 
-export async function updateProfile(data: { first_name?: string }): Promise<UserProfile> {
+export async function updateProfile(data: { first_name: string }): Promise<UserProfile> {
   return request('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }, true);
 }
 
@@ -107,9 +107,12 @@ export type HabitMember = {
 };
 
 export type HabitLog = {
+  id: number;
+  habit_id: number;
   user_id: number;
   date: string;
   value: number;
+  source: string;
 };
 
 export type HabitDetail = Habit & {

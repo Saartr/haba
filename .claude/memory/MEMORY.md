@@ -16,3 +16,4 @@
 - [База данных](project_database.md) — схема всех таблиц: users, groups, habits, habit_members, habit_logs, refresh_tokens
 - [Деплой бэкенда](project_backend_deploy.md) — backend/ в репо, ручной деплой через `./deploy-backend.ps1` (нет автодеплоя)
 - [Git коммиты](feedback_git_commits.md) — коммитить и пушить только по явной просьбе, не автоматически
+- [Arch Review 2026-06](project_arch_review_2026-06.md) — результаты проверки + фиксы: PATCH /auth/me, is_creator, soft-close, VK URL, HabitLog, rename Haba→Тапа
