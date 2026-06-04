@@ -1,16 +1,22 @@
-import { Link, Stack } from 'expo-router';
-import { Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import ErrorScreen from '@/components/ErrorScreen';
 
 export default function NotFoundScreen() {
+  const router = useRouter();
   return (
-    <>
-      <Stack.Screen options={{ title: 'Oops!' }} />
-      <View className="flex-1 items-center justify-center p-5">
-        <Text className="text-xl font-bold">Страница не найдена</Text>
-        <Link href="/" className="mt-4 py-4">
-          <Text className="text-sm text-blue-500">На главную</Text>
-        </Link>
-      </View>
-    </>
+    <ErrorScreen
+      message="Группа не найдена"
+      actions={[
+        {
+          label: 'Ввести другой код',
+          onPress: () => router.back(),
+        },
+        {
+          label: 'На главную',
+          onPress: () => router.replace('/(tabs)'),
+          variant: 'text',
+        },
+      ]}
+    />
   );
 }

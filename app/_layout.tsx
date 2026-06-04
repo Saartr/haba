@@ -19,7 +19,23 @@ import { BASE_URL } from '@/lib/config';
 
 SplashScreen.preventAutoHideAsync();
 
-export { ErrorBoundary } from 'expo-router';
+import AutorenewIcon from '@/assets/icons/Autorenew.svg';
+import ErrorScreen from '@/components/ErrorScreen';
+
+export function ErrorBoundary({ retry }: { error: Error; retry: () => void }) {
+  return (
+    <ErrorScreen
+      message="Внутренняя ошибка сервера"
+      actions={[
+        {
+          label: 'Обновить',
+          onPress: retry,
+          icon: <AutorenewIcon />,
+        },
+      ]}
+    />
+  );
+}
 
 export const unstable_settings = {
   initialRouteName: '(auth)',
