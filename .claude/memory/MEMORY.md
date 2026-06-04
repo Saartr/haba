@@ -19,4 +19,5 @@
 - [Git коммиты](feedback_git_commits.md) — коммитить и пушить только по явной просьбе, не автоматически
 - [Arch Review 2026-06](project_arch_review_2026-06.md) — результаты проверки + фиксы: PATCH /auth/me, is_creator, soft-close, VK URL, HabitLog, rename Haba→Тапа
 - [Health Sync WorkManager](project_health_sync_plan.md) — план фонового синка шагов: Expo Module health-sync, CoroutineWorker, refreshToken в SharedPreferences, scheduleSync/cancelSync
-- [Pending Features](project_pending_features.md) — отложенные фичи: передача прав, редактирование привычки, BASE_URL в одном месте, реальные push-уведомления
+- [Pending Features](project_pending_features.md) — отложенные фичи: редактирование привычки, реальные push-уведомления
+- [Push-уведомления](project_push_plan.md) — план FCM HTTP v1 напрямую (без Expo): Firebase проект, google-services.json, service-account.json, expo-notifications, cron-дайджест

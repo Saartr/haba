@@ -334,7 +334,7 @@ export default function HabitScreen() {
       title: 'Закрыть группу?',
       description: 'Это действие необратимо — вся информация о цели будет стёрта.',
       confirmLabel: 'Закрыть',
-      confirmIcon: <DeleteForeverIcon width={24} height={24} color={c.icon.onPrimary} />,
+      confirmIcon: () => <DeleteForeverIcon width={24} height={24} color={c.icon.onPrimary} />,
       destructive: true,
     });
     if (!ok) return;
@@ -356,7 +356,7 @@ export default function HabitScreen() {
       title: 'Передать права?',
       description: `${name} станет создателем этой цели. Вы останетесь участником.`,
       confirmLabel: 'Передать',
-      confirmIcon: <SupervisorAccountIcon width={24} height={24} color={c.icon.onPrimary} />,
+      confirmIcon: () => <SupervisorAccountIcon width={24} height={24} color={c.icon.onPrimary} />,
     });
     if (!ok) return;
     try {
@@ -374,7 +374,7 @@ export default function HabitScreen() {
       title: 'Выйти из цели?',
       description: 'Вы перестанете участвовать в этой групповой цели.',
       confirmLabel: 'Выйти',
-      confirmIcon: <LogoutIcon width={24} height={24} color={c.icon.onPrimary} />,
+      confirmIcon: () => <LogoutIcon width={24} height={24} color={c.icon.onPrimary} />,
       destructive: true,
     });
     if (!ok) return;
@@ -537,7 +537,7 @@ export default function HabitScreen() {
       title: 'Удалить цель?',
       description: 'Это действие необратимо — вся информация о цели будет стёрта.',
       confirmLabel: 'Удалить',
-      confirmIcon: <DeleteForeverIcon width={24} height={24} color={c.icon.onPrimary} />,
+      confirmIcon: () => <DeleteForeverIcon width={24} height={24} color={c.icon.onPrimary} />,
       destructive: true,
     });
     if (!ok) return;

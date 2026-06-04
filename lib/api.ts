@@ -1,6 +1,12 @@
 import { getTokens, saveTokens, clearTokens } from './auth';
 import { BASE_URL } from './config';
 
+let onSessionExpired: (() => void) | null = null;
+
+export function setSessionExpiredHandler(handler: () => void) {
+  onSessionExpired = handler;
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -29,6 +35,7 @@ async function request<T>(
       return retry.json();
     }
     await clearTokens();
+    onSessionExpired?.();
     throw new Error('Session expired');
   }
 

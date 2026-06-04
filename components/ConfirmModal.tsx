@@ -10,8 +10,8 @@ export type ConfirmOptions = {
   title: string;
   description?: string;
   confirmLabel?: string;
-  /** Иконка слева от текста кнопки. По умолчанию — галочка (Check). */
-  confirmIcon?: React.ReactNode;
+  /** Render-функция иконки. По умолчанию — галочка (Check). */
+  confirmIcon?: () => React.ReactNode;
   /** Красная кнопка для деструктивных действий (удаление, выход). */
   destructive?: boolean;
 };
@@ -47,8 +47,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const confirmColor = opts?.destructive ? c.semantic.error : c.brand.primary;
-  const confirmIcon =
-    opts?.confirmIcon ?? <CheckIcon width={24} height={24} color={c.icon.onPrimary} />;
+  const renderIcon = opts?.confirmIcon ?? (() => <CheckIcon width={24} height={24} color={c.icon.onPrimary} />);
 
   return (
     <ConfirmContext.Provider value={confirm}>
@@ -62,7 +61,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
           ) : null}
           <Button
             label={opts?.confirmLabel ?? 'Подтвердить'}
-            icon={confirmIcon}
+            icon={renderIcon()}
             onPress={() => settle(true)}
             color={confirmColor}
           />

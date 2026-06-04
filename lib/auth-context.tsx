@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { isAuthenticated } from '@/lib/auth';
-import { getMe, UserProfile } from '@/lib/api';
+import { getMe, UserProfile, setSessionExpiredHandler } from '@/lib/api';
 
 type AuthContextType = {
   authed: boolean;
@@ -57,6 +57,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => setAuthedState(false))
       .finally(() => setChecked(true));
+  }, []);
+
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      setAuthedState(false);
+      setUser(null);
+    });
   }, []);
 
   const updateUser = useCallback((updates: Partial<UserProfile>) => {

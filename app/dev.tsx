@@ -92,7 +92,7 @@ function ConfirmDemo() {
       }} />
       <Label text="Деструктивное действие" />
       <Button label="Удалить цель" onPress={async () => {
-        const ok = await confirm({ title: 'Удалить цель?', description: 'Все данные будут потеряны', confirmLabel: 'Удалить', confirmIcon: <DeleteIcon />, destructive: true });
+        const ok = await confirm({ title: 'Удалить цель?', description: 'Все данные будут потеряны', confirmLabel: 'Удалить', confirmIcon: () => <DeleteIcon />, destructive: true });
         setResult(ok ? 'Удалено' : 'Отменено');
       }} />
       {result && <Text style={{ fontSize: 14 }}>Результат: {result}</Text>}
