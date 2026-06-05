@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useSettings } from '@/lib/settings-context';
 import { clearTokens } from '@/lib/auth';
 import { deleteAccount } from '@/lib/api';
+import { unregisterCurrentPushToken } from '@/lib/notifications';
 import { cancelSync } from '@/modules/health-sync';
 import { Platform } from 'react-native';
 
@@ -58,6 +59,7 @@ export default function ProfileScreen() {
 
   const confirmLogout = async () => {
     setLogoutVisible(false);
+    await unregisterCurrentPushToken(); // до clearTokens — нужен accessToken
     await clearTokens();
     setAuthed(false);
   };

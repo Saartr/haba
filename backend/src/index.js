@@ -8,6 +8,7 @@ const { scheduleJobs } = require('./jobs/digest');
 const sql = require('./db/client');
 const authRouter = require('./api/auth');
 const habitsRouter = require('./api/habits');
+const pushRouter = require('./api/push');
 
 const bot = new Bot(process.env.TELEGRAM_TOKEN);
 setupCommands(bot);
@@ -29,6 +30,7 @@ app.use((req, res, next) => {
 // API v1
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/habits', habitsRouter);
+app.use('/api/v1/push', pushRouter);
 
 app.post('/webhook', async (req, res) => {
   const secret = req.headers['x-telegram-bot-api-secret-token'];

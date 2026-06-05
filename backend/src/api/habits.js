@@ -2,6 +2,7 @@ const { Router } = require('express');
 const crypto = require('crypto');
 const sql = require('../db/client');
 const { requireAuth } = require('./auth');
+const { notifyHabitJoin, notifyGoalIfReached } = require('../push/notify');
 
 const router = Router();
 router.use(requireAuth);
@@ -186,11 +187,17 @@ router.post('/join', async (req, res) => {
       SELECT * FROM habits WHERE invite_code = ${invite_code} AND closed_at IS NULL
     `;
     if (!habit) return res.status(404).json({ message: 'Цель не найдена' });
-    await sql`
+    const inserted = await sql`
       INSERT INTO habit_members (habit_id, user_id) VALUES (${habit.id}, ${req.userId})
       ON CONFLICT DO NOTHING
+      RETURNING user_id
     `;
     res.json({ ...habit, is_creator: habit.creator_id === req.userId });
+
+    // Уведомляем создателя только о реальном новом вступлении (не повторном)
+    if (inserted.length) {
+      notifyHabitJoin(habit, req.userId).catch(e => console.error('notify join error:', e.message));
+    }
   } catch (e) {
     console.error('join habit error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
@@ -208,6 +215,10 @@ router.post('/:id/logs', async (req, res) => {
     `;
     if (!membership) return res.status(403).json({ message: 'Нет доступа' });
     const logDate = date ?? toDateStr(new Date());
+    const [prev] = await sql`
+      SELECT value FROM habit_logs
+      WHERE habit_id = ${habitId} AND user_id = ${req.userId} AND date = ${logDate}
+    `;
     const [log] = await sql`
       INSERT INTO habit_logs (habit_id, user_id, date, value, source)
       VALUES (${habitId}, ${req.userId}, ${logDate}, ${value}, 'manual')
@@ -216,6 +227,10 @@ router.post('/:id/logs', async (req, res) => {
       RETURNING *
     `;
     res.json(log);
+
+    notifyGoalIfReached({
+      habitId, userId: req.userId, prevValue: prev?.value ?? null, newValue: log.value, date: logDate,
+    }).catch(e => console.error('notify goal error:', e.message));
   } catch (e) {
     console.error('log habit error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
@@ -238,6 +253,10 @@ router.post('/:id/logs/sync', async (req, res) => {
     `;
     if (!membership) return res.status(403).json({ message: 'Нет доступа' });
     const logDate = date ?? toDateStr(new Date());
+    const [prev] = await sql`
+      SELECT value FROM habit_logs
+      WHERE habit_id = ${habitId} AND user_id = ${req.userId} AND date = ${logDate}
+    `;
     const [log] = await sql`
       INSERT INTO habit_logs (habit_id, user_id, date, value, source)
       VALUES (${habitId}, ${req.userId}, ${logDate}, ${value}, ${source})
@@ -259,6 +278,10 @@ router.post('/:id/logs/sync', async (req, res) => {
       `;
     }
     res.json(log);
+
+    notifyGoalIfReached({
+      habitId, userId: req.userId, prevValue: prev?.value ?? null, newValue: log.value, date: logDate,
+    }).catch(e => console.error('notify goal error:', e.message));
   } catch (e) {
     console.error('sync habit log error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });

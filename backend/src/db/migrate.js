@@ -84,6 +84,10 @@ async function runMigrations() {
 
   const migrateHabits = require('./migrate_habits');
   await migrateHabits();
+
+  const migratePush = require('./migrate_push');
+  await migratePush();
+
   console.log('Миграции применены');
 }
 

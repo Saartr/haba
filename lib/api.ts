@@ -204,6 +204,16 @@ export async function deleteAccount(): Promise<void> {
   return request('/auth/me', { method: 'DELETE' }, true);
 }
 
+// ── Push ────────────────────────────────────────────────────────────────────
+
+export async function registerPushToken(token: string, platform: string): Promise<void> {
+  await request('/push/register', { method: 'POST', body: JSON.stringify({ token, platform }) }, true);
+}
+
+export async function unregisterPushToken(token: string): Promise<void> {
+  await request('/push/register', { method: 'DELETE', body: JSON.stringify({ token }) }, true);
+}
+
 // ── Internal ──────────────────────────────────────────────────────────────────
 
 async function refreshTokens(): Promise<{ accessToken: string; refreshToken: string } | null> {

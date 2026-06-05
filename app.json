@@ -17,6 +17,7 @@
     },
     "android": {
       "package": "pro.mihmih.haba",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -35,6 +36,13 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#6047ff"
+        }
+      ],
       "react-native-health-connect",
       "./plugins/with-health-permissions.js",
       "./plugins/with-tg-queries.js",

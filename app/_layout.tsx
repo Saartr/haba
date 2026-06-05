@@ -16,6 +16,8 @@ import { scheduleSync, cancelSync } from '@/modules/health-sync';
 import { hasStepsPermission } from '@/lib/health';
 import { Platform } from 'react-native';
 import { BASE_URL } from '@/lib/config';
+import * as Notifications from 'expo-notifications';
+import { registerForPush, addTokenRotationListener } from '@/lib/notifications';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -102,6 +104,15 @@ function RootLayoutNav() {
     };
   }, []);
 
+  // Тап по push-уведомлению → открыть экран цели.
+  // useLastNotificationResponse покрывает и foreground-тап, и холодный старт.
+  const lastNotificationResponse = Notifications.useLastNotificationResponse();
+  useEffect(() => {
+    if (!lastNotificationResponse || !authedRef.current) return;
+    const habitId = lastNotificationResponse.notification.request.content.data?.habitId;
+    if (habitId) router.push(`/(tabs)/habit/${habitId}`);
+  }, [lastNotificationResponse]);
+
   useEffect(() => {
     if (ready && fontsLoaded && checked) {
       SplashScreen.hideAsync();
@@ -140,6 +151,16 @@ function RootLayoutNav() {
         console.warn('[health-sync] schedule error:', e);
       }
     })();
+  }, [authed, checked, user]);
+
+  // Регистрация FCM-токена для push после входа (Android).
+  // Как и health-sync, ждём user !== null — токены стабильны.
+  useEffect(() => {
+    if (!checked || !authed || !user) return;
+    if (Platform.OS !== 'android') return;
+    registerForPush();
+    const sub = addTokenRotationListener();
+    return () => sub.remove();
   }, [authed, checked, user]);
 
   // После входа: если был отложенный invite (юзер пришёл по ссылке неавторизованным) —

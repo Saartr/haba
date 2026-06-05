@@ -49,5 +49,9 @@ backend/.env
 backend/public/avatars/
 backend/*.log
 
+# Firebase (FCM push) — секреты, не в git
+google-services.json
+backend/service-account.json
+
 # build log artifact
 .build_log.txt
