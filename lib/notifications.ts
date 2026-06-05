@@ -1,46 +1,60 @@
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { registerPushToken, unregisterPushToken } from './api';
 
 // Push-уведомления через нативный FCM-токен (getDevicePushTokenAsync), не Expo Push.
 // iOS отложен (нет Apple Developer Account) — пока только Android.
+// Нативный модуль ExpoPushTokenManager доступен только после prebuild+сборки APK,
+// поэтому все вызовы обёрнуты в try/catch — в dev без сборки тихо пропускаем.
 
-const ANDROID_CHANNEL_ID = 'default'; // должен совпадать с channel_id в backend/src/push/fcm.js
+const ANDROID_CHANNEL_ID = 'default';
+
+function getNotifications() {
+  try {
+    return require('expo-notifications') as typeof import('expo-notifications');
+  } catch {
+    return null;
+  }
+}
 
 // Foreground: показывать баннер даже когда приложение открыто.
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+// Вызываем лениво чтобы не крашить при загрузке модуля в Expo Go / старом APK.
+try {
+  const Notifications = getNotifications();
+  Notifications?.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+} catch {}
 
 async function ensureAndroidChannel() {
   if (Platform.OS !== 'android') return;
-  await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
-    name: 'Уведомления',
-    importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#6047ff',
-  });
+  try {
+    const Notifications = getNotifications();
+    await Notifications?.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
+      name: 'Уведомления',
+      importance: (Notifications as any).AndroidImportance?.HIGH ?? 4,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#6047ff',
+    });
+  } catch {}
 }
 
-// Запрос прав + получение FCM-токена + регистрация на бэкенде.
-// Возвращает токен или null (нет прав / не Android).
 export async function registerForPush(): Promise<string | null> {
   if (Platform.OS !== 'android') return null;
-  await ensureAndroidChannel();
-
-  let { status } = await Notifications.getPermissionsAsync();
-  if (status !== 'granted') {
-    ({ status } = await Notifications.requestPermissionsAsync());
-  }
-  if (status !== 'granted') return null;
-
   try {
-    const token = await Notifications.getDevicePushTokenAsync(); // { type:'android', data: FCM-token }
+    const Notifications = getNotifications();
+    if (!Notifications) return null;
+    await ensureAndroidChannel();
+    let { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') {
+      ({ status } = await Notifications.requestPermissionsAsync());
+    }
+    if (status !== 'granted') return null;
+    const token = await Notifications.getDevicePushTokenAsync();
     if (token?.data) {
       await registerPushToken(token.data, Platform.OS);
       return token.data;
@@ -51,20 +65,24 @@ export async function registerForPush(): Promise<string | null> {
   return null;
 }
 
-// Токен FCM может ротироваться — переотправляем новый на бэкенд.
 export function addTokenRotationListener() {
-  return Notifications.addPushTokenListener(({ data }) => {
-    if (data) registerPushToken(data, Platform.OS).catch(() => {});
-  });
+  try {
+    const Notifications = getNotifications();
+    if (!Notifications) return { remove: () => {} };
+    return Notifications.addPushTokenListener(({ data }) => {
+      if (data) registerPushToken(data, Platform.OS).catch(() => {});
+    });
+  } catch {
+    return { remove: () => {} };
+  }
 }
 
-// Отписка устройства при логауте (чтобы пуши не шли вышедшему юзеру).
 export async function unregisterCurrentPushToken(): Promise<void> {
   if (Platform.OS !== 'android') return;
   try {
+    const Notifications = getNotifications();
+    if (!Notifications) return;
     const token = await Notifications.getDevicePushTokenAsync();
     if (token?.data) await unregisterPushToken(token.data);
-  } catch {
-    // устройство могло отозвать токен — не критично
-  }
+  } catch {}
 }

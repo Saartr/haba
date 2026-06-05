@@ -60,6 +60,7 @@ import {
   getStepsByDays,
 } from '@/lib/health';
 import { useEffect, useState, useCallback } from 'react';
+import * as Notifications from 'expo-notifications';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -282,6 +283,18 @@ export default function HabitScreen() {
   }, [habitId]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Обновляем экран при получении foreground-уведомления по этой цели
+  // (новый участник вступил или кто-то внёс данные).
+  useEffect(() => {
+    const sub = Notifications.addNotificationReceivedListener(notification => {
+      const data = notification.request.content.data;
+      if (data?.habitId && String(data.habitId) === String(habitId)) {
+        load();
+      }
+    });
+    return () => sub.remove();
+  }, [habitId, load]);
 
   // Автосинк шагов из Health Connect при загрузке:
   // читаем шаги с даты создания привычки до сегодня и досинкаем все дни с данными.
