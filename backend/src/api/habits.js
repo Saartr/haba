@@ -139,36 +139,51 @@ router.get('/:id', async (req, res) => {
     `;
 
     const minValue = habit.goal_value ?? 1;
+    // Стрики по всем участникам (одним запросом), чтобы отдать и свой, и для модалки детализации
     const streakRows = await sql`
-      SELECT date FROM habit_logs
-      WHERE habit_id = ${habitId} AND user_id = ${req.userId} AND value >= ${minValue}
+      SELECT user_id, date FROM habit_logs
+      WHERE habit_id = ${habitId} AND value >= ${minValue}
       ORDER BY date DESC
     `;
-    const streak = calcStreaks(streakRows);
+    const member_streaks = {};
+    for (const m of members) {
+      member_streaks[m.id] = calcStreaks(streakRows.filter(r => r.user_id === m.id));
+    }
+    const streak = member_streaks[req.userId] ?? { current: 0, max: 0 };
 
-    res.json({ ...habit, members, week_logs, streak });
+    res.json({ ...habit, members, week_logs, streak, member_streaks });
   } catch (e) {
     console.error('get habit error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
 
-// GET /api/v1/habits/:id/logs?from=2026-05-19&to=2026-05-25 — логи текущего юзера за период
+// GET /api/v1/habits/:id/logs?from=2026-05-19&to=2026-05-25[&userId=42] — логи за период.
+// userId необязателен: по умолчанию текущий юзер, иначе — указанный участник группы.
 router.get('/:id/logs', async (req, res) => {
   const habitId = parseInt(req.params.id);
-  const { from, to } = req.query;
+  const { from, to, userId } = req.query;
   if (!from || !to || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
     return res.status(400).json({ message: 'Параметры from и to обязательны (YYYY-MM-DD)' });
   }
+  const targetUser = userId ? parseInt(userId) : req.userId;
   try {
     const [membership] = await sql`
       SELECT 1 FROM habit_members WHERE habit_id = ${habitId} AND user_id = ${req.userId}
     `;
     if (!membership) return res.status(403).json({ message: 'Нет доступа' });
 
+    // Чужие логи можно смотреть только по участнику этой же группы
+    if (targetUser !== req.userId) {
+      const [targetMember] = await sql`
+        SELECT 1 FROM habit_members WHERE habit_id = ${habitId} AND user_id = ${targetUser}
+      `;
+      if (!targetMember) return res.status(404).json({ message: 'Участник не найден' });
+    }
+
     const logs = await sql`
       SELECT id, habit_id, user_id, date, value, source FROM habit_logs
-      WHERE habit_id = ${habitId} AND user_id = ${req.userId}
+      WHERE habit_id = ${habitId} AND user_id = ${targetUser}
         AND date BETWEEN ${from} AND ${to}
     `;
     res.json(logs);

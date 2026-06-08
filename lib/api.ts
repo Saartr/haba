@@ -121,10 +121,14 @@ export type HabitLog = {
   source: string;
 };
 
+export type Streak = { current: number; max: number };
+
 export type HabitDetail = Habit & {
   members: HabitMember[];
   week_logs: HabitLog[];
-  streak: { current: number; max: number };
+  streak: Streak;
+  // Стрики по каждому участнику (ключ — user id), для модалки детализации
+  member_streaks: Record<number, Streak>;
 };
 
 export async function createHabit(data: {
@@ -163,8 +167,9 @@ export async function joinHabit(invite_code: string): Promise<Habit> {
   return request('/habits/join', { method: 'POST', body: JSON.stringify({ invite_code }) }, true);
 }
 
-export async function getHabitLogs(id: number, from: string, to: string): Promise<HabitLog[]> {
-  return request(`/habits/${id}/logs?from=${from}&to=${to}`, {}, true);
+export async function getHabitLogs(id: number, from: string, to: string, userId?: number): Promise<HabitLog[]> {
+  const q = userId != null ? `&userId=${userId}` : '';
+  return request(`/habits/${id}/logs?from=${from}&to=${to}${q}`, {}, true);
 }
 
 export async function logHabit(id: number, value: number, date?: string): Promise<HabitLog> {

@@ -9,10 +9,12 @@ import {
   Platform,
   Linking,
   Share,
+  Dimensions,
 } from 'react-native';
 import { Clipboard } from 'react-native';
 import Calendar from '@/components/Calendar';
 import Card from '@/components/Card';
+import Chip from '@/components/Chip';
 import DropdownPopover from '@/components/DropdownPopover';
 import NavigationBar from '@/components/NavigationBar';
 import EditIcon from '@/assets/icons/Edit.svg';
@@ -184,39 +186,62 @@ function SoloHabitScreen({
 // ─── sub-components ───────────────────────────────────────────────────────────
 
 
+// Заголовок раздела («Персональный результат», «Все участники») — 16px semibold
+function SectionTitle({ children }: { children: string }) {
+  const c = useColors();
+  return (
+    <Text weight="semibold" style={{ fontSize: 16, lineHeight: 26, color: c.text.primary, paddingHorizontal: 24, letterSpacing: 0.2 }}>
+      {children}
+    </Text>
+  );
+}
+
+// Аватар участника: фото или инициал имени
+function MemberAvatar({ member }: { member: HabitMember }) {
+  const name = member.first_name ?? member.username ?? '?';
+  const initial = name[0].toUpperCase();
+  if (member.avatar_url) {
+    return (
+      <Image source={{ uri: member.avatar_url }}
+        style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: colors.neutral[500] }} />
+    );
+  }
+  return (
+    <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 2,
+      borderColor: colors.neutral[500], backgroundColor: colors.neutral[50],
+      alignItems: 'center', justifyContent: 'center' }}>
+      <Text weight="bold" style={{ fontSize: 20, color: colors.neutral[500], lineHeight: 30 }}>
+        {initial}
+      </Text>
+    </View>
+  );
+}
+
 function MemberRow({
-  member, goalValue, todayValue, isCreator, onExclude,
+  member, goalValue, value, isCreator, onExclude, onOpen,
 }: {
   member: HabitMember;
   goalValue: number | null;
-  todayValue: number | null;
+  value: number | null;
   isCreator: boolean;
   onExclude: (id: number) => void;
+  onOpen: (member: HabitMember) => void;
 }) {
   const c = useColors();
   const name = member.first_name ?? member.username ?? '?';
-  const initial = name[0].toUpperCase();
   const displayName = member.is_self ? `${name} (Я)` : name;
 
   const stepsLabel = goalValue != null
-    ? `${(todayValue ?? 0).toLocaleString('ru-RU')} / ${goalValue.toLocaleString('ru-RU')}`
-    : todayValue != null ? String(todayValue) : '—';
+    ? `${(value ?? 0).toLocaleString('ru-RU')} / ${goalValue.toLocaleString('ru-RU')}`
+    : value != null ? String(value) : '—';
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+    <Pressable
+      onPress={() => onOpen(member)}
+      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', opacity: pressed ? 0.6 : 1 })}
+    >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-        {member.avatar_url ? (
-          <Image source={{ uri: member.avatar_url }}
-            style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: colors.neutral[500] }} />
-        ) : (
-          <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 2,
-            borderColor: colors.neutral[500], backgroundColor: colors.neutral[50],
-            alignItems: 'center', justifyContent: 'center' }}>
-            <Text weight="bold" style={{ fontSize: 20, color: colors.neutral[500], lineHeight: 30 }}>
-              {initial}
-            </Text>
-          </View>
-        )}
+        <MemberAvatar member={member} />
         <View>
           <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
             {displayName}
@@ -232,7 +257,7 @@ function MemberRow({
           <BlockIcon width={24} height={24} color={c.text.secondary} />
         </Pressable>
       )}
-    </View>
+    </Pressable>
   );
 }
 
@@ -266,6 +291,8 @@ export default function HabitScreen() {
   const [stepsError, setStepsError] = useState<string | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [transferModal, setTransferModal] = useState(false);
+  const [period, setPeriod] = useState<'today' | 'week'>('today');
+  const [detailMember, setDetailMember] = useState<HabitMember | null>(null);
 
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' : 'dark-content';
@@ -327,6 +354,33 @@ export default function HabitScreen() {
   function todayValueFor(memberId: number) {
     return habit?.week_logs.find(l => l.user_id === memberId && l.date.slice(0, 10) === today)?.value ?? null;
   }
+
+  // Сумма шагов участника за текущую неделю (пн–вс)
+  function weekValueFor(memberId: number) {
+    return habit?.week_logs
+      .filter(l => l.user_id === memberId)
+      .reduce((sum, l) => sum + l.value, 0) ?? 0;
+  }
+
+  // Значение участника для выбранного периода: сегодня / накопительно за неделю
+  function memberValueFor(memberId: number): number | null {
+    return period === 'week' ? weekValueFor(memberId) : todayValueFor(memberId);
+  }
+
+  // Знаменатель цели для периода: дневная цель N / N×7 за неделю
+  const periodGoal = habit?.goal_value != null
+    ? (period === 'week' ? habit.goal_value * 7 : habit.goal_value)
+    : null;
+  // Персональное число шагов за период
+  const personalSteps = period === 'week'
+    ? weekValueFor(me?.id ?? -1)
+    : (myTodayLog?.value ?? 0);
+
+  // Карточки в модалке детализации: в тёмной теме фон cardGrey (иначе сливаются со шторкой)
+  // и без тени; в светлой — дефолтный фон и тень Card
+  const detailCardStyle = scheme === 'dark'
+    ? { gap: 4, backgroundColor: c.surface.cardGrey, shadowOpacity: 0, elevation: 0 }
+    : { gap: 4 };
 
   async function handleCloseGroup() {
     setMenuVisible(false);
@@ -611,7 +665,7 @@ export default function HabitScreen() {
         ]}
       />
 
-      <ScrollView contentContainerStyle={{ paddingVertical: 24, gap: 8 }}>
+      <ScrollView contentContainerStyle={{ paddingVertical: 24, gap: 16 }}>
         <Calendar
           habitId={habit.id}
           habitCreatedAt={habit.created_at}
@@ -619,21 +673,28 @@ export default function HabitScreen() {
           goalValue={habit.goal_value ?? 1}
         />
 
-        {/* Stats — горизонтальный скролл */}
+        {/* Период */}
+        <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 24 }}>
+          <Chip label="Сегодня" selected={period === 'today'} onPress={() => setPeriod('today')} />
+          <Chip label="Неделя" selected={period === 'week'} onPress={() => setPeriod('week')} />
+        </View>
+
+        {/* Персональный результат */}
+        <SectionTitle>Персональный результат</SectionTitle>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={{ marginHorizontal: 0 }}
+          style={{ marginVertical: -8 }}
           contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 8, gap: 16 }}
         >
           {habit.category === 'steps' && (
             <Card style={{ gap: 4 }}>
               <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-                Шагов сегодня
+                {period === 'week' ? 'Шагов за неделю' : 'Шагов сегодня'}
               </Text>
               <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-                {(myTodayLog?.value ?? 0).toLocaleString('ru-RU')}
-                {habit.goal_value ? ` / ${habit.goal_value.toLocaleString('ru-RU')}` : ''}
+                {personalSteps.toLocaleString('ru-RU')}
+                {periodGoal != null ? ` / ${periodGoal.toLocaleString('ru-RU')}` : ''}
               </Text>
             </Card>
           )}
@@ -657,20 +718,19 @@ export default function HabitScreen() {
           </Card>
         </ScrollView>
 
-        {/* Участники */}
+        {/* Все участники */}
+        <SectionTitle>Все участники</SectionTitle>
         <View style={{ paddingHorizontal: 24 }}>
           <Card style={{ gap: 16 }}>
-            <Text weight="bold" style={{ fontSize: 14, color: c.text.label, letterSpacing: 0.2 }}>
-              Участники
-            </Text>
             {habit.members.map(m => (
               <MemberRow
                 key={m.id}
                 member={m}
-                goalValue={habit.goal_value}
-                todayValue={todayValueFor(m.id)}
+                goalValue={periodGoal}
+                value={memberValueFor(m.id)}
                 isCreator={habit.is_creator}
                 onExclude={handleExclude}
+                onOpen={setDetailMember}
               />
             ))}
           </Card>
@@ -801,6 +861,74 @@ export default function HabitScreen() {
               onPress={handleStepsSubmit}
               loading={logLoading}
             />
+          </View>
+        )}
+      </BottomSheet>
+
+      {/* Детализация участника — «Показать данные» */}
+      <BottomSheet
+        title="Показать данные"
+        visible={detailMember != null}
+        onClose={() => setDetailMember(null)}
+      >
+        {detailMember && (
+          <View style={{ gap: 16 }}>
+            {/* Аватар + имя */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <MemberAvatar member={detailMember} />
+              <Text weight="bold" style={{ fontSize: 20, lineHeight: 30, color: c.text.primary, letterSpacing: 0.2 }}>
+                {detailMember.is_self
+                  ? `${detailMember.first_name ?? detailMember.username ?? '?'} (Я)`
+                  : (detailMember.first_name ?? detailMember.username ?? '?')}
+              </Text>
+            </View>
+
+            {/* Календарь участника */}
+            <Calendar
+              habitId={habit.id}
+              habitCreatedAt={habit.created_at}
+              currentWeekLogs={habit.week_logs.filter(l => l.user_id === detailMember.id)}
+              goalValue={habit.goal_value ?? 1}
+              userId={detailMember.id}
+              pageWidth={Dimensions.get('window').width - 48}
+              horizontalPadding={0}
+            />
+
+            {/* 3 карточки: шаги / стрик / максимальный */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginVertical: -8 }}
+              contentContainerStyle={{ paddingVertical: 8, gap: 16 }}
+            >
+              {habit.category === 'steps' && (
+                <Card style={detailCardStyle}>
+                  <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                    Шагов сегодня
+                  </Text>
+                  <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+                    {(todayValueFor(detailMember.id) ?? 0).toLocaleString('ru-RU')}
+                    {habit.goal_value ? ` / ${habit.goal_value.toLocaleString('ru-RU')}` : ''}
+                  </Text>
+                </Card>
+              )}
+              <Card style={detailCardStyle}>
+                <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                  Стрик
+                </Text>
+                <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+                  {habit.member_streaks?.[detailMember.id]?.current ?? 0}
+                </Text>
+              </Card>
+              <Card style={detailCardStyle}>
+                <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                  Максимальный
+                </Text>
+                <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+                  {habit.member_streaks?.[detailMember.id]?.max ?? 0}
+                </Text>
+              </Card>
+            </ScrollView>
           </View>
         )}
       </BottomSheet>

@@ -55,3 +55,7 @@ backend/service-account.json
 
 # build log artifact
 .build_log.txt
+
+# Figma MCP / REST временные файлы
+.figma-tmp/
+*figma_profile.json
