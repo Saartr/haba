@@ -11,6 +11,7 @@ import Calendar from '@/components/Calendar';
 import NavigationBar from '@/components/NavigationBar';
 import Card from '@/components/Card';
 import HabitTag from '@/components/HabitTag';
+import Chip from '@/components/Chip';
 import DropdownMenu from '@/components/DropdownMenu';
 import Fab from '@/components/Fab';
 import Snackbar from '@/components/Snackbar';
@@ -108,6 +109,7 @@ export default function DevScreen() {
   const [theme, setTheme] = useState('system');
   const [toggle2, setToggle2] = useState('on');
   const [selectValue, setSelectValue] = useState('');
+  const [period, setPeriod] = useState('Сегодня');
 
   const router = useRouter();
   const screenBg = colorScheme === 'dark' ? colors.neutral[950] : colors.neutral[100];
@@ -369,6 +371,22 @@ export default function DevScreen() {
 
           <Label text="Одиночная (yellow)" />
           <HabitTag type="solo" />
+        </Section>
+
+        {/* CHIPS */}
+        <Section title="Chips">
+          <Label text="Группа (интерактивная — тап выбирает)" />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {['Сегодня', 'Неделя', 'Месяц', 'Все время'].map(p => (
+              <Chip key={p} label={p} selected={period === p} onPress={() => setPeriod(p)} />
+            ))}
+          </View>
+
+          <Label text="Состояния" />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Chip label="Selected" selected />
+            <Chip label="Default" />
+          </View>
         </Section>
 
         {/* FAB */}

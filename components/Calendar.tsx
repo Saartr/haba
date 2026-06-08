@@ -12,51 +12,65 @@ export type DayStatus = 'check' | 'miss' | 'current' | 'future' | 'inactive';
 
 export type CalendarDay = {
   day: number;
+  weekday: string;
   status: DayStatus;
 };
 
-type ColorConfig = { bg: string; color: string };
+const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
-const LIGHT: Record<DayStatus, ColorConfig> = {
-  check:    { bg: colors.green[200], color: colors.green[500] },
-  miss:     { bg: colors.red[200],   color: colors.red[500] },
-  current:  { bg: colors.neutral[100], color: colors.primary },
-  future:   { bg: colors.neutral[100], color: colors.neutral[500] },
-  inactive: { bg: colors.neutral[100], color: colors.neutral[500] },
+// Цвет иконки статуса. Фон ячейки и число — единые; статус выражается только иконкой.
+// inactive — без иконки (null).
+const ICON_LIGHT: Record<DayStatus, string | null> = {
+  check:    colors.green[500],
+  miss:     colors.red[500],
+  current:  colors.purple[500],
+  future:   colors.neutral[600],
+  inactive: null,
 };
 
-const DARK: Record<DayStatus, ColorConfig> = {
-  check:    { bg: colors.green[800], color: colors.green[500] },
-  miss:     { bg: colors.red[800], color: colors.red[400] },
-  current:  { bg: colors.neutral[800], color: colors.purple[400] },
-  future:   { bg: colors.neutral[800], color: colors.neutral[500] },
-  inactive: { bg: colors.neutral[800], color: colors.neutral[500] },
+const ICON_DARK: Record<DayStatus, string | null> = {
+  check:    colors.green[500],
+  miss:     colors.red[400],
+  current:  colors.purple[400],
+  future:   colors.neutral[500],
+  inactive: null,
 };
 
-function DayIcon({ status, color }: { status: DayStatus; color: string }) {
-  if (status === 'check')    return <CheckCircleIcon width={24} height={24} color={color} />;
-  if (status === 'miss')     return <DoNotDisturbIcon width={24} height={24} color={color} />;
-  if (status === 'inactive') return <View style={{ width: 24, height: 24 }} />;
+function DayIcon({ status, color }: { status: DayStatus; color: string | null }) {
+  // inactive — без иконки, но место под неё резервируем, чтобы число стояло как в остальных ячейках
+  if (color === null) return <View style={{ width: 24, height: 24 }} />;
+  if (status === 'check') return <CheckCircleIcon width={24} height={24} color={color} />;
+  if (status === 'miss')  return <DoNotDisturbIcon width={24} height={24} color={color} />;
   return <CircleOutlineIcon width={24} height={24} color={color} />;
 }
 
-function DayCell({ day, status }: CalendarDay) {
+function DayCell({ day, weekday, status }: CalendarDay) {
   const { colorScheme } = useSettings();
-  const { bg, color } = (colorScheme === 'dark' ? DARK : LIGHT)[status];
+  const dark = colorScheme === 'dark';
+  const boxBg = dark ? colors.neutral[800] : colors.neutral[100];
+  const weekdayColor = dark ? colors.neutral[0] : colors.neutral[900];
+  const iconColor = (dark ? ICON_DARK : ICON_LIGHT)[status];
 
   return (
-    <View style={{
-      flex: 1,
-      alignItems: 'center',
-      gap: 4,
-      padding: 8,
-      borderRadius: 8,
-      backgroundColor: bg,
-    }}>
-      <Text weight="bold" style={{ fontSize: 14, lineHeight: 20, color }}>
-        {day}
+    <View style={{ flex: 1, gap: 4 }}>
+      <Text weight="bold" style={{ fontSize: 14, lineHeight: 20, textAlign: 'center', color: weekdayColor }}>
+        {weekday}
       </Text>
-      <DayIcon status={status} color={color} />
+      <View style={{
+        height: 62,
+        borderRadius: 16,
+        backgroundColor: boxBg,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 8,
+      }}>
+        <View style={{ alignItems: 'center', gap: 2 }}>
+          <Text weight="bold" style={{ fontSize: 14, lineHeight: 20, color: colors.neutral[500] }}>
+            {day}
+          </Text>
+          <DayIcon status={status} color={iconColor} />
+        </View>
+      </View>
     </View>
   );
 }
@@ -104,7 +118,7 @@ function buildDays(
     } else {
       status = loggedValue !== undefined && loggedValue >= goalValue ? 'check' : 'miss';
     }
-    return { day: d.getUTCDate(), status };
+    return { day: d.getUTCDate(), weekday: WEEKDAYS[i], status };
   });
 }
 
@@ -126,9 +140,11 @@ type WeekPageProps = {
   currentWeekLogs: HabitLog[];
   goalValue: number;
   pageWidth: number;
+  userId?: number;
+  horizontalPadding: number;
 };
 
-function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalValue, pageWidth }: WeekPageProps) {
+function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalValue, pageWidth, userId, horizontalPadding }: WeekPageProps) {
   const [logs, setLogs] = useState<Map<string, number> | null>(
     weekOffset === 0 ? null : null,
   );
@@ -148,7 +164,7 @@ function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalVa
     const mon = getWeekMonday(weekOffset);
     const sun = new Date(mon);
     sun.setUTCDate(mon.getUTCDate() + 6);
-    getHabitLogs(habitId, toDateStr(mon), toDateStr(sun))
+    getHabitLogs(habitId, toDateStr(mon), toDateStr(sun), userId)
       .then(data => {
         if (cancelled) return;
         setLogs(new Map(data.map(l => [l.date.slice(0, 10), l.value])));
@@ -156,7 +172,7 @@ function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalVa
       .catch(() => { if (!cancelled) setLogs(new Map()); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [weekOffset, habitId]);
+  }, [weekOffset, habitId, userId]);
 
   // Обновляем текущую неделю при изменении currentWeekLogs (после логирования)
   useEffect(() => {
@@ -168,7 +184,7 @@ function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalVa
   const days = logs ? buildDays(mon, logs, habitCreatedAt, goalValue) : [];
 
   return (
-    <View style={{ width: pageWidth, paddingHorizontal: 24, height: 64 }}>
+    <View style={{ width: pageWidth, paddingHorizontal: horizontalPadding, height: 86 }}>
       {loading ? (
         <ActivityIndicator
           style={{ flex: 1 }}
@@ -188,9 +204,15 @@ type Props = {
   habitCreatedAt: string;
   currentWeekLogs: HabitLog[];
   goalValue: number;
+  /** Чей календарь показывать. По умолчанию — текущий юзер. */
+  userId?: number;
+  /** Ширина страницы. По умолчанию — ширина экрана. Для узких контейнеров (модалка). */
+  pageWidth?: number;
+  /** Горизонтальный отступ внутри страницы. По умолчанию 24. */
+  horizontalPadding?: number;
 };
 
-export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goalValue }: Props) {
+export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goalValue, userId, pageWidth: pageWidthProp, horizontalPadding = 24 }: Props) {
   const createdAt = new Date(habitCreatedAt);
   createdAt.setUTCHours(0, 0, 0, 0);
 
@@ -205,6 +227,7 @@ export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goa
 
   const listRef = useRef<FlatList>(null);
   const { width: screenWidth } = Dimensions.get('window');
+  const pageWidth = pageWidthProp ?? screenWidth;
 
   useEffect(() => {
     if (currentIndex <= 0) return;
@@ -213,7 +236,7 @@ export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goa
 
   // Welcome-анимация с ease-in-out через Animated listener → scrollToOffset
   useEffect(() => {
-    const baseOffset = currentIndex * screenWidth;
+    const baseOffset = currentIndex * pageWidth;
     const anim = new Animated.Value(0);
     anim.addListener(({ value }) => {
       listRef.current?.scrollToOffset({ offset: baseOffset + value, animated: false });
@@ -237,8 +260,8 @@ export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goa
       decelerationRate="fast"
       style={{ flexGrow: 0 }}
       getItemLayout={(_, index) => ({
-        length: screenWidth,
-        offset: screenWidth * index,
+        length: pageWidth,
+        offset: pageWidth * index,
         index,
       })}
       initialScrollIndex={currentIndex}
@@ -249,7 +272,9 @@ export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goa
           habitCreatedAt={createdAt}
           currentWeekLogs={currentWeekLogs}
           goalValue={goalValue}
-          pageWidth={screenWidth}
+          pageWidth={pageWidth}
+          userId={userId}
+          horizontalPadding={horizontalPadding}
         />
       )}
     />
