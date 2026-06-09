@@ -5,6 +5,7 @@ const { Bot } = require('grammy');
 const runMigrations = require('./db/migrate');
 const setupCommands = require('./handlers/commands');
 const { scheduleJobs } = require('./jobs/digest');
+const { scheduleHabitReminders } = require('./jobs/habit-reminders');
 const sql = require('./db/client');
 const authRouter = require('./api/auth');
 const habitsRouter = require('./api/habits');
@@ -234,6 +235,7 @@ async function start() {
     { command: 'app',     description: 'Открыть Mini App для записи шагов' },
   ]);
   scheduleJobs(bot);
+  scheduleHabitReminders();
   app.listen(process.env.PORT, () => {
     console.log('Сервер запущен на порту ' + process.env.PORT);
   });
