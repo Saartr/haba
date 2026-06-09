@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 import Text from '@/components/Text';
-import Card from '@/components/Card';
+import Card, { useCardShadow } from '@/components/Card';
 import HabitTag from '@/components/HabitTag';
 import Fab from '@/components/Fab';
 import BottomSheet from '@/components/BottomSheet';
@@ -138,10 +138,7 @@ export default function HabitsScreen() {
   const displayName = rawName && rawName.length > 12 ? rawName.slice(0, 12) + '…' : rawName;
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' : 'dark-content';
-  const panelShadow = scheme === 'dark' ? {} : {
-    shadowColor: colors.neutral[950], shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04, shadowRadius: 12, elevation: 4,
-  };
+  const panelShadow = useCardShadow();
 
   const load = useCallback(async () => {
     try {

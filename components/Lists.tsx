@@ -1,15 +1,8 @@
 import { View, Pressable, ViewStyle } from 'react-native';
 import Text from '@/components/Text';
-import { useColors, colors } from '@/lib/colors';
+import { useColors } from '@/lib/colors';
+import { useCardShadow } from '@/components/Card';
 import ChevronRightIcon from '@/assets/icons/ChevronRight.svg';
-
-const SHADOW = {
-  shadowColor: colors.neutral[950],
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.2,
-  shadowRadius: 6,
-  elevation: 3,
-} as const;
 
 export type ListItemData = {
   label: string;
@@ -53,6 +46,7 @@ type Props = {
 
 export default function Lists({ items, cardStyle }: Props) {
   const c = useColors();
+  const shadow = useCardShadow();
   return (
     <View style={[{
       backgroundColor: c.surface.input,
@@ -60,7 +54,7 @@ export default function Lists({ items, cardStyle }: Props) {
       paddingHorizontal: 24,
       paddingVertical: 16,
       overflow: 'hidden',
-      ...SHADOW,
+      ...shadow,
     }, cardStyle]}>
       {items.map((item) => (
         <Item key={item.label} {...item} />

@@ -6,14 +6,6 @@ import { colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import NavigationBar from '@/components/NavigationBar';
 
-const CARD_SHADOW = {
-  shadowColor: colors.neutral[950],
-  shadowOffset: { width: 1, height: 2 },
-  shadowOpacity: 0.08,
-  shadowRadius: 12,
-  elevation: 3,
-} as const;
-
 export default function AboutAppScreen() {
 
   const router = useRouter();
@@ -35,10 +27,8 @@ export default function AboutAppScreen() {
         <Lists
           items={items}
           cardStyle={{
-            borderRadius: 32,
             paddingVertical: 16,
             gap: 16,
-            ...CARD_SHADOW,
           }}
         />
       </View>
