@@ -23,15 +23,17 @@ Legacy Telegram Login Widget (`oauth.telegram.org/auth?bot_id=...` + `tgAuthResu
   - SHA-256 (debug): `FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C`
   - **App URL (инициация Native Login):** `https://app4160742593-login.tg.dev` — приложение открывает этот URL, Telegram проверяет package+SHA-256 и возвращает результат в приложение через deep link БЕЗ браузера/MAX.
 
-## 🚨 КРИТИЧНО при сборке RELEASE APK
-SHA-256 выше — от **debug**-ключа (`android/app/debug.keystore`, storepass/keypass `android`, alias `androiddebugkey`). Он работает ТОЛЬКО для debug-сборок.
-**При release-сборке (для друзей / прода / RuStore) у APK будет ДРУГОЙ ключ → ДРУГОЙ SHA-256.** Без добавления release-fingerprint в BotFather Native Login — Telegram-логин в release-сборке НЕ заработает.
+## Release keystore — настроено (2026-06-12)
+- Файл: `C:\Users\Saartr\tapa-release.jks`, alias `tapa`
+- SHA-1:   `39:DA:84:E8:1E:CB:99:FA:8B:B9:A9:38:61:AF:10:E3:EE:02:3E:D3`
+- SHA-256: `5E:3A:2C:58:EA:0F:49:33:60:25:A8:B7:96:D9:97:F5:7A:95:34:C3:CA:E6:9D:87:6A:87:6E:2F:52:D2:16:AA`
+- Credentials в `~/.gradle/gradle.properties`: `TAPA_STORE_FILE`, `TAPA_STORE_PASSWORD`, `TAPA_KEY_ALIAS`, `TAPA_KEY_PASSWORD`
 
-**Что сделать при первой release-сборке:**
-1. Создать/найти release keystore, вычислить SHA-256:
-   `keytool -list -v -keystore <release.keystore> -alias <alias>` → строка `SHA256:`
-2. Добавить этот SHA-256 в BotFather → Native Login → Android (можно несколько fingerprint'ов — debug и release одновременно).
-3. Аналогично для Google Play App Signing (если публикуешь через Play Store — у Google свой ключ подписи, его SHA-256 берётся из Play Console → App Integrity).
+**BotFather Native Login — оба fingerprint'а добавлены:**
+- debug SHA-256 → App URL: `https://app4160742593-login.tg.dev`
+- release SHA-256 → App URL: `https://app1634232537-login.tg.dev`
+
+**Manifest + модуль обновлены:** `with-telegram-applink.js` добавляет intent-filter для обоих хостов; `TelegramLoginModule.kt` выбирает нужный URL по `BuildConfig.DEBUG`.
 
 ## АРХИТЕКТУРА: нативный Android SDK (как VK ID), НЕ браузерный OIDC
 Telegram Native Login = нативная Kotlin-библиотека `org.telegram:login-sdk:1.0.0` (репо `TelegramMessenger/telegram-login-android`). Браузер/MAX в флоу НЕ участвуют. Архитектурно как наш `modules/vk-id/`.

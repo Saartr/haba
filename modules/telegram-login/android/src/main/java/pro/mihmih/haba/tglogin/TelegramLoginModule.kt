@@ -6,10 +6,17 @@ import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.Promise
 import org.telegram.login.TelegramLogin
 
-// App URL из BotFather (Native Login). Домен генерируется Telegram автоматически.
 private const val CLIENT_ID = "8671249381"
-private const val REDIRECT_URI = "https://app4160742593-login.tg.dev/tglogin"
-private const val CALLBACK_HOST = "app4160742593-login.tg.dev"
+// Telegram присваивает уникальный App URL каждой паре package+SHA (из BotFather Native Login).
+// debug-ключ: app4160742593-login.tg.dev, release-ключ: app1634232537-login.tg.dev
+private val REDIRECT_URI = if (BuildConfig.DEBUG)
+  "https://app4160742593-login.tg.dev/tglogin"
+else
+  "https://app1634232537-login.tg.dev/tglogin"
+private val CALLBACK_HOST = if (BuildConfig.DEBUG)
+  "app4160742593-login.tg.dev"
+else
+  "app1634232537-login.tg.dev"
 
 class TelegramLoginModule : Module() {
   // Промис от startLogin держим до прихода App Link с результатом.

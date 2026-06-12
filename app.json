@@ -59,7 +59,8 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      "./plugins/with-signing-config.js"
     ],
     "experiments": {
       "typedRoutes": true
