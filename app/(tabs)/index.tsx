@@ -208,7 +208,7 @@ export default function HabitsScreen() {
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
           <MascotSvg width={345} height={293} />
           <Text weight="semibold" style={{ fontSize: 16, color: c.text.secondary, textAlign: 'center', letterSpacing: 0.2 }}>
-            Нет активных привычек
+            Нет активных целей
           </Text>
         </View>
       ) : (

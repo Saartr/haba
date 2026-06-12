@@ -654,6 +654,11 @@ export default function HabitScreen() {
         visible={menuVisible}
         onClose={() => setMenuVisible(false)}
         items={[
+          ...(habit.is_creator ? [{
+            label: 'Редактировать',
+            icon: () => <EditIcon width={24} height={24} color={c.text.secondary} />,
+            onPress: () => {},
+          }] : []),
           {
             label: 'Пригласить в группу',
             icon: () => <ShareIcon width={24} height={24} color={c.text.secondary} />,
