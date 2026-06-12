@@ -91,7 +91,7 @@ function SoloHabitScreen({
   const statusBarStyle = scheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }} edges={['bottom']}>
       <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
 
       <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>
@@ -391,9 +391,9 @@ export default function HabitScreen() {
 
   // Карточки в модалке детализации: в тёмной теме фон cardGrey (иначе сливаются со шторкой)
   // и без тени; в светлой — дефолтный фон и тень Card
-  const detailCardStyle = scheme === 'dark'
-    ? { gap: 4, backgroundColor: c.surface.cardGrey, shadowOpacity: 0, elevation: 0 }
-    : { gap: 4 };
+  // Карточки в модалке детализации: фон cardGrey (светлая → neutral[100], тёмная → neutral[700]),
+  // тень выключена в обеих темах.
+  const detailCardStyle = { gap: 4, backgroundColor: c.surface.cardGrey, shadowOpacity: 0, elevation: 0 };
 
   async function handleCloseGroup() {
     setMenuVisible(false);
@@ -593,7 +593,7 @@ export default function HabitScreen() {
 
   if (loading || !habit) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default, alignItems: 'center', justifyContent: 'center' }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={c.brand.primary} />
       </SafeAreaView>
     );
@@ -630,7 +630,7 @@ export default function HabitScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }} edges={['bottom']}>
       <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
 
       {/* Nav bar */}
@@ -654,6 +654,11 @@ export default function HabitScreen() {
         visible={menuVisible}
         onClose={() => setMenuVisible(false)}
         items={[
+          ...(habit.is_creator ? [{
+            label: 'Редактировать',
+            icon: () => <EditIcon width={24} height={24} color={c.text.secondary} />,
+            onPress: () => {},
+          }] : []),
           {
             label: 'Пригласить в группу',
             icon: () => <ShareIcon width={24} height={24} color={c.text.secondary} />,
@@ -697,8 +702,8 @@ export default function HabitScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={{ marginVertical: -8 }}
-          contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 8, gap: 16 }}
+          style={{ marginVertical: -16 }}
+          contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 16, gap: 16 }}
         >
           {habit.category === 'steps' && (
             <Card style={{ gap: 4 }}>
@@ -911,8 +916,8 @@ export default function HabitScreen() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              style={{ marginVertical: -8 }}
-              contentContainerStyle={{ paddingVertical: 8, gap: 16 }}
+              style={{ marginVertical: -16 }}
+              contentContainerStyle={{ paddingVertical: 16, gap: 16 }}
             >
               {habit.category === 'steps' && (
                 <Card style={detailCardStyle}>

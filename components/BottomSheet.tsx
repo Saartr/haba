@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Text from '@/components/Text';
 import CloseIcon from '@/assets/icons/Close.svg';
 import { useColors, colors } from '@/lib/colors';
+import { useSettings } from '@/lib/settings-context';
 
 type Props = {
   visible: boolean;
@@ -15,6 +16,8 @@ type Props = {
 
 export default function BottomSheet({ visible, title, onClose, children }: Props) {
   const c = useColors();
+  const { colorScheme } = useSettings();
+  const overlayColor = colorScheme === 'dark' ? colors.blackTransparent[80] : colors.blackTransparent[24];
   const insets = useSafeAreaInsets();
   const [mounted, setMounted] = useState(false);
   const [kbHeight, setKbHeight] = useState(0);
@@ -66,7 +69,7 @@ export default function BottomSheet({ visible, title, onClose, children }: Props
           flex: 1,
           justifyContent: 'flex-end',
           paddingBottom: kbHeight > 0 ? kbHeight + (Platform.OS === 'android' ? insets.bottom : 0) : 0,
-          backgroundColor: colors.blackTransparent[24],
+          backgroundColor: overlayColor,
           opacity: overlayAnim,
         }}
       >

@@ -1,0 +1,58 @@
+Privacy Policy
+Last updated: 09/06/2026
+
+This Privacy Policy explains how the developer of the "Tapa" application (hereinafter — "Application", "we", "developer") collects, uses, and protects personal data of its users.
+
+1. Data Controller
+The Application is developed and maintained by an individual: Ivan Mironov.
+Contact email: [your@email.com]
+
+2. Data We Collect
+When you use the Application, we may collect the following categories of data:
+• Account data: email address, username, hashed password.
+• Profile data: avatar, display name, interface settings.
+• Usage data: habits and goals you create, completion records, statistics and streaks.
+• Technical data: device identifier, OS version, app version, crash logs (via Firebase Crashlytics or equivalent).
+• Analytics data: in-app events (Firebase Analytics or equivalent) — in anonymized form.
+• Push token: to send reminders and notifications to your device.
+
+3. Purposes of Processing
+Collected data is used solely for:
+• providing Application functionality and syncing data across devices;
+• identifying the user within their account;
+• sending push reminders about habits (only with your consent);
+• improving the quality and stability of the Application based on aggregated analytics;
+• providing technical support to users.
+
+4. Legal Basis for Processing
+We process your data on the following legal grounds:
+• Performance of a contract — to provide the features of the Application;
+• Your consent — for push notifications (you may withdraw it in your OS settings);
+• Legitimate interest — to ensure security and improve the Application.
+
+5. Data Storage and Transfer
+Data is stored on third-party servers (e.g. Firebase / Google Cloud) in accordance with the policies of the respective providers. We do not sell or transfer your data to third parties for commercial purposes.
+We may share data with the following categories of recipients:
+• Cloud and analytics service providers (Google Firebase);
+• Competent government authorities where required by applicable law.
+
+6. Data Retention
+Data is retained for the duration of your account. Upon account deletion, data is removed within 30 days, unless retention is required by law.
+
+7. Your Rights
+You have the right to:
+• obtain a copy of the data we hold about you;
+• correct inaccurate data;
+• delete your account and associated data;
+• withdraw consent for push notifications;
+• lodge a complaint with the data protection authority in your country.
+To exercise your rights, contact us at: [your@email.com]
+
+8. Security
+We apply reasonable technical measures to protect your data: encryption in transit (HTTPS/TLS), password hashing, and restricted database access.
+
+9. Children
+The Application is not intended for persons under the age of 13. We do not knowingly collect data from children. If you believe a child has provided us with their data, please contact us at [your@email.com].
+
+10. Changes to This Policy
+We may update this Privacy Policy from time to time. The current version is always available in the "About" section of the Application. Continued use of the Application after changes are published constitutes your acceptance of the updated Policy.

@@ -1,0 +1,46 @@
+Terms of Use
+Last updated: 09/06/2026
+
+These Terms of Use ("Terms") govern your use of the mobile application "Tapa" ("Application"), developed by the individual Ivan Mironov ("Developer").
+By downloading or using the Application, you confirm that you have read, understood, and agree to be bound by these Terms.
+
+1. License Grant
+The Developer grants you a limited, non-exclusive, non-transferable, revocable license to use the Application for personal, non-commercial purposes.
+
+2. Account Registration
+Certain features require creating an account. You agree to:
+• provide accurate information during registration;
+• not share your account credentials with third parties;
+• notify the Developer immediately of any unauthorized access to your account.
+
+3. Acceptable Use
+You agree not to:
+• use the Application for any unlawful purpose;
+• attempt to hack, reverse engineer, or decompile the Application;
+• make automated requests to Application servers (bots, scripts);
+• post offensive, harmful, or illegal content through the Application;
+• use the Application to distribute spam or malicious software.
+
+4. Intellectual Property
+All rights to the Application, including source code, design, logo, and content, belong to Ivan Mironov. These Terms do not transfer any intellectual property rights in the Application to you.
+
+5. User Content
+You retain ownership of the data (habits, goals, notes) you enter into the Application. You grant the Developer a limited right to use this data solely for the purpose of operating the Application.
+
+6. Disclaimer of Warranties
+The Application is provided "as is" without any express or implied warranties. The Developer does not guarantee uninterrupted operation, freedom from errors, or fitness for a particular purpose.
+
+7. Limitation of Liability
+To the maximum extent permitted by applicable law, the Developer shall not be liable for any indirect, incidental, special, or punitive damages arising from your use of or inability to use the Application.
+
+8. Termination
+The Developer may suspend or terminate your access to the Application in the event of a breach of these Terms, without prior notice.
+
+9. Changes to These Terms
+The Developer may modify these Terms at any time. The current version is always available in the "About" section of the Application. Continued use of the Application after changes are published constitutes your acceptance of the updated Terms.
+
+10. Governing Law
+These Terms are governed by the laws of the country of residence of the Developer. Any disputes shall be resolved through negotiation, and if not possible, through the courts at the Developer's place of residence.
+
+11. Contact
+For any questions regarding these Terms, contact us at: [your@email.com]

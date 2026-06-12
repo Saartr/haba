@@ -1,0 +1,51 @@
+Consent to Personal Data Processing
+Last updated: 09/06/2026
+
+This document describes the terms under which you provide consent to the processing of your personal data by the developer of the "Tapa" application — the individual Ivan Mironov (hereinafter — "Developer").
+
+1. Data for Which Consent is Requested
+By registering and using the Application, you consent to the processing of the following data:
+• email address;
+• display name and profile avatar;
+• habit and goal data (names, descriptions, settings);
+• habit completion statistics;
+• device push token for sending reminders;
+• anonymized analytics data on Application usage.
+
+2. Purposes of Processing
+The specified data is processed for the following purposes:
+• providing Application functionality (sync, backup);
+• sending push notifications with habit reminders;
+• improving the quality and functionality of the Application;
+• identifying the user upon login;
+• communicating for technical support purposes.
+
+3. Third Parties
+Your data may be shared with the following services to ensure Application functionality:
+• Google Firebase (authentication, database, analytics, push notifications) — Privacy Policy: https://firebase.google.com/support/privacy
+
+4. Duration of Consent
+This consent is effective from the moment it is provided (registration in the Application) until it is withdrawn or the account is deleted.
+
+5. How to Withdraw Consent
+You may withdraw this consent at any time. To do so:
+• delete your account via the Application settings; or
+• send a request to: [your@email.com]
+After withdrawal of consent, data processing will cease and data will be deleted within 30 days.
+
+6. Consequences of Withholding Consent
+Providing certain data is a prerequisite for using the Application. Refusing to provide consent means you will be unable to create an account or use features that require synchronization.
+
+7. Your Rights
+Under applicable law, you have the right to:
+• request access to your personal data;
+• request correction of inaccurate data;
+• request deletion of your data ("right to be forgotten");
+• restrict the processing of your data;
+• receive your data in a machine-readable format (data portability);
+• lodge a complaint with the data protection authority in your country.
+
+8. Contact Details
+Data Controller:
+Individual: Ivan Mironov
+Email: [your@email.com]
