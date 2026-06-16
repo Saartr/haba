@@ -17,8 +17,10 @@ const RELEASE_SIGNING = `        release {
         }`;
 
 // buildTypes.release: use release keystore if configured, otherwise fall back to debug.
+// Groovy parses `signingConfig (expr) ? a : b` as signingConfig(expr), then ternary on Boolean.
+// Use a local variable to avoid the ambiguity.
 const SIGNING_CONFIG_LINE =
-  "signingConfig (project.hasProperty('TAPA_STORE_FILE') && project.property('TAPA_STORE_FILE')) ? signingConfigs.release : signingConfigs.debug";
+  "def _tapaSigning = (project.hasProperty('TAPA_STORE_FILE') && project.property('TAPA_STORE_FILE')) ? signingConfigs.release : signingConfigs.debug\n            signingConfig _tapaSigning";
 
 module.exports = function withSigningConfig(config) {
   return withAppBuildGradle(config, (cfg) => {
