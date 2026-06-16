@@ -85,6 +85,14 @@ export async function updateProfile(data: { first_name: string }): Promise<UserP
   return request('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }, true);
 }
 
+export async function linkTelegram(idToken: string): Promise<UserProfile> {
+  return request('/auth/link/telegram', { method: 'POST', body: JSON.stringify({ id_token: idToken }) }, true);
+}
+
+export async function linkVk(data: { accessToken: string; userId: string; firstName?: string; lastName?: string; photo200?: string; email?: string; phone?: string }): Promise<UserProfile> {
+  return request('/auth/link/vk', { method: 'POST', body: JSON.stringify(data) }, true);
+}
+
 // ── Habits ────────────────────────────────────────────────────────────────────
 
 export type Habit = {

@@ -376,6 +376,187 @@ router.patch('/me', requireAuth, async (req, res) => {
   }
 });
 
+// Объединяет данные двух аккаунтов: переносит всё из deleteId в keepId, удаляет deleteId.
+// Используется при привязке второго способа входа, если tg_id/vk_id уже занят другим аккаунтом.
+async function mergeUsers(keepId, deleteId) {
+  // Передаём creator_id привычек
+  await sql`UPDATE habits SET creator_id = ${keepId} WHERE creator_id = ${deleteId}`;
+
+  // Переносим участников привычек (дубли — пропускаем)
+  await sql`
+    INSERT INTO habit_members (habit_id, user_id, joined_at)
+    SELECT habit_id, ${keepId}, joined_at FROM habit_members
+    WHERE user_id = ${deleteId}
+    ON CONFLICT (habit_id, user_id) DO NOTHING
+  `;
+  await sql`DELETE FROM habit_members WHERE user_id = ${deleteId}`;
+
+  // Переносим логи (на конфликт даты — побеждает большее значение)
+  await sql`
+    INSERT INTO habit_logs (habit_id, user_id, date, value, source)
+    SELECT habit_id, ${keepId}, date, value, source FROM habit_logs
+    WHERE user_id = ${deleteId}
+    ON CONFLICT (habit_id, user_id, date) DO UPDATE SET
+      value  = GREATEST(habit_logs.value, EXCLUDED.value),
+      source = CASE WHEN habit_logs.value >= EXCLUDED.value
+                    THEN habit_logs.source ELSE EXCLUDED.source END
+  `;
+  await sql`DELETE FROM habit_logs WHERE user_id = ${deleteId}`;
+
+  // Переносим push-токены (удаляем дубли по токену)
+  try {
+    await sql`
+      DELETE FROM push_tokens
+      WHERE user_id = ${deleteId}
+        AND token IN (SELECT token FROM push_tokens WHERE user_id = ${keepId})
+    `;
+    await sql`UPDATE push_tokens SET user_id = ${keepId} WHERE user_id = ${deleteId}`;
+  } catch (_) {}
+
+  // Удаляем сессии второго аккаунта
+  await sql`DELETE FROM refresh_tokens WHERE user_id = ${deleteId}`;
+
+  // Заполняем пустые поля профиля данными из второго аккаунта
+  const [other] = await sql`SELECT * FROM users WHERE id = ${deleteId}`;
+  if (other) {
+    await sql`
+      UPDATE users SET
+        username            = COALESCE(username,            ${other.username}),
+        first_name          = COALESCE(first_name,          ${other.first_name}),
+        last_name           = COALESCE(last_name,           ${other.last_name}),
+        email               = COALESCE(email,               ${other.email}),
+        phone               = COALESCE(phone,               ${other.phone}),
+        avatar_url          = COALESCE(avatar_url,          ${other.avatar_url}),
+        health_connected_at = COALESCE(health_connected_at, ${other.health_connected_at})
+      WHERE id = ${keepId}
+    `;
+  }
+
+  await sql`DELETE FROM users WHERE id = ${deleteId}`;
+}
+
+// POST /api/v1/auth/link/telegram — привязать Telegram к текущему аккаунту.
+// Если tg_id уже есть у другого юзера — мерджим его в текущий.
+router.post('/link/telegram', requireAuth, async (req, res) => {
+  const { id_token } = req.body;
+  if (!id_token) return res.status(400).json({ message: 'id_token обязателен' });
+
+  let claims;
+  try {
+    const { payload } = await jose.jwtVerify(id_token, TG_JWKS, {
+      issuer: TG_OIDC_ISSUER,
+      audience: TG_CLIENT_ID,
+    });
+    claims = payload;
+  } catch (e) {
+    return res.status(401).json({ message: 'Недействительный id_token' });
+  }
+
+  const tgId = String(claims.id ?? claims.sub);
+  const username = claims.preferred_username || null;
+  const fullName = typeof claims.name === 'string' ? claims.name.trim() : '';
+  const firstName = fullName ? fullName.split(/\s+/)[0] : null;
+  const lastName = fullName && fullName.includes(' ') ? fullName.slice(firstName.length).trim() || null : null;
+  const phone = claims.phone_number || null;
+
+  try {
+    const [conflict] = await sql`
+      SELECT id FROM users WHERE tg_id = ${tgId} AND id != ${req.userId}
+    `;
+    if (conflict) await mergeUsers(req.userId, conflict.id);
+
+    const [user] = await sql`
+      UPDATE users SET
+        tg_id      = ${tgId},
+        username   = COALESCE(username,   ${username}),
+        first_name = COALESCE(first_name, ${firstName}),
+        last_name  = COALESCE(last_name,  ${lastName}),
+        phone      = COALESCE(phone,      ${phone})
+      WHERE id = ${req.userId}
+      RETURNING username, first_name, last_name, avatar_url, tg_id, vk_id
+    `;
+
+    let avatarUrl = user.avatar_url;
+    if (!avatarUrl) {
+      const fetched = await fetchAndSaveAvatar(req.bot, tgId, req.userId, claims.picture || null);
+      if (fetched) {
+        avatarUrl = fetched;
+        await sql`UPDATE users SET avatar_url = ${avatarUrl} WHERE id = ${req.userId}`;
+      }
+    }
+
+    res.json({
+      username:   user.username   || null,
+      first_name: user.first_name || null,
+      last_name:  user.last_name  || null,
+      avatar_url: avatarUrl       || null,
+      tg_id:      user.tg_id ? String(user.tg_id) : null,
+      vk_id:      user.vk_id     || null,
+    });
+  } catch (e) {
+    console.error('link/telegram error:', e);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// POST /api/v1/auth/link/vk — привязать VK к текущему аккаунту.
+// Если vk_id уже есть у другого юзера — мерджим его в текущий.
+router.post('/link/vk', requireAuth, async (req, res) => {
+  const { accessToken, userId, firstName: clientFirstName, lastName: clientLastName, photo200, email, phone } = req.body;
+  if (!accessToken || !userId) return res.status(400).json({ message: 'accessToken и userId обязательны' });
+
+  try {
+    await verifyVkToken(accessToken, userId);
+  } catch (e) {
+    return res.status(401).json({ message: 'Не удалось верифицировать VK токен' });
+  }
+
+  const vkId = String(userId);
+
+  try {
+    const [conflict] = await sql`
+      SELECT id FROM users WHERE vk_id = ${vkId} AND id != ${req.userId}
+    `;
+    if (conflict) await mergeUsers(req.userId, conflict.id);
+
+    const [user] = await sql`
+      UPDATE users SET
+        vk_id      = ${vkId},
+        first_name = COALESCE(first_name, ${clientFirstName || null}),
+        last_name  = COALESCE(last_name,  ${clientLastName  || null}),
+        email      = COALESCE(email,      ${email           || null}),
+        phone      = COALESCE(phone,      ${phone           || null})
+      WHERE id = ${req.userId}
+      RETURNING username, first_name, last_name, avatar_url, tg_id, vk_id
+    `;
+
+    let avatarUrl = user.avatar_url;
+    if (!avatarUrl && photo200) {
+      try {
+        const destPath = path.join(AVATARS_DIR, `${req.userId}.jpg`);
+        fs.mkdirSync(AVATARS_DIR, { recursive: true });
+        await downloadFile(photo200, destPath);
+        avatarUrl = `${AVATARS_URL}/${req.userId}.jpg`;
+        await sql`UPDATE users SET avatar_url = ${avatarUrl} WHERE id = ${req.userId}`;
+      } catch (e) {
+        console.error('VK avatar download failed:', e.message);
+      }
+    }
+
+    res.json({
+      username:   user.username   || null,
+      first_name: user.first_name || null,
+      last_name:  user.last_name  || null,
+      avatar_url: avatarUrl       || null,
+      tg_id:      user.tg_id ? String(user.tg_id) : null,
+      vk_id:      user.vk_id     || null,
+    });
+  } catch (e) {
+    console.error('link/vk error:', e);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
 // DELETE /api/v1/auth/me — удалить аккаунт
 // Удаляет: токены, логи, членство в привычках, привычки где user — единственный участник,
 // аватар с диска, сам аккаунт.
