@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import { saveWorkerToken } from '@/modules/health-sync';
+import { saveWorkerToken, getWorkerToken } from '@/modules/health-sync';
 
 const ACCESS_KEY = 'haba_access_token';
 const REFRESH_KEY = 'haba_refresh_token';
@@ -19,7 +19,17 @@ export async function getTokens(): Promise<{
   refreshToken: string;
 } | null> {
   const accessToken = await SecureStore.getItemAsync(ACCESS_KEY);
-  const refreshToken = await SecureStore.getItemAsync(REFRESH_KEY);
+  const secureRT = await SecureStore.getItemAsync(REFRESH_KEY);
+
+  // Worker (WorkManager) ротирует RT в SharedPreferences пока приложение в фоне.
+  // Если они расходятся — SharedPreferences актуальнее; синкаем обратно в SecureStore.
+  const workerRT = getWorkerToken();
+  let refreshToken = secureRT;
+  if (workerRT && workerRT !== secureRT) {
+    refreshToken = workerRT;
+    SecureStore.setItemAsync(REFRESH_KEY, workerRT).catch(() => {});
+  }
+
   if (!accessToken || !refreshToken) return null;
   return { accessToken, refreshToken };
 }

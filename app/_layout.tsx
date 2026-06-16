@@ -3,7 +3,7 @@ import '../global.css';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
-import { Linking, Alert } from 'react-native';
+import { Linking, Alert, AppState } from 'react-native';
 import 'react-native-reanimated';
 import { useFonts, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
@@ -12,11 +12,11 @@ import { ConfirmProvider } from '@/components/ConfirmModal';
 import { SnackbarProvider } from '@/lib/snackbar-context';
 import { joinHabit, getStepHabits } from '@/lib/api';
 import { savePendingInvite, getPendingInvite, clearPendingInvite } from '@/lib/auth';
-import { scheduleSync, cancelSync } from '@/modules/health-sync';
+import { scheduleSync, cancelSync, syncNow } from '@/modules/health-sync';
 import { hasStepsPermission } from '@/lib/health';
 import { Platform } from 'react-native';
 import { BASE_URL } from '@/lib/config';
-import * as Notifications from 'expo-notifications';
+import { useLastNotificationResponseSafe } from '@/lib/notifications';
 import { registerForPush, addTokenRotationListener } from '@/lib/notifications';
 
 SplashScreen.preventAutoHideAsync();
@@ -106,7 +106,7 @@ function RootLayoutNav() {
 
   // Тап по push-уведомлению → открыть экран цели.
   // useLastNotificationResponse покрывает и foreground-тап, и холодный старт.
-  const lastNotificationResponse = Notifications.useLastNotificationResponse();
+  const lastNotificationResponse = useLastNotificationResponseSafe();
   useEffect(() => {
     if (!lastNotificationResponse || !authedRef.current) return;
     const habitId = lastNotificationResponse.notification.request.content.data?.habitId;
@@ -147,11 +147,25 @@ function RootLayoutNav() {
         if (!granted) return;
         const { ids, startDates } = await getStepHabits();
         scheduleSync(BASE_URL, ids, startDates);
+        syncNow();
       } catch (e) {
         console.warn('[health-sync] schedule error:', e);
       }
     })();
   }, [authed, checked, user]);
+
+  // При выходе приложения из фона — немедленный синк шагов (без ожидания периодической задачи).
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = AppState.addEventListener('change', nextState => {
+      if (nextState !== 'active') return;
+      if (!authedRef.current) return;
+      hasStepsPermission().then(granted => {
+        if (granted) syncNow();
+      }).catch(() => {});
+    });
+    return () => sub.remove();
+  }, []);
 
   // Регистрация FCM-токена для push после входа (Android).
   // Как и health-sync, ждём user !== null — токены стабильны.

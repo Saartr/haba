@@ -62,7 +62,7 @@ import {
   getStepsByDays,
 } from '@/lib/health';
 import { useEffect, useState, useCallback } from 'react';
-import * as Notifications from 'expo-notifications';
+import { getNotificationsModule } from '@/lib/notifications';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -314,7 +314,9 @@ export default function HabitScreen() {
   // Обновляем экран при получении foreground-уведомления по этой цели
   // (новый участник вступил или кто-то внёс данные).
   useEffect(() => {
-    const sub = Notifications.addNotificationReceivedListener(notification => {
+    const N = getNotificationsModule();
+    if (!N) return;
+    const sub = N.addNotificationReceivedListener((notification: any) => {
       const data = notification.request.content.data;
       if (data?.habitId && String(data.habitId) === String(habitId)) {
         load();

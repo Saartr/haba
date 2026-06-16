@@ -8,7 +8,7 @@ import { registerPushToken, unregisterPushToken } from './api';
 
 const ANDROID_CHANNEL_ID = 'default';
 
-function getNotifications() {
+export function getNotificationsModule() {
   try {
     return require('expo-notifications') as typeof import('expo-notifications');
   } catch {
@@ -19,7 +19,7 @@ function getNotifications() {
 // Foreground: показывать баннер даже когда приложение открыто.
 // Вызываем лениво чтобы не крашить при загрузке модуля в Expo Go / старом APK.
 try {
-  const Notifications = getNotifications();
+  const Notifications = getNotificationsModule();
   Notifications?.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowBanner: true,
@@ -33,7 +33,7 @@ try {
 async function ensureAndroidChannel() {
   if (Platform.OS !== 'android') return;
   try {
-    const Notifications = getNotifications();
+    const Notifications = getNotificationsModule();
     await Notifications?.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
       name: 'Уведомления',
       importance: (Notifications as any).AndroidImportance?.HIGH ?? 4,
@@ -46,7 +46,7 @@ async function ensureAndroidChannel() {
 export async function registerForPush(): Promise<string | null> {
   if (Platform.OS !== 'android') return null;
   try {
-    const Notifications = getNotifications();
+    const Notifications = getNotificationsModule();
     if (!Notifications) return null;
     await ensureAndroidChannel();
     let { status } = await Notifications.getPermissionsAsync();
@@ -67,7 +67,7 @@ export async function registerForPush(): Promise<string | null> {
 
 export function addTokenRotationListener() {
   try {
-    const Notifications = getNotifications();
+    const Notifications = getNotificationsModule();
     if (!Notifications) return { remove: () => {} };
     return Notifications.addPushTokenListener(({ data }) => {
       if (data) registerPushToken(data, Platform.OS).catch(() => {});
@@ -77,10 +77,22 @@ export function addTokenRotationListener() {
   }
 }
 
+// Безопасная обёртка useLastNotificationResponse для Expo Go.
+// Функция выбирается один раз при загрузке модуля — хук всегда один и тот же,
+// правило hooks не нарушается.
+const _useLastNotifResponse: () => any = (() => {
+  try {
+    return require('expo-notifications').useLastNotificationResponse;
+  } catch {
+    return () => undefined;
+  }
+})();
+export const useLastNotificationResponseSafe = _useLastNotifResponse;
+
 export async function unregisterCurrentPushToken(): Promise<void> {
   if (Platform.OS !== 'android') return;
   try {
-    const Notifications = getNotifications();
+    const Notifications = getNotificationsModule();
     if (!Notifications) return;
     const token = await Notifications.getDevicePushTokenAsync();
     if (token?.data) await unregisterPushToken(token.data);

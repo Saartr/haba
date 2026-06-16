@@ -229,20 +229,30 @@ export async function unregisterPushToken(token: string): Promise<void> {
 
 // ── Internal ──────────────────────────────────────────────────────────────────
 
+// Один shared promise на все параллельные рефреши — иначе race condition:
+// второй вызов использует уже инвалидированный токен и получает 401 → session expired.
+let _refreshInFlight: Promise<{ accessToken: string; refreshToken: string } | null> | null = null;
+
 async function refreshTokens(): Promise<{ accessToken: string; refreshToken: string } | null> {
-  try {
-    const tokens = await getTokens();
-    if (!tokens?.refreshToken) return null;
-    const data = await request<{ accessToken: string; refreshToken: string }>(
-      '/auth/refresh',
-      {
-        method: 'POST',
-        body: JSON.stringify({ refreshToken: tokens.refreshToken }),
-      },
-    );
-    await saveTokens(data);
-    return data;
-  } catch {
-    return null;
-  }
+  if (_refreshInFlight) return _refreshInFlight;
+  _refreshInFlight = (async () => {
+    try {
+      const tokens = await getTokens();
+      if (!tokens?.refreshToken) return null;
+      const data = await request<{ accessToken: string; refreshToken: string }>(
+        '/auth/refresh',
+        {
+          method: 'POST',
+          body: JSON.stringify({ refreshToken: tokens.refreshToken }),
+        },
+      );
+      await saveTokens(data);
+      return data;
+    } catch {
+      return null;
+    } finally {
+      _refreshInFlight = null;
+    }
+  })();
+  return _refreshInFlight;
 }
