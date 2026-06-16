@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, Animated } from 'react-native';
+import { Modal, Pressable, Animated, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSettings } from '@/lib/settings-context';
 import { colors } from '@/lib/colors';
@@ -40,21 +40,23 @@ export default function DropdownPopover({ visible, onClose, items, width = 320 }
 
   return (
     <Modal visible={mounted} transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
-      <Animated.View style={{ flex: 1, backgroundColor: overlayColor, opacity: overlayAnim }}>
-        <Pressable style={{ flex: 1 }} onPress={onClose} />
-      </Animated.View>
+      <View style={{ flex: 1 }}>
+        <Animated.View style={{ flex: 1, backgroundColor: overlayColor, opacity: overlayAnim }}>
+          <Pressable style={{ flex: 1 }} onPress={onClose} />
+        </Animated.View>
 
-      <Animated.View
-        style={{
-          position: 'absolute',
-          top: insets.top + 56,
-          right: 24,
-          opacity: anim,
-          transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] }) }],
-        }}
-      >
-        {visible && <DropdownMenu items={wrapped} style={{ width, elevation: 0 }} />}
-      </Animated.View>
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: insets.top + 56,
+            right: 24,
+            opacity: anim,
+            transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] }) }],
+          }}
+        >
+          {visible && <DropdownMenu items={wrapped} style={{ width, elevation: 0 }} />}
+        </Animated.View>
+      </View>
     </Modal>
   );
 }

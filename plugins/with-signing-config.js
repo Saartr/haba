@@ -1,15 +1,24 @@
 // Adds release signing config to android/app/build.gradle.
 // Credentials are read from ~/.gradle/gradle.properties:
 //   TAPA_STORE_FILE, TAPA_STORE_PASSWORD, TAPA_KEY_ALIAS, TAPA_KEY_PASSWORD
+// If TAPA_STORE_FILE is absent (CI or dev machines without keystore) — release build
+// falls back to debug signing so assembleDebug/assembleRelease don't crash.
 
 const { withAppBuildGradle } = require('@expo/config-plugins');
 
+// file('') crashes Gradle even for debug builds — guard with hasProperty check.
 const RELEASE_SIGNING = `        release {
-            storeFile file(project.findProperty('TAPA_STORE_FILE') ?: '')
-            storePassword project.findProperty('TAPA_STORE_PASSWORD') ?: ''
-            keyAlias project.findProperty('TAPA_KEY_ALIAS') ?: ''
-            keyPassword project.findProperty('TAPA_KEY_PASSWORD') ?: ''
+            if (project.hasProperty('TAPA_STORE_FILE') && project.property('TAPA_STORE_FILE')) {
+                storeFile file(project.property('TAPA_STORE_FILE'))
+                storePassword project.findProperty('TAPA_STORE_PASSWORD') ?: ''
+                keyAlias project.findProperty('TAPA_KEY_ALIAS') ?: ''
+                keyPassword project.findProperty('TAPA_KEY_PASSWORD') ?: ''
+            }
         }`;
+
+// buildTypes.release: use release keystore if configured, otherwise fall back to debug.
+const SIGNING_CONFIG_LINE =
+  "signingConfig (project.hasProperty('TAPA_STORE_FILE') && project.property('TAPA_STORE_FILE')) ? signingConfigs.release : signingConfigs.debug";
 
 module.exports = function withSigningConfig(config) {
   return withAppBuildGradle(config, (cfg) => {
@@ -23,11 +32,10 @@ module.exports = function withSigningConfig(config) {
       `$1${RELEASE_SIGNING}\n$2`,
     );
 
-    // Replace signingConfig signingConfigs.debug → signingConfigs.release in buildTypes.release
-    // The generated template uses debug signing for release builds by default
+    // Replace signingConfig line in buildTypes.release
     gradle = gradle.replace(
       /(buildTypes \{[\s\S]*?release \{[\s\S]*?)signingConfig signingConfigs\.debug([\s\S]*?^\s{8}\})/m,
-      '$1signingConfig signingConfigs.release$2',
+      `$1${SIGNING_CONFIG_LINE}$2`,
     );
 
     cfg.modResults.contents = gradle;
