@@ -17,6 +17,8 @@ import UserIcon from '@/assets/icons/User.svg';
 import GroupPlusIcon from '@/assets/icons/GroupPlus.svg';
 import PlusIcon from '@/assets/icons/Plus.svg';
 import CheckIcon from '@/assets/icons/Check.svg';
+import TelegramIcon from '@/assets/icons/Telegram.svg';
+import VKIcon from '@/assets/icons/VK.svg';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import { useAuth } from '@/lib/auth-context';
@@ -136,6 +138,9 @@ export default function HabitsScreen() {
 
   const rawName = user?.first_name ?? user?.username ?? null;
   const displayName = rawName && rawName.length > 12 ? rawName.slice(0, 12) + '…' : rawName;
+  // Иконка сервиса авторизации: Telegram (tg_id) или VK (vk_id). При обоих (связанные
+  // аккаунты) показываем Telegram. Цвет — neutral[400] из макета TapaDS.
+  const ServiceIcon = user?.tg_id ? TelegramIcon : user?.vk_id ? VKIcon : null;
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' : 'dark-content';
   const panelShadow = useCardShadow();
@@ -192,10 +197,13 @@ export default function HabitsScreen() {
               </Text>
             )}
           </View>
-          <Pressable onPress={() => router.push('/(tabs)/profile')}
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })} hitSlop={8}>
-            <Avatar firstName={user?.first_name ?? null} avatarUrl={user?.avatar_url ?? null} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {ServiceIcon && <ServiceIcon width={24} height={24} color={colors.neutral[400]} />}
+            <Pressable onPress={() => router.push('/(tabs)/profile')}
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })} hitSlop={8}>
+              <Avatar firstName={user?.first_name ?? null} avatarUrl={user?.avatar_url ?? null} />
+            </Pressable>
+          </View>
         </View>
       </View>
 
