@@ -72,7 +72,8 @@ export async function getStepsByDays(days: number): Promise<Record<string, numbe
     day.setHours(0, 0, 0, 0);
     const dayEnd = new Date(day);
     dayEnd.setHours(23, 59, 59, 999);
-    const dateStr = day.toISOString().slice(0, 10);
+    // Локальная дата (не UTC — toISOString() даёт UTC и сдвигает дату для UTC+N)
+    const dateStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
 
     try {
       const res = await aggregateRecord({

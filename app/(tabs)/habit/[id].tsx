@@ -344,7 +344,7 @@ export default function HabitScreen() {
         const stepsByDay = await getStepsByDays(daysToSync);
         if (cancelled || Object.keys(stepsByDay).length === 0) return;
 
-        const createdDateStr = createdAt.toISOString().slice(0, 10);
+        const createdDateStr = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}-${String(createdAt.getDate()).padStart(2, '0')}`;
         let synced = false;
         for (const [date, steps] of Object.entries(stepsByDay)) {
           if (cancelled) break;
