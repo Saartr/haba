@@ -46,10 +46,10 @@ export function SnackbarProvider({ children }: { children: React.ReactNode }) {
             position: 'absolute',
             left: 0,
             right: 0,
-            bottom: insets.bottom + 24,
+            top: insets.top + 16,
             paddingHorizontal: 32,
             opacity: anim,
-            transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+            transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] }) }],
           }}
         >
           <Snackbar text={state.text} type={state.type} onClose={hide} />

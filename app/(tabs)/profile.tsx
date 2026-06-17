@@ -26,12 +26,13 @@ import DeleteForeverIcon from '@/assets/icons/DeleteForever.svg';
 function ProfileAvatar({ firstName, avatarUrl }: { firstName: string | null; avatarUrl: string | null }) {
   const initial = firstName ? firstName[0].toUpperCase() : '?';
   if (avatarUrl) {
-    return <Image source={{ uri: avatarUrl }} style={{ width: 60, height: 60, borderRadius: 30 }} />;
+    return <Image source={{ uri: avatarUrl }} style={{ width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderColor: colors.neutral[500] }} />;
   }
   return (
     <View style={{
       width: 60, height: 60, borderRadius: 30,
-      backgroundColor: colors.neutral[100],
+      borderWidth: 2, borderColor: colors.neutral[500],
+      backgroundColor: colors.neutral[50],
       alignItems: 'center', justifyContent: 'center',
     }}>
       <Text weight="bold" style={{ fontSize: 28, color: colors.neutral[500] }}>

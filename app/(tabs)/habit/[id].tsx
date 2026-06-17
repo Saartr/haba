@@ -229,6 +229,8 @@ function MemberRow({
   onOpen: (member: HabitMember) => void;
 }) {
   const c = useColors();
+  const { colorScheme } = useSettings();
+  const rippleColor = colorScheme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
   const name = member.first_name ?? member.username ?? '?';
   const displayName = member.is_self ? `${name} (Я)` : name;
 
@@ -239,26 +241,32 @@ function MemberRow({
   return (
     <Pressable
       onPress={() => onOpen(member)}
-      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', opacity: pressed ? 0.6 : 1 })}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-        <MemberAvatar member={member} />
-        <View>
-          <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-            {displayName}
-          </Text>
-          <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-            {stepsLabel}
-          </Text>
+      style={({ pressed }) => ({
+        paddingVertical: 4,
+        borderRadius: 16,
+        backgroundColor: pressed ? rippleColor : 'transparent',
+      })}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            <MemberAvatar member={member} />
+            <View>
+              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                {displayName}
+              </Text>
+              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+                {stepsLabel}
+              </Text>
+            </View>
+          </View>
+          {isCreator && !member.is_self && (
+            <Pressable onPress={() => onExclude(member.id)} hitSlop={8}
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+              <BlockIcon width={24} height={24} color={c.text.secondary} />
+            </Pressable>
+          )}
         </View>
-      </View>
-      {isCreator && !member.is_self && (
-        <Pressable onPress={() => onExclude(member.id)} hitSlop={8}
-          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-          <BlockIcon width={24} height={24} color={c.text.secondary} />
-        </Pressable>
-      )}
-    </Pressable>
+      </Pressable>
   );
 }
 
@@ -959,11 +967,11 @@ export default function HabitScreen() {
               {habit.category === 'steps' && (
                 <Card style={detailCardStyle}>
                   <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-                    Шагов сегодня
+                    {period === 'week' ? 'Шагов за неделю' : 'Шагов сегодня'}
                   </Text>
                   <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-                    {(todayValueFor(detailMember.id) ?? 0).toLocaleString('ru-RU')}
-                    {habit.goal_value ? ` / ${habit.goal_value.toLocaleString('ru-RU')}` : ''}
+                    {(memberValueFor(detailMember.id) ?? 0).toLocaleString('ru-RU')}
+                    {periodGoal != null ? ` / ${periodGoal.toLocaleString('ru-RU')}` : ''}
                   </Text>
                 </Card>
               )}
