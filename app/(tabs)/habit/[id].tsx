@@ -20,7 +20,6 @@ import NavigationBar from '@/components/NavigationBar';
 import EditIcon from '@/assets/icons/Edit.svg';
 import DeleteIcon from '@/assets/icons/Delete.svg';
 import CheckIcon from '@/assets/icons/Check.svg';
-import PlusIcon from '@/assets/icons/Plus.svg';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Text from '@/components/Text';
@@ -61,6 +60,7 @@ import {
   getTodaySteps,
   getStepsByDays,
 } from '@/lib/health';
+import SegmentedControl from '@/components/SegmentedControl';
 import { useEffect, useState, useCallback } from 'react';
 import { getNotificationsModule } from '@/lib/notifications';
 
@@ -264,6 +264,15 @@ function MemberRow({
 
 // ─── main ─────────────────────────────────────────────────────────────────────
 
+function formatSyncedAt(iso: string): string {
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${dd}.${mm}.${d.getFullYear()} ${hh}:${min}`;
+}
+
 export default function HabitScreen() {
   const c = useColors();
   const router = useRouter();
@@ -287,7 +296,8 @@ export default function HabitScreen() {
   const [inviteModal, setInviteModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [stepsModal, setStepsModal] = useState(false);
-  const [stepsView, setStepsView] = useState<'menu' | 'edit' | 'add'>('menu');
+  const [gfInfoModal, setGfInfoModal] = useState(false);
+  const [stepsMode, setStepsMode] = useState<'add' | 'replace'>('add');
   const [stepsInput, setStepsInput] = useState('');
   const [stepsError, setStepsError] = useState<string | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -507,27 +517,9 @@ export default function HabitScreen() {
     }
   }
 
-  async function handleFetchFromHC() {
-    setTrackerLoading(true);
-    try {
-      const steps = await getTodaySteps();
-      if (steps === 0) {
-        Alert.alert('Нет данных', 'В Google Health нет шагов за сегодня.');
-        return;
-      }
-      await logHabit(habitId, steps);
-      setStepsModal(false);
-      load();
-    } catch (e: any) {
-      Alert.alert('Ошибка', e?.message ?? 'Не удалось получить данные');
-    } finally {
-      setTrackerLoading(false);
-    }
-  }
-
   function closeStepsModal() {
     setStepsModal(false);
-    setStepsView('menu');
+    setStepsMode('add');
     setStepsInput('');
     setStepsError(null);
   }
@@ -538,13 +530,15 @@ export default function HabitScreen() {
       setStepsError('Введите число');
       return;
     }
-    // add — прибавление, 0 бессмыслен; edit — перезапись, 0 допустим (обнулить)
-    if (stepsView === 'add' ? input < 1 : input < 0) {
-      setStepsError(stepsView === 'add' ? 'Введите число больше нуля' : 'Введите число');
+    if (stepsMode === 'add' && input < 1) {
+      setStepsError('Введите число больше нуля');
       return;
     }
-    // edit — перезапись, add — прибавить к текущему (API logHabit перезаписывает)
-    const value = stepsView === 'add' ? (myTodayLog?.value ?? 0) + input : input;
+    if (stepsMode === 'replace' && input < 0) {
+      setStepsError('Введите число');
+      return;
+    }
+    const value = stepsMode === 'add' ? (myTodayLog?.value ?? 0) + input : input;
     if (value > 100000) {
       setStepsError('Значение не должно превышать 100 000');
       return;
@@ -760,7 +754,16 @@ export default function HabitScreen() {
       <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
         <Button
           label="Внести шаги"
-          onPress={() => { setStepsView('menu'); setStepsInput(''); setStepsModal(true); }}
+          onPress={() => {
+            const manualOverrideToday = myTodayLog?.source === 'manual';
+            if (settings.googleFit === 'on' && !manualOverrideToday) {
+              setGfInfoModal(true);
+            } else {
+              setStepsMode('add');
+              setStepsInput('');
+              setStepsModal(true);
+            }
+          }}
           loading={logLoading}
           icon={<FootprintIcon />}
         />
@@ -838,51 +841,83 @@ export default function HabitScreen() {
         </View>
       </BottomSheet>
 
-      {/* Steps modal — 3 состояния: menu / edit / add */}
+      {/* GF Info modal — показывается первым когда Google Fit подключён */}
       <BottomSheet
-        title={stepsView === 'edit' ? 'Изменить шаги' : stepsView === 'add' ? 'Добавить шаги' : 'Внести шаги'}
+        title="Внести шаги"
+        visible={gfInfoModal}
+        onClose={() => setGfInfoModal(false)}
+      >
+        <View style={{ gap: 16 }}>
+          <Text weight="medium" style={{ fontSize: 16, lineHeight: 16 * 1.6, color: c.text.secondary, letterSpacing: 0.2 }}>
+            {'У тебя подключён Google Fit — шаги подтянутся сами, без твоего участия. Если выберешь ручной ввод, то автосинхронизация на сегодня отключится. Завтра снова включится.'}
+          </Text>
+          {habit.last_synced_at != null && (
+            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+              {'Последнее обновление: ' + formatSyncedAt(habit.last_synced_at)}
+            </Text>
+          )}
+          <Button
+            variant="secondary"
+            label="Ввести вручную"
+            onPress={() => {
+              setGfInfoModal(false);
+              setStepsMode('add');
+              setStepsInput('');
+              setStepsError(null);
+              setStepsModal(true);
+            }}
+          />
+        </View>
+      </BottomSheet>
+
+      {/* Steps modal — форма с Segmented (Добавить / Заменить) */}
+      <BottomSheet
+        title="Внести шаги"
         visible={stepsModal}
         onClose={closeStepsModal}
       >
-        {stepsView === 'menu' ? (
-          <View style={{ gap: 16 }}>
-            {settings.googleFit === 'on'
-              ? <Button label="Взять данные из Google Health" onPress={handleFetchFromHC} loading={trackerLoading} />
-              : <Button label="Подключить трекер" onPress={handleConnectTracker} loading={trackerLoading} />
-            }
-            <View style={{ flexDirection: 'row', gap: 16 }}>
-              <View style={{ flex: 1 }}>
-                <Button variant="secondary" label="Изменить шаги" onPress={() => { setStepsInput(''); setStepsError(null); setStepsView('edit'); }} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Button variant="secondary" label="Добавить шаги" onPress={() => { setStepsInput(''); setStepsError(null); setStepsView('add'); }} />
-              </View>
-            </View>
-          </View>
-        ) : (
-          <View style={{ gap: 16 }}>
-            <Input
-              label="Текущее значение"
-              value={(myTodayLog?.value ?? 0).toLocaleString('ru-RU')}
-              onChangeText={() => {}}
-              disabled
-            />
-            <Input
-              label={stepsView === 'edit' ? 'Новое значение' : 'Количество шагов'}
-              value={stepsInput}
-              onChangeText={t => { setStepsInput(t.replace(/[^0-9]/g, '')); if (stepsError) setStepsError(null); }}
-              keyboardType="number-pad"
-              maxLength={6}
-              error={stepsError ?? undefined}
-            />
+        <View style={{ gap: 16 }}>
+          {settings.googleFit === 'on' && myTodayLog?.source === 'manual' && (
+            <Text weight="medium" style={{ fontSize: 16, lineHeight: 16 * 1.6, color: c.text.secondary, letterSpacing: 0.2 }}>
+              Автосинхронизация с Google Fit на сегодня отключена. Завтра снова включится.
+            </Text>
+          )}
+          <SegmentedControl
+            options={[
+              { label: 'Добавить', value: 'add' },
+              { label: 'Заменить', value: 'replace' },
+            ]}
+            value={stepsMode}
+            onChange={v => {
+              const mode = v as 'add' | 'replace';
+              setStepsMode(mode);
+              setStepsInput(mode === 'replace' ? String(myTodayLog?.value ?? 0) : '');
+              setStepsError(null);
+            }}
+          />
+          <Input
+            label={stepsMode === 'add' ? 'Добавление значения' : 'Изменение значения'}
+            value={stepsInput}
+            onChangeText={t => { setStepsInput(t.replace(/[^0-9]/g, '')); if (stepsError) setStepsError(null); }}
+            keyboardType="number-pad"
+            maxLength={6}
+            error={stepsError ?? undefined}
+          />
+          <Button
+            label="Сохранить"
+            icon={<CheckIcon />}
+            onPress={handleStepsSubmit}
+            loading={logLoading}
+          />
+          {settings.googleFit !== 'on' && (
             <Button
-              label={stepsView === 'edit' ? 'Подтвердить' : 'Добавить'}
-              icon={stepsView === 'edit' ? <CheckIcon /> : <PlusIcon />}
-              onPress={handleStepsSubmit}
-              loading={logLoading}
+              variant="secondary"
+              label="Подключить Google Fit"
+              onPress={handleConnectTracker}
+              loading={trackerLoading}
             />
-          </View>
-        )}
+          )}
+        </View>
       </BottomSheet>
 
       {/* Детализация участника — «Показать данные» */}

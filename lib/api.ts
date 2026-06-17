@@ -135,8 +135,8 @@ export type HabitDetail = Habit & {
   members: HabitMember[];
   week_logs: HabitLog[];
   streak: Streak;
-  // Стрики по каждому участнику (ключ — user id), для модалки детализации
   member_streaks: Record<number, Streak>;
+  last_synced_at: string | null;
 };
 
 export async function createHabit(data: {

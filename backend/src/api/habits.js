@@ -151,7 +151,14 @@ router.get('/:id', async (req, res) => {
     }
     const streak = member_streaks[req.userId] ?? { current: 0, max: 0 };
 
-    res.json({ ...habit, members, week_logs, streak, member_streaks });
+    const [syncRow] = await sql`
+      SELECT MAX(synced_at) AS last_synced_at FROM habit_logs
+      WHERE habit_id = ${habitId} AND user_id = ${req.userId}
+        AND source IN ('health_connect', 'healthkit')
+    `;
+    const last_synced_at = syncRow?.last_synced_at ?? null;
+
+    res.json({ ...habit, members, week_logs, streak, member_streaks, last_synced_at });
   } catch (e) {
     console.error('get habit error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
@@ -273,8 +280,8 @@ router.post('/:id/logs/sync', async (req, res) => {
       WHERE habit_id = ${habitId} AND user_id = ${req.userId} AND date = ${logDate}
     `;
     const [log] = await sql`
-      INSERT INTO habit_logs (habit_id, user_id, date, value, source)
-      VALUES (${habitId}, ${req.userId}, ${logDate}, ${value}, ${source})
+      INSERT INTO habit_logs (habit_id, user_id, date, value, source, synced_at)
+      VALUES (${habitId}, ${req.userId}, ${logDate}, ${value}, ${source}, now())
       ON CONFLICT (habit_id, user_id, date) DO UPDATE
         SET value = CASE
               WHEN habit_logs.source = 'manual' THEN habit_logs.value
@@ -283,6 +290,10 @@ router.post('/:id/logs/sync', async (req, res) => {
             source = CASE
               WHEN habit_logs.source = 'manual' THEN 'manual'
               ELSE EXCLUDED.source
+            END,
+            synced_at = CASE
+              WHEN habit_logs.source = 'manual' THEN habit_logs.synced_at
+              ELSE now()
             END
       RETURNING *
     `;

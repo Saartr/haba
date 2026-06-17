@@ -38,6 +38,7 @@ async function migrateHabits() {
   await sql`CREATE INDEX IF NOT EXISTS habit_members_user ON habit_members(user_id)`;
 
   await sql`ALTER TABLE habit_logs ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'manual'`;
+  await sql`ALTER TABLE habit_logs ADD COLUMN IF NOT EXISTS synced_at TIMESTAMPTZ`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS health_connected_at TIMESTAMPTZ`;
 
   console.log('Habit migrations applied');

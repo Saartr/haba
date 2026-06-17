@@ -15,7 +15,7 @@ const SEGMENT_SHADOW = {
 type Option = { label: string; value: string };
 
 type Props = {
-  label: string;
+  label?: string;
   options: Option[];
   value: string;
   onChange: (value: string) => void;
@@ -47,9 +47,11 @@ export default function SegmentedControl({ label, options, value, onChange, disa
 
   return (
     <View style={{ gap: 8 }}>
-      <Text weight="bold" style={{ fontSize: 14, color: c.text.label, letterSpacing: 0.2, lineHeight: 14 * 1.4 }}>
-        {label}
-      </Text>
+      {label ? (
+        <Text weight="bold" style={{ fontSize: 14, color: c.text.label, letterSpacing: 0.2, lineHeight: 14 * 1.4 }}>
+          {label}
+        </Text>
+      ) : null}
       <View style={{
         flexDirection: 'row',
         borderRadius: 12,
