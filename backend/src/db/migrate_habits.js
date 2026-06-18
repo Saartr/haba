@@ -40,6 +40,7 @@ async function migrateHabits() {
   await sql`ALTER TABLE habit_logs ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'manual'`;
   await sql`ALTER TABLE habit_logs ADD COLUMN IF NOT EXISTS synced_at TIMESTAMPTZ`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS health_connected_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE habits ADD COLUMN IF NOT EXISTS description TEXT`;
 
   console.log('Habit migrations applied');
 }

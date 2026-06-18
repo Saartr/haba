@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect } from 'expo-router';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
+import TextArea from '@/components/TextArea';
 import SegmentedControl from '@/components/SegmentedControl';
 import Select from '@/components/Select';
 import Lists from '@/components/Lists';
@@ -106,6 +107,8 @@ export default function DevScreen() {
   const { colorScheme, updateSettings } = useSettings();
   const [inputValue, setInputValue] = useState('');
   const [inputError, setInputError] = useState('');
+  const [textAreaValue, setTextAreaValue] = useState('');
+  const [textAreaError, setTextAreaError] = useState('');
   const [theme, setTheme] = useState('system');
   const [toggle2, setToggle2] = useState('on');
   const [selectValue, setSelectValue] = useState('');
@@ -309,6 +312,46 @@ export default function DevScreen() {
           <Button
             label={inputError ? 'Сбросить ошибку' : 'Показать ошибку'}
             onPress={() => setInputError(inputError ? '' : 'Неверный код')}
+          />
+        </Section>
+
+        {/* TEXTAREA */}
+        <Section title="TextArea">
+          <Label text="Default (интерактивный)" />
+          <TextArea
+            label="Описание"
+            value={textAreaValue}
+            onChangeText={setTextAreaValue}
+            placeholder="Описание цели (опционально)"
+          />
+
+          <Label text="Error" />
+          <TextArea
+            label="Описание"
+            value="Текст с ошибкой"
+            onChangeText={() => {}}
+            error="Слишком короткое описание"
+          />
+
+          <Label text="Disabled" />
+          <TextArea
+            label="Описание"
+            value="Текст недоступен для редактирования"
+            onChangeText={() => {}}
+            disabled
+          />
+
+          <Label text="Интерактивный (toggle error)" />
+          <TextArea
+            label="Описание"
+            value={textAreaValue}
+            onChangeText={(t) => { setTextAreaValue(t); setTextAreaError(''); }}
+            placeholder="Описание цели (опционально)"
+            error={textAreaError}
+          />
+          <Button
+            label={textAreaError ? 'Сбросить ошибку' : 'Показать ошибку'}
+            onPress={() => setTextAreaError(textAreaError ? '' : 'Поле не может быть пустым')}
           />
         </Section>
 

@@ -73,13 +73,13 @@ function calcStreaks(rows) {
 
 // POST /api/v1/habits — создать привычку
 router.post('/', async (req, res) => {
-  const { name, category = 'steps', type = 'group', goal_value, goal_unit, notifications = true } = req.body;
+  const { name, description, category = 'steps', type = 'group', goal_value, goal_unit, notifications = true } = req.body;
   if (!name) return res.status(400).json({ message: 'name обязателен' });
   const invite_code = makeInviteCode();
   try {
     const [habit] = await sql`
-      INSERT INTO habits (creator_id, name, category, type, goal_value, goal_unit, notifications, invite_code)
-      VALUES (${req.userId}, ${name}, ${category}, ${type}, ${goal_value ?? null}, ${goal_unit ?? null}, ${notifications}, ${invite_code})
+      INSERT INTO habits (creator_id, name, description, category, type, goal_value, goal_unit, notifications, invite_code)
+      VALUES (${req.userId}, ${name}, ${description ?? null}, ${category}, ${type}, ${goal_value ?? null}, ${goal_unit ?? null}, ${notifications}, ${invite_code})
       RETURNING *
     `;
     await sql`INSERT INTO habit_members (habit_id, user_id) VALUES (${habit.id}, ${req.userId})`;
@@ -161,6 +161,31 @@ router.get('/:id', async (req, res) => {
     res.json({ ...habit, members, week_logs, streak, member_streaks, last_synced_at });
   } catch (e) {
     console.error('get habit error:', e);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// PATCH /api/v1/habits/:id — редактировать привычку (только создатель)
+router.patch('/:id', async (req, res) => {
+  const habitId = parseInt(req.params.id);
+  const { name, description, goal_value } = req.body;
+  if (!name?.trim()) return res.status(400).json({ message: 'name обязателен' });
+  try {
+    const [habit] = await sql`SELECT creator_id FROM habits WHERE id = ${habitId}`;
+    if (!habit) return res.status(404).json({ message: 'Не найдено' });
+    if (habit.creator_id !== req.userId) return res.status(403).json({ message: 'Нет прав' });
+
+    const [updated] = await sql`
+      UPDATE habits
+      SET name = ${name.trim()},
+          description = ${description?.trim() || null},
+          goal_value = ${goal_value ?? null}
+      WHERE id = ${habitId}
+      RETURNING *
+    `;
+    res.json({ ...updated, is_creator: true });
+  } catch (e) {
+    console.error('patch habit error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });

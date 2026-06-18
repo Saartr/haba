@@ -96,7 +96,7 @@ function SoloHabitScreen({
 
       <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>
         <NavigationBar
-          title={habit.name}
+          title="Персональная цель"
           onBack={() => router.back()}
           right={
             <Pressable onPress={() => setMenuVisible(true)} hitSlop={8}>
@@ -117,7 +117,7 @@ function SoloHabitScreen({
           {
             label: 'Редактировать',
             icon: () => <EditIcon width={24} height={24} color={c.text.secondary} />,
-            onPress: () => {},
+            onPress: () => { setMenuVisible(false); router.push(`/(tabs)/edit-habit/${habit.id}` as any); },
           },
           {
             label: 'Удалить',
@@ -127,6 +127,18 @@ function SoloHabitScreen({
           },
         ]}
       />
+
+      {/* Шапка: название и описание */}
+      <View style={{ paddingHorizontal: 24, paddingTop: 24, gap: 8 }}>
+        <Text weight="bold" style={{ fontSize: 24, lineHeight: 36, color: c.text.primary, letterSpacing: 0.2 }}>
+          {habit.name}
+        </Text>
+        {habit.description ? (
+          <Text weight="semibold" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
+            {habit.description}
+          </Text>
+        ) : null}
+      </View>
 
       <View style={{ marginTop: 24 }}>
         <Calendar
@@ -640,7 +652,7 @@ export default function HabitScreen() {
       {/* Nav bar */}
       <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>
         <NavigationBar
-          title={habit.name}
+          title="Групповая цель"
           onBack={() => router.back()}
           right={
             <Pressable onPress={() => setMenuVisible(true)} hitSlop={8}>
@@ -661,7 +673,7 @@ export default function HabitScreen() {
           ...(habit.is_creator ? [{
             label: 'Редактировать',
             icon: () => <EditIcon width={24} height={24} color={c.text.secondary} />,
-            onPress: () => {},
+            onPress: () => { setMenuVisible(false); router.push(`/(tabs)/edit-habit/${habit.id}` as any); },
           }] : []),
           {
             label: 'Пригласить в группу',
@@ -688,6 +700,18 @@ export default function HabitScreen() {
       />
 
       <ScrollView contentContainerStyle={{ paddingVertical: 24, gap: 16 }}>
+        {/* Шапка: название и описание */}
+        <View style={{ paddingHorizontal: 24, gap: 8 }}>
+          <Text weight="bold" style={{ fontSize: 24, lineHeight: 36, color: c.text.primary, letterSpacing: 0.2 }}>
+            {habit.name}
+          </Text>
+          {habit.description ? (
+            <Text weight="semibold" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
+              {habit.description}
+            </Text>
+          ) : null}
+        </View>
+
         <Calendar
           habitId={habit.id}
           habitCreatedAt={habit.created_at}

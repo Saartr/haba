@@ -2,6 +2,8 @@ import { View, ScrollView, StatusBar, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Button from '@/components/Button';
+import Input from '@/components/Input';
+import TextArea from '@/components/TextArea';
 import SegmentedControl from '@/components/SegmentedControl';
 import Select from '@/components/Select';
 import NavigationBar from '@/components/NavigationBar';
@@ -54,6 +56,9 @@ export default function CreateHabitScreen() {
   const { colorScheme } = useSettings();
   const showSnackbar = useSnackbar();
 
+  const [name, setName] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [description, setDescription] = useState('');
   const [type, setType] = useState<'solo' | 'group'>('solo');
   const [category, setCategory] = useState('smoking');
   const [duration, setDuration] = useState('permanent');
@@ -66,21 +71,20 @@ export default function CreateHabitScreen() {
   const statusBarStyle = colorScheme === 'dark' ? 'light-content' : 'dark-content';
 
   async function handleCreate() {
-    if (type === 'solo' && !category) {
-      Alert.alert('Ошибка', 'Выберите категорию цели');
+    if (!name.trim()) {
+      setNameError('Обязательное поле');
       return;
     }
 
     setLoading(true);
     try {
-      const categoryLabel = CATEGORY_OPTIONS.find(o => o.value === category)?.label ?? category;
-
       const goalUnit = type === 'solo'
         ? checkin === 'boolean' ? 'boolean' : checkin === 'count' ? 'count' : 'minutes'
         : 'steps';
 
       const habit = await createHabit({
-        name: type === 'solo' ? categoryLabel : 'Шаги',
+        name: name.trim(),
+        description: description.trim() || undefined,
         category: type === 'solo' ? category : 'steps',
         type,
         goal_value: type === 'group' ? parseInt(groupGoal) : undefined,
@@ -114,6 +118,25 @@ export default function CreateHabitScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 24, gap: 16 }} style={{ flex: 1 }}>
+        {/* Название */}
+        <Input
+          label="Название"
+          value={name}
+          onChangeText={(t) => { setName(t); if (nameError) setNameError(''); }}
+          placeholder="Как назовёшь, так и поплывет"
+          maxLength={24}
+          error={nameError}
+        />
+
+        {/* Описание */}
+        <TextArea
+          label="Описание"
+          value={description}
+          onChangeText={setDescription}
+          placeholder="Зачем это всё (опционально)"
+          maxLength={90}
+        />
+
         {/* Тип */}
         <SegmentedControl
           label="Тип"

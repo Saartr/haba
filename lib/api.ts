@@ -99,6 +99,7 @@ export type Habit = {
   id: number;
   creator_id: number;
   name: string;
+  description: string | null;
   category: string;
   type: 'solo' | 'group';
   goal_value: number | null;
@@ -141,6 +142,7 @@ export type HabitDetail = Habit & {
 
 export async function createHabit(data: {
   name: string;
+  description?: string;
   category?: string;
   type?: 'solo' | 'group';
   goal_value?: number;
@@ -207,6 +209,10 @@ export async function excludeMember(habitId: number, userId: number): Promise<vo
 
 export async function transferHabit(habitId: number, userId: number): Promise<void> {
   return request(`/habits/${habitId}/transfer`, { method: 'POST', body: JSON.stringify({ user_id: userId }) }, true);
+}
+
+export async function updateHabit(id: number, data: { name: string; description?: string; goal_value?: number }): Promise<Habit> {
+  return request(`/habits/${id}`, { method: 'PATCH', body: JSON.stringify(data) }, true);
 }
 
 export async function closeHabit(habitId: number): Promise<void> {
