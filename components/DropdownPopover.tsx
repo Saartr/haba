@@ -18,6 +18,7 @@ export default function DropdownPopover({ visible, onClose, items, width = 320 }
   const { colorScheme } = useSettings();
   const overlayColor = colorScheme === 'dark' ? colors.blackTransparent[80] : colors.blackTransparent[24];
   const [mounted, setMounted] = useState(false);
+  const pendingAction = useRef<(() => void) | null>(null);
 
   const anim = useRef(new Animated.Value(0)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
@@ -30,13 +31,30 @@ export default function DropdownPopover({ visible, onClose, items, width = 320 }
     } else {
       Animated.timing(anim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
       Animated.timing(overlayAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(
-        () => setMounted(false),
+        () => {
+          setMounted(false);
+          // Действие (например, навигация) запускается только после того, как Modal
+          // реально размонтирован — иначе на Fabric/Android гонка между закрытием
+          // Modal и пушем нового экрана даёт "addViewAt: ...already has a parent".
+          if (pendingAction.current) {
+            const action = pendingAction.current;
+            pendingAction.current = null;
+            action();
+          }
+        },
       );
     }
   }, [visible]);
 
-  // closing items wrap onPress so the menu closes before the action fires
-  const wrapped = items.map((item) => ({ ...item, onPress: () => { onClose(); item.onPress(); } }));
+  // closing items wrap onPress так, чтобы меню закрылось, а действие выполнилось
+  // уже после того, как Modal закрытия полностью размонтируется.
+  const wrapped = items.map((item) => ({
+    ...item,
+    onPress: () => {
+      pendingAction.current = item.onPress;
+      onClose();
+    },
+  }));
 
   return (
     <Modal visible={mounted} transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>

@@ -203,6 +203,17 @@ function isTodayTrainingDay(trainingDays: number[] | null): boolean {
   return trainingDays.includes(isoDay);
 }
 
+function pluralWord(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 14) return many;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
+}
+
+const INTENSITY_LABEL: Record<string, string> = { low: 'низкой', medium: 'средней', high: 'высокой' };
+
 function PullupsHabitScreen({
   habit, onLog, logLoading, onDelete,
 }: {
@@ -224,13 +235,22 @@ function PullupsHabitScreen({
   const isTrainingDay = !goalAchieved && isTodayTrainingDay(habit.training_days);
   const session = isTrainingDay ? plan[habit.pullups_session_index] : null;
 
+  const sessionsPerWeek = habit.training_days?.length ?? 0;
+  const totalWeeks = sessionsPerWeek > 0 ? Math.round(plan.length / sessionsPerWeek) : 0;
+  const currentForm = habit.current_form ?? 0;
+  const targetReps = habit.target_reps ?? 0;
+  const intensityLabel = habit.intensity ? INTENSITY_LABEL[habit.intensity] : '';
+  const planDescription = `Старт - ${currentForm} ${pluralWord(currentForm, 'раз', 'раза', 'раз')} за подход. `
+    + `Конечная цель - ${targetReps} ${pluralWord(targetReps, 'раз', 'раза', 'раз')} за подход. `
+    + `${sessionsPerWeek} ${pluralWord(sessionsPerWeek, 'тренировка', 'тренировки', 'тренировок')} в неделю со ${intensityLabel} интенсивностью.`;
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }} edges={['bottom']}>
       <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
 
       <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>
         <NavigationBar
-          title="Персональная цель"
+          title={habit.name}
           onBack={() => router.back()}
           right={
             <Pressable onPress={() => setMenuVisible(true)} hitSlop={8}>
@@ -262,16 +282,25 @@ function PullupsHabitScreen({
         ]}
       />
 
-      {/* Шапка: название и описание */}
+      {/* Шапка: заголовок состояния цели + расчётное описание плана */}
       <View style={{ paddingHorizontal: 24, paddingTop: 24, gap: 8 }}>
-        <Text weight="bold" style={{ fontSize: 24, lineHeight: 36, color: c.text.primary, letterSpacing: 0.2 }}>
-          {habit.name}
-        </Text>
-        {habit.description ? (
-          <Text weight="semibold" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
-            {habit.description}
+        {goalAchieved ? (
+          <>
+            <Text weight="bold" style={{ fontSize: 24, lineHeight: 36, color: c.text.primary, letterSpacing: 0.2 }}>
+              Цель достигнута!
+            </Text>
+            <Text weight="bold" style={{ fontSize: 20, lineHeight: 20 * 1.5, color: c.text.primary, letterSpacing: 0.2 }}>
+              {targetReps} {pluralWord(targetReps, 'раз', 'раза', 'раз')} за подход
+            </Text>
+          </>
+        ) : (
+          <Text weight="bold" style={{ fontSize: 24, lineHeight: 36, color: c.text.primary, letterSpacing: 0.2 }}>
+            {habit.name} {totalWeeks} {pluralWord(totalWeeks, 'неделя', 'недели', 'недель')}
           </Text>
-        ) : null}
+        )}
+        <Text weight="semibold" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
+          {planDescription}
+        </Text>
       </View>
 
       <View style={{ marginTop: 24 }}>
@@ -284,65 +313,25 @@ function PullupsHabitScreen({
         />
       </View>
 
-      <View style={{ padding: 24, gap: 16 }}>
-        {goalAchieved ? (
-          <Card style={{ alignItems: 'center', gap: 4 }}>
-            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, textAlign: 'center' }}>
-              Цель достигнута 🎉
-            </Text>
-            <Text weight="semibold" style={{ fontSize: 14, color: c.text.secondary, textAlign: 'center' }}>
-              Вы дошли до {habit.target_reps} повторений в подходе
-            </Text>
-          </Card>
-        ) : isTrainingDay && session ? (
-          <Card style={{ alignItems: 'center', gap: 4 }}>
+      {!goalAchieved && (
+        <View style={{ padding: 24, gap: 16 }}>
+          <Card style={{ gap: 4 }}>
             <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
-              Сегодняшняя тренировка
+              Цель на сегодня
             </Text>
             <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
-              {session.sets} подхода по {session.reps} повторений
-            </Text>
-          </Card>
-        ) : (
-          <Card style={{ alignItems: 'center', gap: 4 }}>
-            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
-              День отдыха
-            </Text>
-          </Card>
-        )}
-
-        <View style={{ flexDirection: 'row', gap: 16 }}>
-          <Card style={{ flex: 1, gap: 4 }}>
-            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
-              Текущий стрик
-            </Text>
-            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
-              {habit.streak?.current ?? 0}
-            </Text>
-          </Card>
-          <Card style={{ flex: 1, gap: 4 }}>
-            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
-              Лучший стрик
-            </Text>
-            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
-              {habit.streak?.max ?? 0}
+              {isTrainingDay && session
+                ? `${session.sets} ${pluralWord(session.sets, 'подход', 'подхода', 'подходов')} по ${session.reps} ${pluralWord(session.reps, 'повторение', 'повторения', 'повторений')}`
+                : 'Отдых'}
             </Text>
           </Card>
         </View>
-      </View>
+      )}
 
       {/* Спейсер — отжимает кнопки/CTA вниз */}
       <View style={{ flex: 1 }} />
 
-      {goalAchieved ? (
-        <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
-          <Button
-            label="Поставить новую цель"
-            icon={<CheckIcon />}
-            onPress={() => router.push('/(tabs)/create-habit' as any)}
-          />
-        </View>
-      ) : isTrainingDay ? (
+      {isTrainingDay ? (
         <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 24, paddingBottom: 24 }}>
           <View style={{ flex: 1 }}>
             <Button

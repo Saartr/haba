@@ -14,6 +14,7 @@ export type CalendarDay = {
   day: number;
   weekday: string;
   status: DayStatus;
+  isToday: boolean;
 };
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -44,11 +45,13 @@ function DayIcon({ status, color }: { status: DayStatus; color: string | null })
   return <CircleOutlineIcon width={24} height={24} color={color} />;
 }
 
-function DayCell({ day, weekday, status }: CalendarDay) {
+function DayCell({ day, weekday, status, isToday }: CalendarDay) {
   const { colorScheme } = useSettings();
   const dark = colorScheme === 'dark';
-  const boxBg = dark ? colors.neutral[800] : colors.neutral[100];
+  const boxBg = isToday ? (dark ? colors.purple[900] : colors.purple[100]) : (dark ? colors.neutral[800] : colors.neutral[100]);
+  const boxBorder = isToday ? (dark ? colors.purple[400] : colors.purple[500]) : 'transparent';
   const weekdayColor = dark ? colors.neutral[0] : colors.neutral[900];
+  const dayColor = isToday ? (dark ? colors.purple[400] : colors.purple[500]) : colors.neutral[500];
   const iconColor = (dark ? ICON_DARK : ICON_LIGHT)[status];
 
   return (
@@ -60,12 +63,14 @@ function DayCell({ day, weekday, status }: CalendarDay) {
         height: 62,
         borderRadius: 16,
         backgroundColor: boxBg,
+        borderWidth: 2,
+        borderColor: boxBorder,
         justifyContent: 'center',
         alignItems: 'center',
         padding: 8,
       }}>
         <View style={{ alignItems: 'center', gap: 2 }}>
-          <Text weight="bold" style={{ fontSize: 14, lineHeight: 20, color: colors.neutral[500] }}>
+          <Text weight="bold" style={{ fontSize: 14, lineHeight: 20, color: dayColor }}>
             {day}
           </Text>
           <DayIcon status={status} color={iconColor} />
@@ -122,7 +127,7 @@ function buildDays(
     } else {
       status = loggedValue !== undefined && loggedValue >= goalValue ? 'check' : 'miss';
     }
-    return { day: d.getUTCDate(), weekday: WEEKDAYS[i], status };
+    return { day: d.getUTCDate(), weekday: WEEKDAYS[i], status, isToday: diff === 0 };
   });
 }
 

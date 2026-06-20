@@ -11,8 +11,8 @@ import BottomSheet from '@/components/BottomSheet';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
 import MascotSvg from '@/assets/images/chill.svg';
-import FunBg from '@/assets/images/fun_bg.svg';
-import AngryBg from '@/assets/images/angry_bg.svg';
+import CelebAvatar from '@/assets/images/celeb_avatar.svg';
+import AngryAvatar from '@/assets/images/angry_avatar.svg';
 import UserIcon from '@/assets/icons/User.svg';
 import GroupPlusIcon from '@/assets/icons/GroupPlus.svg';
 import PlusIcon from '@/assets/icons/Plus.svg';
@@ -70,31 +70,40 @@ function HabitCard({ habit, extra, onPress }: { habit: Habit; extra: HabitExtra 
     ? pluralDays(extra?.streak ?? 0)
     : `${extra?.today_value ?? 0}/${habit.goal_value ?? 0}`;
 
-  // Цель за сегодня выполнена → радостная иллюстрация, иначе — недовольная.
+  // Цель за сегодня выполнена → радостный аватар, иначе — недовольный.
   const done = habit.category === 'smoking'
     ? (extra?.streak ?? 0) > 0
     : (extra?.today_value ?? 0) >= (habit.goal_value ?? 0) && (habit.goal_value ?? 0) > 0;
-  const Illustration = done ? FunBg : AngryBg;
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
-      <Card style={{ overflow: 'hidden' }}>
-        <View style={{ flexDirection: 'row' }}>
-          <View style={{ gap: 8, flex: 1 }}>
-            <HabitTag type={habit.type} />
-            <View>
-              <Text weight="medium" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
-                {subtitle}
-              </Text>
-              <Text weight="bold" style={{ fontSize: 20, lineHeight: 20 * 1.5, color: c.text.primary, letterSpacing: 0.2 }}>
-                {value}
-              </Text>
-            </View>
+      <Card>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16 }}>
+          <View style={{
+            width: 64, height: 64, borderRadius: 32, overflow: 'hidden',
+            backgroundColor: done ? colors.purple[100] : colors.red[200],
+          }}>
+            {done
+              ? <CelebAvatar width={133} height={100} style={{ position: 'absolute', left: -35, top: -6 }} />
+              : <AngryAvatar width={131} height={97} style={{ position: 'absolute', left: -33, top: 0 }} />
+            }
           </View>
-        </View>
-        {/* Иллюстрация справа, прижата к правому нижнему краю карточки, обрезается по overflow */}
-        <View pointerEvents="none" style={{ position: 'absolute', right: 0, bottom: 0, width: 180, height: 118 }}>
-          <Illustration width={180} height={118} />
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, flex: 1 }}>
+            <View style={{ gap: 4, flex: 1 }}>
+              <Text weight="bold" numberOfLines={1} style={{ fontSize: 16, lineHeight: 16 * 1.6, color: c.text.primary, letterSpacing: 0.2 }}>
+                {habit.name}
+              </Text>
+              <View>
+                <Text weight="medium" style={{ fontSize: 12, lineHeight: 12 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
+                  {subtitle}
+                </Text>
+                <Text weight="bold" style={{ fontSize: 20, lineHeight: 20 * 1.5, color: c.text.primary, letterSpacing: 0.2 }}>
+                  {value}
+                </Text>
+              </View>
+            </View>
+            {habit.type === 'group' && <HabitTag type={habit.type} />}
+          </View>
         </View>
       </Card>
     </Pressable>

@@ -32,7 +32,7 @@ npx expo prebuild --platform android --clean
 # Сборка и установка:
 cd C:\haba\android
 $env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
-$env:ANDROID_HOME="C:\Users\miron\AppData\Local\Android\Sdk"
+$env:ANDROID_HOME="C:\Users\Saartr\AppData\Local\Android\Sdk"
 .\gradlew assembleDebug
 adb install app\build\outputs\apk\debug\app-debug.apk
 ```
