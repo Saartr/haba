@@ -1,6 +1,6 @@
 ---
 name: project-health-sync-plan
-description: План реализации фонового синка шагов через WorkManager (health-sync Expo Module)
+description: "✅ Реализовано: фоновый синк шагов через WorkManager (health-sync Expo Module)"
 metadata:
   type: project
 ---
@@ -32,9 +32,9 @@ modules/health-sync/
       HealthSyncWorker.kt           ← CoroutineWorker
 ```
 
-### HealthSyncModule.kt — три функции
+### HealthSyncModule.kt — функции (фактически: saveWorkerToken, getWorkerToken, scheduleSync, syncNow, cancelSync)
 - `saveWorkerToken(refreshToken: String)` — пишет в незашифрованный SharedPreferences ("health_sync_prefs", "refresh_token")
-- `scheduleSync(baseUrl: String, habitIds: IntArray)` — регистрирует периодическую задачу WorkManager (интервал 1ч, требует сеть, KEEP если уже есть)
+- `scheduleSync(baseUrl: String, habitIds: IntArray, startDates: ...)` — регистрирует периодическую задачу WorkManager (**интервал 6ч**, не 1ч как планировалось изначально; требует сеть, KEEP если уже есть). Принимает также `startDates` — границу даты создания привычки, чтобы не досинкать дни до создания привычки.
 - `cancelSync()` — отменяет задачу по тегу "health_sync"
 
 ### HealthSyncWorker.kt — алгоритм
@@ -42,7 +42,7 @@ modules/health-sync/
 2. POST {baseUrl}/auth/refresh → свежий accessToken (если 401/нет токена → Result.success(), ждём)
 3. getGrantedPermissions() → нет READ_STEPS → Result.success() (не ретраим)
 4. habitIds из inputData → если пусто → Result.success()
-5. Для каждого дня из последних 7: aggregateRecord за день → steps > 0 → POST /habits/:id/logs/sync для каждого habitId
+5. Для каждого дня из окна (фактически 90 дней, не 7): aggregateRecord за день → steps > 0 → POST /habits/:id/logs/sync для каждого habitId
 6. Result.success()
 
 ### Токены
@@ -88,12 +88,14 @@ if (ids.length > 0 && await hasStepsPermission()) {
 
 ## Статус реализации
 
-- [ ] Шаг 1: modules/health-sync/ структура (build.gradle, expo-module.config.json, package.json)
-- [ ] Шаг 2: HealthSyncModule.kt
-- [ ] Шаг 3: HealthSyncWorker.kt
-- [ ] Шаг 4: index.ts
-- [ ] Шаг 5: lib/auth.ts — saveWorkerToken при saveTokens
-- [ ] Шаг 6: app/_layout.tsx — scheduleSync/cancelSync
-- [ ] Шаг 7: app-settings.tsx — интеграция с тогглом
-- [ ] Шаг 8: create-habit + closeHabit — перепланирование
-- [ ] Шаг 9: prebuild + сборка APK + проверка
+Все шаги реализованы (проверено аудитом 2026-06-20):
+
+- [x] Шаг 1: modules/health-sync/ структура (build.gradle, expo-module.config.json, package.json)
+- [x] Шаг 2: HealthSyncModule.kt
+- [x] Шаг 3: HealthSyncWorker.kt
+- [x] Шаг 4: index.ts
+- [x] Шаг 5: lib/auth.ts — saveWorkerToken при saveTokens
+- [x] Шаг 6: app/_layout.tsx — scheduleSync/cancelSync
+- [x] Шаг 7: app-settings.tsx — интеграция с тогглом
+- [x] Шаг 8: create-habit + closeHabit — перепланирование
+- [x] Шаг 9: prebuild + сборка APK + проверка

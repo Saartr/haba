@@ -21,3 +21,4 @@
 - [Health Sync WorkManager](project_health_sync_plan.md) — план фонового синка шагов: Expo Module health-sync, CoroutineWorker, refreshToken в SharedPreferences, scheduleSync/cancelSync
 - [Pending Features](project_pending_features.md) — отложенные фичи: редактирование привычки, реальные push-уведомления
 - [Push-уведомления](project_push_plan.md) — план FCM HTTP v1 напрямую (без Expo): Firebase проект, google-services.json, service-account.json, expo-notifications, cron-дайджест
+- [Цель «Подтягивания»](project_pullups_goal_plan.md) — план: новые колонки в habits + сохранённый план, формула прогрессии (повторения→подходы→повторения), новый компонент Multiselect, solo-only

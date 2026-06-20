@@ -34,13 +34,16 @@ VK-пользователи: `vk_id` заполнен, `tg_id` = NULL.
 habits       — id, creator_id → users, name, category TEXT DEFAULT 'steps',
                type CHECK('solo'|'group') DEFAULT 'group',
                goal_value INT NULL, goal_unit TEXT NULL, notifications BOOL DEFAULT true,
-               invite_code TEXT UNIQUE, closed_at, created_at
+               invite_code TEXT UNIQUE, closed_at, created_at, description TEXT NULL
 habit_members — habit_id → habits (ON DELETE CASCADE), user_id → users, joined_at; PK(habit_id, user_id)
 habit_logs   — id, habit_id → habits (ON DELETE CASCADE), user_id → users,
                date DATE DEFAULT CURRENT_DATE, value INT,
-               source TEXT DEFAULT 'manual' ('manual'|'health_connect'|'healthkit')
+               source TEXT DEFAULT 'manual' ('manual'|'health_connect'|'healthkit'),
+               synced_at TIMESTAMPTZ NULL
                UNIQUE(habit_id, user_id, date)
                INDEX habit_logs_habit_date(habit_id, date), INDEX habit_members_user(user_id)
+push_tokens  — id, user_id → users (ON DELETE CASCADE), token TEXT UNIQUE,
+               platform TEXT, created_at, updated_at; INDEX push_tokens_user(user_id)
 ```
 
 `source` в `habit_logs`: ручной ввод vs импорт из Health Connect/HealthKit. При upsert значение из трекера не перетирает большее ручное (`CASE WHEN value >= EXCLUDED.value`).

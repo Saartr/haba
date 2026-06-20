@@ -88,6 +88,9 @@ async function runMigrations() {
   const migratePush = require('./migrate_push');
   await migratePush();
 
+  const migratePullups = require('./migrate_pullups');
+  await migratePullups();
+
   console.log('Миграции применены');
 }
 

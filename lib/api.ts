@@ -95,6 +95,8 @@ export async function linkVk(data: { accessToken: string; userId: string; firstN
 
 // ── Habits ────────────────────────────────────────────────────────────────────
 
+export type PullupsSession = { session: number; sets: number; reps: number };
+
 export type Habit = {
   id: number;
   creator_id: number;
@@ -109,6 +111,12 @@ export type Habit = {
   closed_at: string | null;
   created_at: string;
   is_creator: boolean;
+  current_form: number | null;
+  target_reps: number | null;
+  intensity: 'low' | 'medium' | 'high' | null;
+  training_days: number[] | null;
+  pullups_plan: PullupsSession[] | null;
+  pullups_session_index: number;
 };
 
 export type HabitMember = {
@@ -148,6 +156,10 @@ export async function createHabit(data: {
   goal_value?: number;
   goal_unit?: string;
   notifications?: boolean;
+  current_form?: number;
+  target_reps?: number;
+  intensity?: 'low' | 'medium' | 'high';
+  training_days?: number[];
 }): Promise<Habit> {
   return request('/habits', { method: 'POST', body: JSON.stringify(data) }, true);
 }
@@ -182,7 +194,9 @@ export async function getHabitLogs(id: number, from: string, to: string, userId?
   return request(`/habits/${id}/logs?from=${from}&to=${to}${q}`, {}, true);
 }
 
-export async function logHabit(id: number, value: number, date?: string): Promise<HabitLog> {
+export type LogResult = HabitLog & { habit?: Habit; pullups_recalculated?: boolean };
+
+export async function logHabit(id: number, value: number, date?: string): Promise<LogResult> {
   return request(`/habits/${id}/logs`, { method: 'POST', body: JSON.stringify({ value, date }) }, true);
 }
 

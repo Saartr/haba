@@ -94,6 +94,7 @@ function buildDays(
   logs: Map<string, number>,
   habitCreatedAt: Date,
   goalValue: number,
+  trainingDays?: number[] | null,
 ): CalendarDay[] {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
@@ -105,11 +106,14 @@ function buildDays(
     const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
     const loggedValue = logs.get(dateStr);
     const beforeHabit = d < habitCreatedAt;
+    // День отдыха (для pullups) — не входит в training_days, без иконки, как inactive
+    const isoDay = d.getUTCDay() || 7;
+    const isRestDay = trainingDays != null && !trainingDays.includes(isoDay);
 
     let status: DayStatus;
     if (diff > 0) {
       status = 'future';
-    } else if (beforeHabit) {
+    } else if (beforeHabit || isRestDay) {
       status = 'inactive';
     } else if (diff === 0) {
       if (loggedValue !== undefined && loggedValue >= goalValue) status = 'check';
@@ -139,12 +143,13 @@ type WeekPageProps = {
   habitCreatedAt: Date;
   currentWeekLogs: HabitLog[];
   goalValue: number;
+  trainingDays?: number[] | null;
   pageWidth: number;
   userId?: number;
   horizontalPadding: number;
 };
 
-function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalValue, pageWidth, userId, horizontalPadding }: WeekPageProps) {
+function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, pageWidth, userId, horizontalPadding }: WeekPageProps) {
   const [logs, setLogs] = useState<Map<string, number> | null>(
     weekOffset === 0 ? null : null,
   );
@@ -181,7 +186,7 @@ function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalVa
   }, [currentWeekLogs, weekOffset]);
 
   const mon = getWeekMonday(weekOffset);
-  const days = logs ? buildDays(mon, logs, habitCreatedAt, goalValue) : [];
+  const days = logs ? buildDays(mon, logs, habitCreatedAt, goalValue, trainingDays) : [];
 
   return (
     <View style={{ width: pageWidth, paddingHorizontal: horizontalPadding, height: 86 }}>
@@ -204,6 +209,8 @@ type Props = {
   habitCreatedAt: string;
   currentWeekLogs: HabitLog[];
   goalValue: number;
+  /** Дни тренировок (1=Пн..7=Вс) — для pullups. Дни не из списка рендерятся как inactive (день отдыха). */
+  trainingDays?: number[] | null;
   /** Чей календарь показывать. По умолчанию — текущий юзер. */
   userId?: number;
   /** Ширина страницы. По умолчанию — ширина экрана. Для узких контейнеров (модалка). */
@@ -212,7 +219,7 @@ type Props = {
   horizontalPadding?: number;
 };
 
-export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goalValue, userId, pageWidth: pageWidthProp, horizontalPadding = 24 }: Props) {
+export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, userId, pageWidth: pageWidthProp, horizontalPadding = 24 }: Props) {
   const createdAt = new Date(habitCreatedAt);
   createdAt.setUTCHours(0, 0, 0, 0);
 
@@ -272,6 +279,7 @@ export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goa
           habitCreatedAt={createdAt}
           currentWeekLogs={currentWeekLogs}
           goalValue={goalValue}
+          trainingDays={trainingDays}
           pageWidth={pageWidth}
           userId={userId}
           horizontalPadding={horizontalPadding}

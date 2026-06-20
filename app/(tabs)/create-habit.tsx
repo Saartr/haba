@@ -6,6 +6,7 @@ import Input from '@/components/Input';
 import TextArea from '@/components/TextArea';
 import SegmentedControl from '@/components/SegmentedControl';
 import Select from '@/components/Select';
+import Multiselect from '@/components/Multiselect';
 import NavigationBar from '@/components/NavigationBar';
 import CheckIcon from '@/assets/icons/Check.svg';
 import { useColors, colors } from '@/lib/colors';
@@ -30,7 +31,28 @@ const NOTIFY_OPTIONS = [
 
 const CATEGORY_OPTIONS = [
   { label: 'Курение', value: 'smoking' },
+  { label: 'Подтягивания', value: 'pullups' },
 ];
+
+const NUMBER_OPTIONS = Array.from({ length: 30 }, (_, i) => ({ label: String(i + 1), value: String(i + 1) }));
+
+const INTENSITY_OPTIONS = [
+  { label: 'Низкая (2 тренировки/нед.)', value: 'low' },
+  { label: 'Средняя (3 тренировки/нед.)', value: 'medium' },
+  { label: 'Высокая (4 тренировки/нед.)', value: 'high' },
+];
+
+const WEEKDAY_OPTIONS = [
+  { label: 'Понедельник', value: '1' },
+  { label: 'Вторник', value: '2' },
+  { label: 'Среда', value: '3' },
+  { label: 'Четверг', value: '4' },
+  { label: 'Пятница', value: '5' },
+  { label: 'Суббота', value: '6' },
+  { label: 'Воскресенье', value: '7' },
+];
+
+const SESSIONS_PER_WEEK: Record<string, number> = { low: 2, medium: 3, high: 4 };
 
 const DURATION_OPTIONS = [
   { label: 'Постоянная', value: 'permanent' },
@@ -67,12 +89,29 @@ export default function CreateHabitScreen() {
   const [groupGoal, setGroupGoal] = useState('7000');
   const [loading, setLoading] = useState(false);
 
+  const [currentForm, setCurrentForm] = useState('');
+  const [targetReps, setTargetReps] = useState('');
+  const [intensity, setIntensity] = useState<'low' | 'medium' | 'high'>('medium');
+  const [trainingDays, setTrainingDays] = useState<string[]>([]);
+
+  function handleIntensityChange(v: string) {
+    const next = v as 'low' | 'medium' | 'high';
+    setIntensity(next);
+    if (trainingDays.length !== SESSIONS_PER_WEEK[next]) setTrainingDays([]);
+  }
+
   const panelColor = colorScheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = colorScheme === 'dark' ? 'light-content' : 'dark-content';
 
   async function handleCreate() {
     if (!name.trim()) {
       setNameError('Обязательное поле');
+      return;
+    }
+
+    const isPullups = type === 'solo' && category === 'pullups';
+    if (isPullups && (!currentForm || !targetReps || trainingDays.length !== SESSIONS_PER_WEEK[intensity])) {
+      Alert.alert('Ошибка', 'Заполните текущую форму, конечную цель и дни недели');
       return;
     }
 
@@ -88,8 +127,14 @@ export default function CreateHabitScreen() {
         category: type === 'solo' ? category : 'steps',
         type,
         goal_value: type === 'group' ? parseInt(groupGoal) : undefined,
-        goal_unit: goalUnit,
+        goal_unit: isPullups ? undefined : goalUnit,
         notifications: notify === 'yes',
+        ...(isPullups ? {
+          current_form: parseInt(currentForm),
+          target_reps: parseInt(targetReps),
+          intensity,
+          training_days: trainingDays.map(Number),
+        } : {}),
       });
 
       router.replace(`/(tabs)/habit/${habit.id}`);
@@ -156,31 +201,80 @@ export default function CreateHabitScreen() {
               onChange={setCategory}
             />
 
-            {/* Длительность */}
-            <Select
-              label="Длительность"
-              options={DURATION_OPTIONS}
-              value={duration}
-              onChange={setDuration}
-            />
+            {category === 'pullups' ? (
+              <>
+                {/* Текущая форма / Конечная цель */}
+                <Select
+                  label="Текущая форма"
+                  placeholder="Повторений в подходе сейчас"
+                  options={NUMBER_OPTIONS}
+                  value={currentForm}
+                  onChange={setCurrentForm}
+                />
+                <Select
+                  label="Конечная цель"
+                  placeholder="Повторений в подходе в финале"
+                  options={NUMBER_OPTIONS}
+                  value={targetReps}
+                  onChange={setTargetReps}
+                />
 
-            {/* Чекин */}
-            <SegmentedControl
-              label="Чекин"
-              options={CHECKIN_OPTIONS}
-              value={checkin}
-              onChange={setCheckin}
-              disabled
-            />
+                {/* Интенсивность */}
+                <Select
+                  label="Интенсивность"
+                  options={INTENSITY_OPTIONS}
+                  value={intensity}
+                  onChange={handleIntensityChange}
+                />
 
-            {/* Уведомления */}
-            <SegmentedControl
-              label="Уведомления"
-              options={NOTIFY_OPTIONS}
-              value={notify}
-              onChange={setNotify}
-              disabled
-            />
+                {/* Дни недели */}
+                <Multiselect
+                  label="Дни недели"
+                  placeholder="Выберите дни тренировок"
+                  options={WEEKDAY_OPTIONS}
+                  value={trainingDays}
+                  onChange={setTrainingDays}
+                  exactCount={SESSIONS_PER_WEEK[intensity]}
+                />
+
+                {/* Уведомления */}
+                <SegmentedControl
+                  label="Уведомления"
+                  options={NOTIFY_OPTIONS}
+                  value={notify}
+                  onChange={setNotify}
+                  disabled
+                />
+              </>
+            ) : (
+              <>
+                {/* Длительность */}
+                <Select
+                  label="Длительность"
+                  options={DURATION_OPTIONS}
+                  value={duration}
+                  onChange={setDuration}
+                />
+
+                {/* Чекин */}
+                <SegmentedControl
+                  label="Чекин"
+                  options={CHECKIN_OPTIONS}
+                  value={checkin}
+                  onChange={setCheckin}
+                  disabled
+                />
+
+                {/* Уведомления */}
+                <SegmentedControl
+                  label="Уведомления"
+                  options={NOTIFY_OPTIONS}
+                  value={notify}
+                  onChange={setNotify}
+                  disabled
+                />
+              </>
+            )}
           </>
         ) : (
           <>

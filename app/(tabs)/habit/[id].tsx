@@ -196,6 +196,176 @@ function SoloHabitScreen({
   );
 }
 
+function isTodayTrainingDay(trainingDays: number[] | null): boolean {
+  if (!trainingDays) return false;
+  const dow = new Date().getDay(); // 0=Вс..6=Сб
+  const isoDay = dow === 0 ? 7 : dow; // 1=Пн..7=Вс
+  return trainingDays.includes(isoDay);
+}
+
+function PullupsHabitScreen({
+  habit, onLog, logLoading, onDelete,
+}: {
+  habit: HabitDetail;
+  onLog: (value: number) => void;
+  logLoading: boolean;
+  onDelete: () => void;
+}) {
+  const c = useColors();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { colorScheme: scheme } = useSettings();
+  const [menuVisible, setMenuVisible] = useState(false);
+  const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
+  const statusBarStyle = scheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
+
+  const plan = habit.pullups_plan ?? [];
+  const goalAchieved = habit.pullups_session_index >= plan.length;
+  const isTrainingDay = !goalAchieved && isTodayTrainingDay(habit.training_days);
+  const session = isTrainingDay ? plan[habit.pullups_session_index] : null;
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }} edges={['bottom']}>
+      <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
+
+      <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>
+        <NavigationBar
+          title="Персональная цель"
+          onBack={() => router.back()}
+          right={
+            <Pressable onPress={() => setMenuVisible(true)} hitSlop={8}>
+              {({ pressed }) => (
+                <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1 }}>
+                  <MoreVerticalIcon width={24} height={24} color={c.text.primary} />
+                </View>
+              )}
+            </Pressable>
+          }
+        />
+      </View>
+
+      <DropdownPopover
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        items={[
+          {
+            label: 'Редактировать',
+            icon: () => <EditIcon width={24} height={24} color={c.text.secondary} />,
+            onPress: () => { setMenuVisible(false); router.push(`/(tabs)/edit-habit/${habit.id}` as any); },
+          },
+          {
+            label: 'Удалить',
+            icon: () => <DeleteIcon width={24} height={24} color={colors.red[500]} />,
+            onPress: onDelete,
+            destructive: true,
+          },
+        ]}
+      />
+
+      {/* Шапка: название и описание */}
+      <View style={{ paddingHorizontal: 24, paddingTop: 24, gap: 8 }}>
+        <Text weight="bold" style={{ fontSize: 24, lineHeight: 36, color: c.text.primary, letterSpacing: 0.2 }}>
+          {habit.name}
+        </Text>
+        {habit.description ? (
+          <Text weight="semibold" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
+            {habit.description}
+          </Text>
+        ) : null}
+      </View>
+
+      <View style={{ marginTop: 24 }}>
+        <Calendar
+          habitId={habit.id}
+          habitCreatedAt={habit.created_at}
+          currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
+          goalValue={1}
+          trainingDays={habit.training_days}
+        />
+      </View>
+
+      <View style={{ padding: 24, gap: 16 }}>
+        {goalAchieved ? (
+          <Card style={{ alignItems: 'center', gap: 4 }}>
+            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, textAlign: 'center' }}>
+              Цель достигнута 🎉
+            </Text>
+            <Text weight="semibold" style={{ fontSize: 14, color: c.text.secondary, textAlign: 'center' }}>
+              Вы дошли до {habit.target_reps} повторений в подходе
+            </Text>
+          </Card>
+        ) : isTrainingDay && session ? (
+          <Card style={{ alignItems: 'center', gap: 4 }}>
+            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
+              Сегодняшняя тренировка
+            </Text>
+            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
+              {session.sets} подхода по {session.reps} повторений
+            </Text>
+          </Card>
+        ) : (
+          <Card style={{ alignItems: 'center', gap: 4 }}>
+            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
+              День отдыха
+            </Text>
+          </Card>
+        )}
+
+        <View style={{ flexDirection: 'row', gap: 16 }}>
+          <Card style={{ flex: 1, gap: 4 }}>
+            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
+              Текущий стрик
+            </Text>
+            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
+              {habit.streak?.current ?? 0}
+            </Text>
+          </Card>
+          <Card style={{ flex: 1, gap: 4 }}>
+            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
+              Лучший стрик
+            </Text>
+            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
+              {habit.streak?.max ?? 0}
+            </Text>
+          </Card>
+        </View>
+      </View>
+
+      {/* Спейсер — отжимает кнопки/CTA вниз */}
+      <View style={{ flex: 1 }} />
+
+      {goalAchieved ? (
+        <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+          <Button
+            label="Поставить новую цель"
+            icon={<CheckIcon />}
+            onPress={() => router.push('/(tabs)/create-habit' as any)}
+          />
+        </View>
+      ) : isTrainingDay ? (
+        <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 24, paddingBottom: 24 }}>
+          <View style={{ flex: 1 }}>
+            <Button
+              label="Выполнил"
+              icon={<CheckIcon />}
+              onPress={() => onLog(1)}
+              loading={logLoading}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button
+              label="Не выполнил"
+              icon={<CloseIcon />}
+              onPress={() => onLog(0)}
+              loading={logLoading}
+            />
+          </View>
+        </View>
+      ) : null}
+    </SafeAreaView>
+  );
+}
+
 // ─── sub-components ───────────────────────────────────────────────────────────
 
 
@@ -598,7 +768,10 @@ export default function HabitScreen() {
   async function handleSoloLog(value: number) {
     setLogLoading(true);
     try {
-      await logHabit(habitId, value);
+      const log = await logHabit(habitId, value);
+      if (log.pullups_recalculated) {
+        showSnackbar('Тренировка пропущена — план пересчитан', 'error');
+      }
       load();
     } catch (e: any) {
       Alert.alert('Ошибка', e.message);
@@ -632,6 +805,17 @@ export default function HabitScreen() {
       router.back();
       showSnackbar('Цель удалена', 'success');
     } catch (e: any) { Alert.alert('Ошибка', e.message); }
+  }
+
+  if (habit.type === 'solo' && habit.category === 'pullups') {
+    return (
+      <PullupsHabitScreen
+        habit={habit}
+        onLog={handleSoloLog}
+        logLoading={logLoading}
+        onDelete={handleDeleteSolo}
+      />
+    );
   }
 
   if (habit.type === 'solo') {

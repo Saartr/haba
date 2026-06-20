@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const sql = require('../db/client');
 const { requireAuth } = require('./auth');
 const { notifyHabitJoin, notifyGoalIfReached } = require('../push/notify');
+const { buildPullupsPlan, advanceOrRecalc } = require('../pullups');
 
 const router = Router();
 router.use(requireAuth);
@@ -73,13 +74,31 @@ function calcStreaks(rows) {
 
 // POST /api/v1/habits — создать привычку
 router.post('/', async (req, res) => {
-  const { name, description, category = 'steps', type = 'group', goal_value, goal_unit, notifications = true } = req.body;
+  const {
+    name, description, category = 'steps', type = 'group', goal_value, goal_unit, notifications = true,
+    current_form, target_reps, intensity, training_days,
+  } = req.body;
   if (!name) return res.status(400).json({ message: 'name обязателен' });
+
+  let pullups_plan = null;
+  if (category === 'pullups') {
+    if (!current_form || !target_reps || !intensity || !Array.isArray(training_days)) {
+      return res.status(400).json({ message: 'Для подтягиваний нужны current_form, target_reps, intensity, training_days' });
+    }
+    pullups_plan = buildPullupsPlan(current_form, target_reps, intensity);
+  }
+
   const invite_code = makeInviteCode();
   try {
     const [habit] = await sql`
-      INSERT INTO habits (creator_id, name, description, category, type, goal_value, goal_unit, notifications, invite_code)
-      VALUES (${req.userId}, ${name}, ${description ?? null}, ${category}, ${type}, ${goal_value ?? null}, ${goal_unit ?? null}, ${notifications}, ${invite_code})
+      INSERT INTO habits (
+        creator_id, name, description, category, type, goal_value, goal_unit, notifications, invite_code,
+        current_form, target_reps, intensity, training_days, pullups_plan
+      )
+      VALUES (
+        ${req.userId}, ${name}, ${description ?? null}, ${category}, ${type}, ${goal_value ?? null}, ${goal_unit ?? null}, ${notifications}, ${invite_code},
+        ${current_form ?? null}, ${target_reps ?? null}, ${intensity ?? null}, ${training_days ?? null}, ${pullups_plan ? sql.json(pullups_plan) : null}
+      )
       RETURNING *
     `;
     await sql`INSERT INTO habit_members (habit_id, user_id) VALUES (${habit.id}, ${req.userId})`;
@@ -257,6 +276,8 @@ router.post('/:id/logs', async (req, res) => {
   const { value, date } = req.body;
   if (value === undefined) return res.status(400).json({ message: 'value обязателен' });
   try {
+    const [habit] = await sql`SELECT * FROM habits WHERE id = ${habitId}`;
+    if (!habit) return res.status(404).json({ message: 'Не найдено' });
     const [membership] = await sql`
       SELECT 1 FROM habit_members WHERE habit_id = ${habitId} AND user_id = ${req.userId}
     `;
@@ -273,7 +294,26 @@ router.post('/:id/logs', async (req, res) => {
         SET value = ${value}, source = 'manual'
       RETURNING *
     `;
-    res.json(log);
+
+    let pullups_recalculated = false;
+    let pullups_habit = null;
+    // Только первый чек-ин за день двигает план — повторное нажатие в тот же день
+    // (исправление ошибочного выбора) не должно повторно сдвигать/пересчитывать план.
+    if (habit.category === 'pullups' && !prev) {
+      const result = advanceOrRecalc(habit, !!value);
+      pullups_recalculated = result.recalculated;
+      const [updated] = await sql`
+        UPDATE habits SET
+          pullups_session_index = ${result.pullups_session_index},
+          current_form = ${result.current_form ?? habit.current_form},
+          pullups_plan = ${sql.json(result.pullups_plan ?? habit.pullups_plan)}
+        WHERE id = ${habitId}
+        RETURNING *
+      `;
+      pullups_habit = updated;
+    }
+
+    res.json({ ...log, ...(pullups_habit ? { habit: pullups_habit, pullups_recalculated } : {}) });
 
     notifyGoalIfReached({
       habitId, userId: req.userId, prevValue: prev?.value ?? null, newValue: log.value, date: logDate,

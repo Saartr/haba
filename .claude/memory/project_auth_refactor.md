@@ -1,31 +1,19 @@
 ---
 name: project-auth-refactor
-description: Два способа авторизации — Telegram (браузер + deeplink) и VK ID (нативный SDK)
+description: Два способа авторизации — Telegram (нативный OIDC-логин) и VK ID (нативный SDK)
 metadata:
   type: project
 ---
 
-## Telegram авторизация — завершена
+## Telegram авторизация — заменена на нативный OIDC-логин (2026-06)
 
-**Флоу:**
-1. `Linking.openURL('https://oauth.telegram.org/auth?bot_id=...&origin=https://bot.mihmih.pro&return_to=.../telegram-callback&request_access=write')`
-   — открываем oauth.telegram.org **напрямую**, без серверного redirect (иначе fragment теряется)
-2. Telegram показывает диалог подтверждения → redirect на `/api/v1/auth/telegram-callback#tgAuthResult=...`
-3. HTML-страница читает `window.location.hash`, показывает кнопку «Открыть Тапа» + авто-редирект 500ms
-4. Нажатие кнопки → `haba://auth/callback?tgAuthResult=...`
-5. `_layout.tsx` ловит deeplink → `POST /auth/telegram` (HMAC-верификация) → JWT
+Старый флоу через `oauth.telegram.org` + браузерный deeplink (`Linking.openURL`, `/auth/telegram-callback`, `POST /auth/telegram` с HMAC-верификацией) **удалён в коммите `677dbab`**, т.к. в РФ Telegram стал редиректить этот флоу на VK ID/MAX вместо завершения логина (внешнее изменение Telegram, не баг кода). Маршруты `GET /auth/telegram-callback` и `POST /auth/telegram` физически ещё есть в `backend/src/api/auth.js`, но это мёртвый код, помеченный в коде как неиспользуемый.
 
-**Важно:** `origin` должен быть `https://bot.mihmih.pro` (с протоколом) — без `https://` Telegram возвращает `tgAuthResult=false`.
+Актуальный флоу — нативный модуль + `POST /auth/telegram-native` (JWT id_token, верификация через JWKS). Полное описание — [[project-telegram-oidc]].
 
-**Важно:** Серверный redirect через `/telegram-login` терял fragment — Telegram добавляет `#tgAuthResult` только к финальному URL в браузере.
+**Данные в users (актуально):** `tg_id`, `username`, `first_name`, `last_name`, `avatar_url`, `phone` (через scope=phone)
 
-**Бэкенд:** `GET /auth/telegram-callback` (HTML с кнопкой), `POST /auth/telegram` (HMAC-верификация)
-
-**Данные в users:** `tg_id`, `username`, `first_name`, `last_name`, `avatar_url`
-
-**Аватар:** всегда обновляется при логине через Bot API (`getUserProfilePhotos`), `photo_url` из виджета временный.
-
-**Телефон из Telegram:** недоступен через OAuth. Единственный вариант — бот с кнопкой `request_contact`.
+**Аватар:** всегда обновляется при логине через Bot API (`getUserProfilePhotos`).
 
 ---
 

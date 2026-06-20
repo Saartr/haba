@@ -1,11 +1,13 @@
 ---
 name: project-push-plan
-description: План реализации push-уведомлений через FCM HTTP v1 напрямую (без Expo посредника)
+description: "✅ Реализовано: push-уведомления через FCM HTTP v1 напрямую (без Expo посредника)"
 metadata:
   type: project
 ---
 
-## Push-уведомления — FCM HTTP v1 напрямую
+## Push-уведомления — FCM HTTP v1 напрямую (реализовано)
+
+Все шаги ниже реализованы (проверено аудитом 2026-06-20): `lib/notifications.ts`, `backend/src/push/fcm.js` (с кэшем access token и обработкой UNREGISTERED/404), `backend/src/push/notify.js` (`notifyHabitJoin`, `notifyGoalIfReached`), `backend/src/jobs/habit-reminders.js` (cron `0 19 * * *` МСК). `push_tokens` — отдельная таблица (не колонка в `users`, как был изначальный план ниже) — см. [[project_database]].
 
 **Выбранный подход:** FCM HTTP v1 без Expo Push Service. Бэкенд сам ходит в Google FCM API по service account. Expo не участвует как посредник.
 
