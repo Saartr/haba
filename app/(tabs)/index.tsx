@@ -62,17 +62,49 @@ function pluralDays(n: number): string {
   return `${n} дней`;
 }
 
+function pluralWord(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 14) return many;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
+}
+
+function isTodayTrainingDay(trainingDays: number[] | null): boolean {
+  if (!trainingDays) return false;
+  const dow = new Date().getDay(); // 0=Вс..6=Сб
+  const isoDay = dow === 0 ? 7 : dow; // 1=Пн..7=Вс
+  return trainingDays.includes(isoDay);
+}
+
+// Подтягивания: «N подходов по N повторений» в тренировочный день, иначе «Отдых».
+function pullupsTodayLabel(habit: Habit): string {
+  if (!isTodayTrainingDay(habit.training_days)) return 'Отдых';
+  const session = (habit.pullups_plan ?? [])[habit.pullups_session_index];
+  if (!session) return 'Отдых';
+  return `${session.sets} ${pluralWord(session.sets, 'подход', 'подхода', 'подходов')} `
+    + `по ${session.reps} ${pluralWord(session.reps, 'повторение', 'повторения', 'повторений')}`;
+}
+
 function HabitCard({ habit, extra, onPress }: { habit: Habit; extra: HabitExtra | null; onPress: () => void }) {
   const c = useColors();
 
-  const subtitle = habit.category === 'smoking' ? 'Без сигарет' : 'Шагов за сегодня';
+  const subtitle = habit.category === 'smoking' ? 'Без сигарет'
+    : habit.category === 'pullups' ? 'Цель на сегодня'
+    : 'Шагов за сегодня';
   const value = habit.category === 'smoking'
     ? pluralDays(extra?.streak ?? 0)
+    : habit.category === 'pullups'
+    ? pullupsTodayLabel(habit)
     : `${extra?.today_value ?? 0}/${habit.goal_value ?? 0}`;
 
   // Цель за сегодня выполнена → радостный аватар, иначе — недовольный.
+  // Для подтягиваний день отдыха или выполненная тренировка — тоже радостный.
   const done = habit.category === 'smoking'
     ? (extra?.streak ?? 0) > 0
+    : habit.category === 'pullups'
+    ? !isTodayTrainingDay(habit.training_days) || (extra?.today_value ?? 0) >= 1
     : (extra?.today_value ?? 0) >= (habit.goal_value ?? 0) && (habit.goal_value ?? 0) > 0;
 
   return (

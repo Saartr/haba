@@ -1,4 +1,4 @@
-import { View, Pressable, FlatList } from 'react-native';
+import { View, Pressable } from 'react-native';
 import Text from '@/components/Text';
 import Button from '@/components/Button';
 import BottomSheet from '@/components/BottomSheet';
@@ -100,16 +100,13 @@ export default function Multiselect({ label, options, value, onChange, exactCoun
       ) : null}
 
       <BottomSheet visible={open} onClose={() => setOpen(false)}>
-        <FlatList
-          data={options}
-          keyExtractor={o => o.value}
-          scrollEnabled={false}
-          style={{ marginHorizontal: -24 }}
-          renderItem={({ item }) => {
+        <View style={{ marginHorizontal: -24 }}>
+          {options.map(item => {
             const checked = draft.includes(item.value);
             const lockedOut = !checked && draft.length >= exactCount;
             return (
               <Pressable
+                key={item.value}
                 onPress={() => toggle(item.value)}
                 disabled={lockedOut}
                 android_ripple={{ color: 'rgba(0,0,0,0.06)' }}
@@ -132,8 +129,8 @@ export default function Multiselect({ label, options, value, onChange, exactCoun
                 </Text>
               </Pressable>
             );
-          }}
-        />
+          })}
+        </View>
         <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
           <View style={{ flex: 1 }}>
             <Button label="Отмена" variant="secondary" onPress={handleCancel} />

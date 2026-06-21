@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Modal, Pressable, Animated, Keyboard, Platform } from 'react-native';
+import { View, Modal, Pressable, Animated, Keyboard, Platform, ScrollView, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Text from '@/components/Text';
 import CloseIcon from '@/assets/icons/Close.svg';
@@ -19,6 +19,9 @@ export default function BottomSheet({ visible, title, onClose, children }: Props
   const { colorScheme } = useSettings();
   const overlayColor = colorScheme === 'dark' ? colors.blackTransparent[80] : colors.blackTransparent[24];
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+  // Ограничиваем высоту шторки, чтобы контент длиннее экрана скроллился внутри, а не уходил за верхний край.
+  const maxSheetHeight = windowHeight - insets.top - 24;
   const [mounted, setMounted] = useState(false);
   const [kbHeight, setKbHeight] = useState(0);
 
@@ -81,17 +84,16 @@ export default function BottomSheet({ visible, title, onClose, children }: Props
             backgroundColor: c.surface.input,
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
+            maxHeight: maxSheetHeight,
             paddingTop: 32,
             paddingBottom: (kbHeight > 0 ? 32 : insets.bottom + 24),
-            paddingHorizontal: 24,
-            gap: 32,
             opacity: anim,
             transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [32, 0] }) }],
           }}
         >
           {/* Header (опционально) */}
           {title ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 32 }}>
               <Text weight="bold" style={{ fontSize: 24, lineHeight: 24 * 1.5, color: c.text.primary, letterSpacing: 0.2 }}>
                 {title}
               </Text>
@@ -101,7 +103,15 @@ export default function BottomSheet({ visible, title, onClose, children }: Props
             </View>
           ) : null}
 
-          {visible ? children : null}
+          {/* flexShrink, чтобы при контенте выше maxHeight ScrollView сжался и контент стал скроллиться, а не обрезался. */}
+          <ScrollView
+            style={{ flexShrink: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 24, gap: 32 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {visible ? children : null}
+          </ScrollView>
         </Animated.View>
       </Animated.View>
     </Modal>

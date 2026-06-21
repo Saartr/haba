@@ -62,6 +62,7 @@ import {
 } from '@/lib/health';
 import SegmentedControl from '@/components/SegmentedControl';
 import { useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { getNotificationsModule } from '@/lib/notifications';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -240,7 +241,8 @@ function PullupsHabitScreen({
   const currentForm = habit.current_form ?? 0;
   const targetReps = habit.target_reps ?? 0;
   const intensityLabel = habit.intensity ? INTENSITY_LABEL[habit.intensity] : '';
-  const planDescription = `Старт - ${currentForm} ${pluralWord(currentForm, 'раз', 'раза', 'раз')} за подход. `
+  const planDescription = `Длительность плана - ${totalWeeks} ${pluralWord(totalWeeks, 'неделя', 'недели', 'недель')}. `
+    + `Старт - ${currentForm} ${pluralWord(currentForm, 'раз', 'раза', 'раз')} за подход. `
     + `Конечная цель - ${targetReps} ${pluralWord(targetReps, 'раз', 'раза', 'раз')} за подход. `
     + `${sessionsPerWeek} ${pluralWord(sessionsPerWeek, 'тренировка', 'тренировки', 'тренировок')} в неделю со ${intensityLabel} интенсивностью.`;
 
@@ -250,7 +252,7 @@ function PullupsHabitScreen({
 
       <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>
         <NavigationBar
-          title={habit.name}
+          title={habit.type === 'group' ? 'Групповая цель' : 'Персональная цель'}
           onBack={() => router.back()}
           right={
             <Pressable onPress={() => setMenuVisible(true)} hitSlop={8}>
@@ -282,25 +284,25 @@ function PullupsHabitScreen({
         ]}
       />
 
-      {/* Шапка: заголовок состояния цели + расчётное описание плана */}
+      {/* Шапка: заголовок + описание (если есть) + информация о тренировках */}
       <View style={{ paddingHorizontal: 24, paddingTop: 24, gap: 8 }}>
+        <Text weight="bold" style={{ fontSize: 24, lineHeight: 36, color: c.text.primary, letterSpacing: 0.2 }}>
+          {habit.name}
+        </Text>
+        {habit.description ? (
+          <Text weight="semibold" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
+            {habit.description}
+          </Text>
+        ) : null}
         {goalAchieved ? (
-          <>
-            <Text weight="bold" style={{ fontSize: 24, lineHeight: 36, color: c.text.primary, letterSpacing: 0.2 }}>
-              Цель достигнута!
-            </Text>
-            <Text weight="bold" style={{ fontSize: 20, lineHeight: 20 * 1.5, color: c.text.primary, letterSpacing: 0.2 }}>
-              {targetReps} {pluralWord(targetReps, 'раз', 'раза', 'раз')} за подход
-            </Text>
-          </>
+          <Text weight="bold" style={{ fontSize: 20, lineHeight: 20 * 1.5, color: c.text.primary, letterSpacing: 0.2 }}>
+            Цель достигнута! {targetReps} {pluralWord(targetReps, 'раз', 'раза', 'раз')} за подход
+          </Text>
         ) : (
-          <Text weight="bold" style={{ fontSize: 24, lineHeight: 36, color: c.text.primary, letterSpacing: 0.2 }}>
-            {habit.name} {totalWeeks} {pluralWord(totalWeeks, 'неделя', 'недели', 'недель')}
+          <Text weight="semibold" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
+            {planDescription}
           </Text>
         )}
-        <Text weight="semibold" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
-          {planDescription}
-        </Text>
       </View>
 
       <View style={{ marginTop: 24 }}>
@@ -310,6 +312,7 @@ function PullupsHabitScreen({
           currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
           goalValue={1}
           trainingDays={habit.training_days}
+          totalWeeks={totalWeeks}
         />
       </View>
 
@@ -498,7 +501,9 @@ export default function HabitScreen() {
     }
   }, [habitId]);
 
-  useEffect(() => { load(); }, [load]);
+  // useFocusEffect, не useEffect — чтобы данные подтягивались при возврате
+  // с экрана редактирования (название/описание/настройки цели), а не только при маунте.
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   // Обновляем экран при получении foreground-уведомления по этой цели
   // (новый участник вступил или кто-то внёс данные).

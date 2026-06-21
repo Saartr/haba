@@ -24,6 +24,8 @@ metadata:
 - Анимация: `translateY` 32→0 + fade
 - Учитывает клавиатуру: слушает `keyboardWillShow/Hide` (iOS) / `keyboardDidShow/Hide` (Android), поднимает шторку через `paddingBottom` (не `transform`, чтобы не конфликтовать с анимацией появления)
 - `borderTopLeftRadius/borderTopRightRadius: 24`, фон `c.surface.input`
+- `maxHeight: windowHeight - insets.top - 24` на контейнере + `children` обёрнуты в `ScrollView` (`flexShrink: 1`) — контент выше экрана скроллится внутри шторки, а не уходит за верхний край (фикс 2026-06-21). Заголовок остаётся не скроллящимся (вне `ScrollView`).
+- Списки внутри (`Select.tsx`, `Multiselect.tsx`) — обычный `View` + `.map()`, не `FlatList`: скролл делегирован внешнему `ScrollView` шторки (вложенный `FlatList` в `ScrollView` той же ориентации триггерит RN-warning и не давал нормально скроллиться даже с `scrollEnabled={false}`).
 
 ## `components/ConfirmModal.tsx` — `useConfirm()` / `ConfirmProvider`
 

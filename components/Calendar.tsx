@@ -116,10 +116,12 @@ function buildDays(
     const isRestDay = trainingDays != null && !trainingDays.includes(isoDay);
 
     let status: DayStatus;
-    if (diff > 0) {
-      status = 'future';
-    } else if (beforeHabit || isRestDay) {
+    if (beforeHabit || isRestDay) {
+      // День отдыха — без иконки независимо от того, в прошлом, сегодня или в будущем,
+      // чтобы будущие тренировочные дни визуально отличались от дней отдыха при свайпе вперёд.
       status = 'inactive';
+    } else if (diff > 0) {
+      status = 'future';
     } else if (diff === 0) {
       if (loggedValue !== undefined && loggedValue >= goalValue) status = 'check';
       else if (loggedValue !== undefined) status = 'miss';
@@ -139,6 +141,15 @@ function minWeekOffset(habitCreatedAt: Date): number {
   if (diffMs <= 0) return 0;
   const diffWeeks = Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000));
   return -diffWeeks;
+}
+
+// Последняя неделя плана относительно сегодня (для pullups — чтобы можно было
+// свайпнуть вперёд и увидеть запланированные тренировочные дни). 0, если план не передан
+// или уже закончился — свайп вперёд не нужен.
+function maxWeekOffset(habitCreatedAt: Date, totalWeeks?: number): number {
+  if (!totalWeeks) return 0;
+  const minOffset = minWeekOffset(habitCreatedAt); // отрицательное число недель с создания
+  return Math.max(0, totalWeeks + minOffset);
 }
 
 
@@ -222,20 +233,22 @@ type Props = {
   pageWidth?: number;
   /** Горизонтальный отступ внутри страницы. По умолчанию 24. */
   horizontalPadding?: number;
+  /** Длительность плана в неделях (pullups) — позволяет свайпнуть вперёд и увидеть запланированные тренировки. */
+  totalWeeks?: number;
 };
 
-export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, userId, pageWidth: pageWidthProp, horizontalPadding = 24 }: Props) {
+export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, userId, pageWidth: pageWidthProp, horizontalPadding = 24, totalWeeks }: Props) {
   const createdAt = new Date(habitCreatedAt);
   createdAt.setUTCHours(0, 0, 0, 0);
 
   const minOffset = minWeekOffset(createdAt);
-  // Генерируем индексы недель от minOffset до 0 (текущая)
+  const maxOffset = maxWeekOffset(createdAt, totalWeeks);
+  // Генерируем индексы недель от minOffset до maxOffset (текущая неделя — offset=0)
   const weekOffsets = Array.from(
-    { length: -minOffset + 1 },
+    { length: maxOffset - minOffset + 1 },
     (_, i) => minOffset + i,
   );
-  // Текущая неделя (offset=0) — последний элемент
-  const currentIndex = weekOffsets.length - 1;
+  const currentIndex = weekOffsets.indexOf(0);
 
   const listRef = useRef<FlatList>(null);
   const { width: screenWidth } = Dimensions.get('window');

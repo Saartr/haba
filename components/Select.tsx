@@ -1,4 +1,4 @@
-import { View, Pressable, FlatList } from 'react-native';
+import { View, Pressable } from 'react-native';
 import Text from '@/components/Text';
 import BottomSheet from '@/components/BottomSheet';
 import { useColors } from '@/lib/colors';
@@ -81,13 +81,10 @@ export default function Select({ label, options, value, onChange, placeholder, d
 
       <BottomSheet visible={open} onClose={() => setOpen(false)}>
         {/* отменяем горизонтальный padding шторки, чтобы подсветка строки шла от края до края */}
-        <FlatList
-          data={options}
-          keyExtractor={o => o.value}
-          scrollEnabled={false}
-          style={{ marginHorizontal: -24 }}
-          renderItem={({ item }) => (
+        <View style={{ marginHorizontal: -24 }}>
+          {options.map(item => (
             <Pressable
+              key={item.value}
               onPress={() => handleSelect(item.value)}
               android_ripple={{ color: 'rgba(0,0,0,0.06)' }}
               style={{
@@ -107,8 +104,8 @@ export default function Select({ label, options, value, onChange, placeholder, d
                 {item.label}
               </Text>
             </Pressable>
-          )}
-        />
+          ))}
+        </View>
       </BottomSheet>
     </View>
   );
