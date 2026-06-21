@@ -29,7 +29,9 @@ function makeAccessToken(userId) {
 }
 
 function makeRefreshToken(userId) {
-  return jwt.sign({ sub: userId, type: 'refresh' }, JWT_SECRET, { expiresIn: REFRESH_TTL });
+  // jti — иначе при двух рефрешах одного юзера в одну и ту же секунду (гонка, см. /auth/refresh)
+  // payload совпадает целиком и jwt.sign даёт побайтово одинаковую строку → конфликт UNIQUE(token).
+  return jwt.sign({ sub: userId, type: 'refresh', jti: crypto.randomUUID() }, JWT_SECRET, { expiresIn: REFRESH_TTL });
 }
 
 function requireAuth(req, res, next) {
@@ -298,19 +300,20 @@ router.post('/refresh', async (req, res) => {
       return res.status(401).json({ message: 'Токен недействителен' });
     }
 
+    // DELETE...RETURNING атомарно «забирает» строку — при гонке параллельных
+    // запросов с одним и тем же refreshToken только один из них получит row,
+    // остальные получат пустой результат вместо повторного использования токена.
     const [row] = await sql`
-      SELECT id, user_id, expires_at FROM refresh_tokens
+      DELETE FROM refresh_tokens
       WHERE token = ${refreshToken}
+      RETURNING id, user_id, expires_at
     `;
 
     if (!row) return res.status(401).json({ message: 'Сессия истекла' });
 
     if (new Date() > new Date(row.expires_at)) {
-      await sql`DELETE FROM refresh_tokens WHERE id = ${row.id}`;
       return res.status(401).json({ message: 'Сессия истекла' });
     }
-
-    await sql`DELETE FROM refresh_tokens WHERE id = ${row.id}`;
 
     const newAccess = makeAccessToken(row.user_id);
     const newRefresh = makeRefreshToken(row.user_id);
