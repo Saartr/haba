@@ -243,7 +243,6 @@ export default function CreateHabitScreen() {
                   options={NOTIFY_OPTIONS}
                   value={notify}
                   onChange={setNotify}
-                  disabled
                 />
               </>
             ) : (
@@ -271,7 +270,6 @@ export default function CreateHabitScreen() {
                   options={NOTIFY_OPTIONS}
                   value={notify}
                   onChange={setNotify}
-                  disabled
                 />
               </>
             )}

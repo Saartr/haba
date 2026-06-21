@@ -146,3 +146,14 @@ npm install google-auth-library
 7. Следующий `prebuild` → пересборка APK с google-services.json
 
 **How to apply:** При реализации читать этот план пошагово. service-account.json — секрет, на сервер через scp, не в git.
+
+---
+
+## Глобальный тоггл «Уведомления» в настройках (2026-06-21)
+
+Тоггл в `app-settings.tsx` (`SegmentedControl`, `settings.notifications: 'on'|'off'`, хранится в `SecureStore` через [[project_database]]-независимый `lib/settings-context.tsx`) реально включает/выключает push:
+- Выключение → `unregisterCurrentPushToken()` (отписывает текущий FCM-токен на бэкенде немедленно, не дожидаясь перезапуска)
+- Включение → `registerForPush()` (регистрирует токен заново)
+- `app/_layout.tsx`: эффект авто-регистрации токена после логина теперь зависит от `settings.notifications` — если `off`, токен не регистрируется даже при старте приложения
+
+Это глобальный тоггл уровня устройства (не привязан к конкретной цели). Отдельно от него — поле `habits.notifications` (per-habit, см. [[project_database]]) учитывается в `backend/src/push/notify.js` и `backend/src/jobs/habit-reminders.js`: тоггл «Уведомления» при создании/редактировании цели (`create-habit.tsx`, `edit-habit/[id].tsx`) теперь не `disabled` — `PATCH /habits/:id` принимает `notifications`, сохраняя текущее значение если поле не передано (старый клиент).

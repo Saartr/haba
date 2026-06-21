@@ -6,6 +6,7 @@ import Button from '@/components/Button';
 import Input from '@/components/Input';
 import TextArea from '@/components/TextArea';
 import Select from '@/components/Select';
+import SegmentedControl from '@/components/SegmentedControl';
 import NavigationBar from '@/components/NavigationBar';
 import CheckIcon from '@/assets/icons/Check.svg';
 import { useColors, colors } from '@/lib/colors';
@@ -17,6 +18,11 @@ const GROUP_GOAL_OPTIONS = [
   { label: '5 000', value: '5000' },
   { label: '7 000', value: '7000' },
   { label: '10 000', value: '10000' },
+];
+
+const NOTIFY_OPTIONS = [
+  { label: 'Да', value: 'yes' },
+  { label: 'Нет', value: 'no' },
 ];
 
 export default function EditHabitScreen() {
@@ -32,6 +38,7 @@ export default function EditHabitScreen() {
   const [nameError, setNameError] = useState('');
   const [description, setDescription] = useState('');
   const [groupGoal, setGroupGoal] = useState('7000');
+  const [notify, setNotify] = useState('yes');
   const [habitType, setHabitType] = useState<'solo' | 'group'>('solo');
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
@@ -48,6 +55,7 @@ export default function EditHabitScreen() {
         if (habit.goal_value != null) {
           setGroupGoal(String(habit.goal_value));
         }
+        setNotify(habit.notifications ? 'yes' : 'no');
         setReady(true);
       })
       .catch(() => router.back());
@@ -64,6 +72,7 @@ export default function EditHabitScreen() {
         name: name.trim(),
         description: description.trim() || undefined,
         goal_value: habitType === 'group' ? parseInt(groupGoal) : undefined,
+        notifications: notify === 'yes',
       });
       showSnackbar('Изменения сохранены', 'success');
       router.back();
@@ -110,6 +119,13 @@ export default function EditHabitScreen() {
             onChange={setGroupGoal}
           />
         )}
+
+        <SegmentedControl
+          label="Уведомления"
+          options={NOTIFY_OPTIONS}
+          value={notify}
+          onChange={setNotify}
+        />
       </ScrollView>
 
       <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>

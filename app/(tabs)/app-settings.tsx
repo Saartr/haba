@@ -16,6 +16,7 @@ import {
 import { scheduleSync, cancelSync } from '@/modules/health-sync';
 import { getStepHabits } from '@/lib/api';
 import { BASE_URL } from '@/lib/config';
+import { registerForPush, unregisterCurrentPushToken } from '@/lib/notifications';
 
 import NavigationBar from '@/components/NavigationBar';
 
@@ -60,6 +61,17 @@ export default function AppSettingsScreen() {
   // updateSettings стабилен (useCallback в SettingsProvider), добавляем в deps для линтера
   }, [updateSettings]));
 
+  // Выключение — отписываем текущий FCM-токен на бэкенде, чтобы сервер сразу перестал слать пуши
+  // (не дожидаясь следующего запуска приложения). Включение — регистрируем токен заново.
+  const handleNotificationsChange = async (v: string) => {
+    updateSettings({ notifications: v as Toggle });
+    if (v === 'off') {
+      await unregisterCurrentPushToken();
+    } else {
+      await registerForPush();
+    }
+  };
+
   const handleGoogleFitChange = async (v: string) => {
     try {
       if (v === 'on') {
@@ -103,8 +115,7 @@ export default function AppSettingsScreen() {
           label="Уведомления"
           options={TOGGLE_OPTIONS}
           value={settings.notifications}
-          onChange={v => updateSettings({ notifications: v as Toggle })}
-          disabled
+          onChange={handleNotificationsChange}
         />
         <SegmentedControl
           label="Доступ к Health Connect"

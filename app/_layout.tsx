@@ -7,7 +7,7 @@ import { Linking, Alert, AppState } from 'react-native';
 import 'react-native-reanimated';
 import { useFonts, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
-import { SettingsProvider } from '@/lib/settings-context';
+import { SettingsProvider, useSettings } from '@/lib/settings-context';
 import { ConfirmProvider } from '@/components/ConfirmModal';
 import { SnackbarProvider } from '@/lib/snackbar-context';
 import { joinHabit, getStepHabits } from '@/lib/api';
@@ -45,6 +45,7 @@ export const unstable_settings = {
 
 function RootLayoutNav() {
   const { authed, checked, user } = useAuth();
+  const { settings } = useSettings();
   const [ready, setReady] = useState(false);
   const router = useRouter();
   const segments = useSegments();
@@ -169,13 +170,16 @@ function RootLayoutNav() {
 
   // Регистрация FCM-токена для push после входа (Android).
   // Как и health-sync, ждём user !== null — токены стабильны.
+  // Уведомления выключены в настройках (settings.notifications === 'off') — токен не регистрируем,
+  // включение тоггла в app-settings.tsx сразу регистрирует токен повторно (без перезапуска приложения).
   useEffect(() => {
     if (!checked || !authed || !user) return;
     if (Platform.OS !== 'android') return;
+    if (settings.notifications === 'off') return;
     registerForPush();
     const sub = addTokenRotationListener();
     return () => sub.remove();
-  }, [authed, checked, user]);
+  }, [authed, checked, user, settings.notifications]);
 
   // После входа: если был отложенный invite (юзер пришёл по ссылке неавторизованным) —
   // вступаем в группу и открываем её экран.
