@@ -11,10 +11,13 @@ metadata:
 
 **Почему модульные `repositories {}` не помогают:** под RN settings-plugin (`com.facebook.react.settings`) действует централизованный резолвинг — `repositories {}` внутри `modules/*/android/build.gradle` ИГНОРИРУЮТСЯ. Репозитории нужно класть в корневой `android/build.gradle` → `allprojects.repositories`.
 
-**Существующие плагины (коммит 677dbab):**
+**Существующие плагины (`plugins/*.js`, регистрируются в `app.json`):**
 - `plugins/with-native-maven-repos.js` (`withProjectBuildGradle`) — добавляет в `allprojects.repositories`: VK artifactory (3 URL) + Telegram GitHub Packages (`maven.pkg.github.com/TelegramMessenger/telegram-login-android`, креды из `gpr.user`/`gpr.key`).
 - `plugins/with-vk-manifest-placeholders.js` (`withAppBuildGradle`) — добавляет в `defaultConfig.manifestPlaceholders`: `VKIDClientID=54615454`, `VKIDRedirectHost=vk.com`, `VKIDRedirectScheme=vk54615454`, `VKIDClientSecret` (читается из gradle-проперти, НЕ хардкод).
 - `plugins/with-telegram-applink.js` — App Link intent-filter на MainActivity (host `app4160742593-login.tg.dev`, `/tglogin`, autoVerify).
+- `plugins/with-tg-queries.js` — `<queries>` для схемы `tg` в манифесте (Android 11+ package visibility) — без этого `Linking.openURL('tg://...')` молча не срабатывает.
+- `plugins/with-health-permissions.js` — `READ_STEPS` permission + Android-14 rationale `activity-alias`, см. [[project_health_connect]].
+- `plugins/with-signing-config.js` — release-подпись APK из `~/.gradle/gradle.properties` (`TAPA_STORE_FILE` и т.д.), фоллбэк на debug-подпись если свойств нет (CI/чужая машина).
 
 **Секреты НЕ в гите — в `~/.gradle/gradle.properties` (глобально, вне репо):**
 ```

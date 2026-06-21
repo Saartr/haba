@@ -12,5 +12,5 @@ metadata:
 **Что нужно:** при следующем `npx expo prebuild --platform android --clean`:
 1. В `app/(tabs)/habit/[id].tsx` заменить `import { Clipboard } from 'react-native'` → `import * as Clipboard from 'expo-clipboard'`
 2. Заменить `Clipboard.setString(...)` → `Clipboard.setStringAsync(...)`
-**Файл:** `app/(tabs)/habit/[id].tsx:13` и `:476`
+**Файл:** `app/(tabs)/habit/[id].tsx:14` и `:747` (номера строк сдвигаются по мере правок файла — искать по `import { Clipboard } from 'react-native'` и `Clipboard.setString`)
 

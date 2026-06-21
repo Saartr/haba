@@ -1,7 +1,7 @@
 # Memory Index
 
 - [iOS Build Plan](project_ios_plan.md) — EAS Build when Apple Developer Account obtained; Android-only until then
-- [Авторизация](project_auth_refactor.md) — два способа: Telegram (браузер + deeplink) и VK ID (нативный SDK 2.6.0, Expo Module, New Arch)
+- [Авторизация](project_auth_refactor.md) — два способа: Telegram (нативный OIDC-логин, не браузер/виджет) и VK ID (нативный SDK 2.6.0, Expo Module, New Arch); фикс гонки в /auth/refresh (2026-06-21)
 - [Telegram OIDC / Native Login](project_telegram_oidc.md) — ✅ работает + телефон (scope=phone). SDK = браузерный OIDC через oauth.telegram.org. 🔴 требует VPN без split-tunnel; ⚠️ release-сборка требует release SHA-256 в BotFather
 - [Android config-плагины](project_android_config_plugins.md) — нативные SDK (VK/TG): maven-репо + manifest-placeholders через config-плагины, т.к. `prebuild --clean` стирает `android/`. Секреты в `~/.gradle/gradle.properties`
 - [Health Connect](project_health_connect.md) — ✅ работает на debug; причина бывшего пустого requestPermission — отсутствие Android-14 rationale activity-alias в манифесте, НЕ верификация
@@ -17,8 +17,8 @@
 - [База данных](project_database.md) — схема всех таблиц: users, groups, habits, habit_members, habit_logs, refresh_tokens
 - [Деплой бэкенда](project_backend_deploy.md) — backend/ в репо, ручной деплой через `./deploy-backend.ps1` (нет автодеплоя)
 - [Git коммиты](feedback_git_commits.md) — коммитить и пушить только по явной просьбе, не автоматически
-- [Arch Review 2026-06](project_arch_review_2026-06.md) — результаты проверки + фиксы: PATCH /auth/me, is_creator, soft-close, VK URL, HabitLog, rename Haba→Тапа
-- [Health Sync WorkManager](project_health_sync_plan.md) — план фонового синка шагов: Expo Module health-sync, CoroutineWorker, refreshToken в SharedPreferences, scheduleSync/cancelSync
-- [Pending Features](project_pending_features.md) — отложенные фичи: редактирование привычки, реальные push-уведомления
-- [Push-уведомления](project_push_plan.md) — план FCM HTTP v1 напрямую (без Expo): Firebase проект, google-services.json, service-account.json, expo-notifications, cron-дайджест
-- [Цель «Подтягивания»](project_pullups_goal_plan.md) — план: новые колонки в habits + сохранённый план, формула прогрессии (повторения→подходы→повторения), новый компонент Multiselect, solo-only
+- [Naming: Haba→Тапа](project_naming_haba_tapa.md) — в UI «Тапа», системные идентификаторы (scheme/package/SecureStore keys) остаются haba
+- [Health Sync WorkManager](project_health_sync_plan.md) — ✅ реализовано: Expo Module health-sync, CoroutineWorker, refreshToken в SharedPreferences, scheduleSync/cancelSync
+- [Pending Features](project_pending_features.md) — отложенная фича: expo-clipboard (нужен prebuild)
+- [Push-уведомления](project_push_plan.md) — ✅ реализовано: FCM HTTP v1 напрямую (без Expo), глобальный тоггл в настройках + per-habit тоггл
+- [Цель «Подтягивания»](project_pullups_goal_plan.md) — ✅ реализовано: новые колонки в habits + сохранённый план, формула прогрессии, Multiselect, свайп календаря вперёд по плану, solo-only

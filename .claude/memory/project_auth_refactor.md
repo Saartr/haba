@@ -45,3 +45,17 @@ metadata:
 **Why New Arch совместимый модуль:** `newArchEnabled=true` в `gradle.properties` — старый `ReactContextBaseJavaModule` + `PackageList` не работает в Bridgeless режиме. Нужен Expo Module с `expo-module.config.json`.
 
 **How to apply:** При добавлении новых нативных модулей — использовать Expo Modules API (`Module` класс), размещать в `modules/<name>/android/`, создавать `expo-module.config.json`.
+
+---
+
+## Фикс гонки в `POST /auth/refresh` — duplicate key в refresh_tokens (2026-06-21)
+
+В логах (`pm2 logs step-bot --err`) регулярно встречалась `PostgresError: duplicate key value violates unique constraint "refresh_tokens_token_key"` (код `23505`) у разных пользователей.
+
+**Причина:** `makeRefreshToken` подписывала JWT только из `{ sub: userId, type: 'refresh' }` + `iat`/`exp` (точность секунда) — без nonce. `/auth/refresh` делал `SELECT` → `DELETE` → генерация нового токена → `INSERT` как раздельные шаги. При двух почти одновременных рефрешах одним и тем же refreshToken (несколько экранов поймали 401 одновременно, либо фоновый health-sync воркер рефрешит независимо от приложения) оба запроса проходили `SELECT` раньше, чем кто-либо сделал `DELETE` — и если оба генерировали новый токен в одну секунду, payload совпадал целиком → identical JWT-строка → второй `INSERT` падал на UNIQUE.
+
+**Фикс** (`backend/src/api/auth.js`):
+- `SELECT`+`DELETE` объединены в одну атомарную операцию `DELETE ... RETURNING` — при гонке только один из параллельных запросов реально получает строку.
+- В payload refresh-токена добавлен случайный `jti: crypto.randomUUID()` — исключает совпадение строк даже при честном одновременном рефреше с разных устройств.
+
+**How to apply:** Если в логах снова появится `refresh_tokens_token_key` — проверить, не регрессировал ли клиент к раздельным SELECT/DELETE, и не добавился ли где-то ещё путь генерации refresh-токена без `jti`.
