@@ -82,6 +82,9 @@ async function runMigrations() {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT`;
 
+  // Способ последнего входа ('telegram'|'vk') — для иконки сервиса на главном экране
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_provider TEXT`;
+
   const migrateHabits = require('./migrate_habits');
   await migrateHabits();
 

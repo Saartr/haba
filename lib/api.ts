@@ -75,6 +75,7 @@ export type UserProfile = {
   avatar_url: string | null;
   tg_id: string | null;
   vk_id: string | null;
+  last_login_provider: 'telegram' | 'vk' | null;
 };
 
 export async function getMe(): Promise<UserProfile> {

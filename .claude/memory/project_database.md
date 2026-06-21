@@ -14,7 +14,8 @@ PostgreSQL на сервере `bot.mihmih.pro`. Подключение чере
 users          — id, tg_id BIGINT NULL (был NOT NULL, снят в migrate_vk.js), vk_id TEXT,
                  username, first_name, last_name,
                  email TEXT, phone TEXT,
-                 avatar_url, health_connected_at TIMESTAMPTZ, created_at
+                 avatar_url, health_connected_at TIMESTAMPTZ, created_at,
+                 last_login_provider TEXT NULL ('telegram'|'vk')
                partial UNIQUE INDEX users_vk_id_unique ON (vk_id) WHERE vk_id IS NOT NULL
 groups         — id, name, invite_code UNIQUE, creator_id → users, created_at
 group_members  — user_id → users, group_id → groups, joined_at; PK(user_id, group_id)
@@ -27,6 +28,10 @@ refresh_tokens — id, user_id → users, token UNIQUE, expires_at, created_at
 
 Telegram-пользователи: `tg_id` заполнен, `vk_id` = NULL.
 VK-пользователи: `vk_id` заполнен, `tg_id` = NULL.
+При слиянии аккаунтов (mergeUsers) оба ID могут быть заполнены одновременно — поэтому для
+иконки сервиса на главном экране используется `last_login_provider` (способ последнего входа),
+а не наличие `tg_id`/`vk_id`. Обновляется в `POST /auth/vk` и `POST /auth/telegram-native`
+при каждом логине; не трогается при `/auth/link/*` (привязка ≠ вход).
 `groups/group_members/goals/steps` — legacy bot-функциональность шагов; новый функционал привычек живёт в таблицах ниже.
 
 **Таблицы привычек (добавлены позже, migrate_habits.js):**

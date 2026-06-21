@@ -147,9 +147,13 @@ export default function HabitsScreen() {
 
   const rawName = user?.first_name ?? user?.username ?? null;
   const displayName = rawName && rawName.length > 12 ? rawName.slice(0, 12) + '…' : rawName;
-  // Иконка сервиса авторизации: Telegram (tg_id) или VK (vk_id). При обоих (связанные
-  // аккаунты) показываем Telegram. Цвет — neutral[400] из макета TapaDS.
-  const ServiceIcon = user?.tg_id ? TelegramIcon : user?.vk_id ? VKIcon : null;
+  // Иконка сервиса авторизации — способ, которым реально залогинились в последний раз
+  // (last_login_provider), а не просто наличие tg_id/vk_id — при слитых аккаунтах
+  // оба ID присутствуют одновременно. Фоллбэк на старую логику для сессий до миграции,
+  // у которых last_login_provider ещё не заполнен. Цвет — neutral[400] из макета TapaDS.
+  const ServiceIcon = user?.last_login_provider === 'telegram' ? TelegramIcon
+    : user?.last_login_provider === 'vk' ? VKIcon
+    : user?.tg_id ? TelegramIcon : user?.vk_id ? VKIcon : null;
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' : 'dark-content';
   const panelShadow = useCardShadow();

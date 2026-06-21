@@ -147,14 +147,15 @@ router.post('/vk', async (req, res) => {
 
   try {
     const [user] = await sql`
-      INSERT INTO users (vk_id, first_name, last_name, email, phone)
-      VALUES (${vkId}, ${firstName}, ${lastName}, ${emailVal}, ${phoneVal})
+      INSERT INTO users (vk_id, first_name, last_name, email, phone, last_login_provider)
+      VALUES (${vkId}, ${firstName}, ${lastName}, ${emailVal}, ${phoneVal}, 'vk')
       ON CONFLICT (vk_id) DO UPDATE SET
         first_name = COALESCE(EXCLUDED.first_name, users.first_name),
         last_name  = COALESCE(EXCLUDED.last_name,  users.last_name),
         email      = COALESCE(EXCLUDED.email,      users.email),
-        phone      = COALESCE(EXCLUDED.phone,      users.phone)
-      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id
+        phone      = COALESCE(EXCLUDED.phone,      users.phone),
+        last_login_provider = 'vk'
+      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
     `;
 
     let avatarUrl = user.avatar_url;
@@ -190,6 +191,7 @@ router.post('/vk', async (req, res) => {
         avatar_url: avatarUrl || null,
         tg_id:      user.tg_id ? String(user.tg_id) : null,
         vk_id:      user.vk_id || null,
+        last_login_provider: user.last_login_provider || null,
       },
     });
   } catch (e) {
@@ -231,14 +233,15 @@ router.post('/telegram-native', async (req, res) => {
 
   try {
     const [user] = await sql`
-      INSERT INTO users (tg_id, username, first_name, last_name, phone)
-      VALUES (${tgId}, ${username}, ${firstName}, ${lastName}, ${phone})
+      INSERT INTO users (tg_id, username, first_name, last_name, phone, last_login_provider)
+      VALUES (${tgId}, ${username}, ${firstName}, ${lastName}, ${phone}, 'telegram')
       ON CONFLICT (tg_id) DO UPDATE SET
         username   = COALESCE(EXCLUDED.username,   users.username),
         first_name = COALESCE(EXCLUDED.first_name, users.first_name),
         last_name  = COALESCE(EXCLUDED.last_name,  users.last_name),
-        phone      = COALESCE(EXCLUDED.phone,      users.phone)
-      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id
+        phone      = COALESCE(EXCLUDED.phone,      users.phone),
+        last_login_provider = 'telegram'
+      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
     `;
 
     // Аватар: claims.picture — URL фото из Telegram. Скачиваем через тот же helper
@@ -269,6 +272,7 @@ router.post('/telegram-native', async (req, res) => {
         avatar_url: avatarUrl || null,
         tg_id:      user.tg_id ? String(user.tg_id) : null,
         vk_id:      user.vk_id || null,
+        last_login_provider: user.last_login_provider || null,
       },
     });
   } catch (e) {
@@ -328,7 +332,7 @@ router.post('/refresh', async (req, res) => {
 router.get('/me', requireAuth, async (req, res) => {
   try {
     const [user] = await sql`
-      SELECT username, first_name, last_name, avatar_url, tg_id, vk_id
+      SELECT username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
       FROM users WHERE id = ${req.userId}
     `;
     if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
@@ -340,6 +344,7 @@ router.get('/me', requireAuth, async (req, res) => {
       avatar_url: user.avatar_url || null,
       tg_id:      user.tg_id ? String(user.tg_id) : null,
       vk_id:      user.vk_id     || null,
+      last_login_provider: user.last_login_provider || null,
     });
   } catch (e) {
     console.error('me error:', e);
@@ -358,7 +363,7 @@ router.patch('/me', requireAuth, async (req, res) => {
     const [user] = await sql`
       UPDATE users SET first_name = ${first_name.trim()}
       WHERE id = ${req.userId}
-      RETURNING username, first_name, last_name, avatar_url, tg_id, vk_id
+      RETURNING username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
     `;
     if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
 
@@ -369,6 +374,7 @@ router.patch('/me', requireAuth, async (req, res) => {
       avatar_url: user.avatar_url || null,
       tg_id:      user.tg_id ? String(user.tg_id) : null,
       vk_id:      user.vk_id     || null,
+      last_login_provider: user.last_login_provider || null,
     });
   } catch (e) {
     console.error('patch me error:', e);
@@ -473,7 +479,7 @@ router.post('/link/telegram', requireAuth, async (req, res) => {
         last_name  = COALESCE(last_name,  ${lastName}),
         phone      = COALESCE(phone,      ${phone})
       WHERE id = ${req.userId}
-      RETURNING username, first_name, last_name, avatar_url, tg_id, vk_id
+      RETURNING username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
     `;
 
     let avatarUrl = user.avatar_url;
@@ -492,6 +498,7 @@ router.post('/link/telegram', requireAuth, async (req, res) => {
       avatar_url: avatarUrl       || null,
       tg_id:      user.tg_id ? String(user.tg_id) : null,
       vk_id:      user.vk_id     || null,
+      last_login_provider: user.last_login_provider || null,
     });
   } catch (e) {
     console.error('link/telegram error:', e);
@@ -527,7 +534,7 @@ router.post('/link/vk', requireAuth, async (req, res) => {
         email      = COALESCE(email,      ${email           || null}),
         phone      = COALESCE(phone,      ${phone           || null})
       WHERE id = ${req.userId}
-      RETURNING username, first_name, last_name, avatar_url, tg_id, vk_id
+      RETURNING username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
     `;
 
     let avatarUrl = user.avatar_url;
@@ -550,6 +557,7 @@ router.post('/link/vk', requireAuth, async (req, res) => {
       avatar_url: avatarUrl       || null,
       tg_id:      user.tg_id ? String(user.tg_id) : null,
       vk_id:      user.vk_id     || null,
+      last_login_provider: user.last_login_provider || null,
     });
   } catch (e) {
     console.error('link/vk error:', e);
