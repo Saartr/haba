@@ -112,12 +112,27 @@ export type Habit = {
   closed_at: string | null;
   created_at: string;
   is_creator: boolean;
+  // pullups
   current_form: number | null;
   target_reps: number | null;
   intensity: 'low' | 'medium' | 'high' | null;
   training_days: number[] | null;
   pullups_plan: PullupsSession[] | null;
   pullups_session_index: number;
+  // кастомный флоу
+  checkin_type: 'boolean' | 'count' | 'progression';
+  unit_preset: string | null;
+  progression_start: number | null;
+  periodicity: 'daily' | 'weekdays' | 'n_per_week' | 'n_per_month';
+  times_per_day: number;
+  notification_times: string[] | null;
+  times_per_week: number | null;
+  times_per_month: number | null;
+  month_count_type: 'summary' | 'dates' | null;
+  month_dates: number[] | null;
+  duration_type: 'unlimited' | 'period' | 'until_goal';
+  period_start: string | null;
+  period_end: string | null;
 };
 
 export type HabitMember = {
@@ -161,6 +176,21 @@ export async function createHabit(data: {
   target_reps?: number;
   intensity?: 'low' | 'medium' | 'high';
   training_days?: number[];
+  // кастомный флоу
+  checkin_type?: 'boolean' | 'count' | 'progression';
+  unit_preset?: string;
+  progression_start?: number;
+  periodicity?: 'daily' | 'weekdays' | 'n_per_week' | 'n_per_month';
+  times_per_day?: number;
+  notification_times?: string[];
+  weekdays?: number[];
+  times_per_week?: number;
+  times_per_month?: number;
+  month_count_type?: 'summary' | 'dates';
+  month_dates?: number[];
+  duration_type?: 'unlimited' | 'period' | 'until_goal';
+  period_start?: string;
+  period_end?: string;
 }): Promise<Habit> {
   return request('/habits', { method: 'POST', body: JSON.stringify(data) }, true);
 }

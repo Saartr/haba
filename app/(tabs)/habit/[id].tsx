@@ -87,9 +87,32 @@ function SoloHabitScreen({
   const insets = useSafeAreaInsets();
   const { colorScheme: scheme } = useSettings();
   const [menuVisible, setMenuVisible] = useState(false);
+  const [countInput, setCountInput] = useState('');
+  const [countError, setCountError] = useState('');
   const [successLabel, failLabel] = CHECK_IN_LABELS[habit.category ?? ''] ?? ['Выполнено', 'Пропустил'];
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
+
+  const selfId = habit.members.find(m => m.is_self)?.id;
+  const today = new Date().toISOString().slice(0, 10);
+  const todayLog = habit.week_logs.find(l => l.user_id === selfId && l.date.slice(0, 10) === today);
+  const loggedToday = todayLog != null && todayLog.value > 0;
+
+  const checkinType = habit.checkin_type ?? 'boolean';
+  const unitLabel = habit.goal_unit && !['boolean', 'count', 'minutes', 'steps'].includes(habit.goal_unit)
+    ? habit.goal_unit
+    : null;
+
+  function handleCountSubmit() {
+    const val = parseInt(countInput);
+    if (!countInput || isNaN(val) || val <= 0) {
+      setCountError('Введите число больше 0');
+      return;
+    }
+    setCountError('');
+    setCountInput('');
+    onLog(val);
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }} edges={['bottom']}>
@@ -145,12 +168,11 @@ function SoloHabitScreen({
         <Calendar
           habitId={habit.id}
           habitCreatedAt={habit.created_at}
-          currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
+          currentWeekLogs={habit.week_logs.filter(l => l.user_id === selfId)}
           goalValue={habit.goal_value ?? 1}
         />
       </View>
       <View style={{ padding: 24, gap: 16 }}>
-
         <View style={{ flexDirection: 'row', gap: 16 }}>
           <Card style={{ flex: 1, gap: 4 }}>
             <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
@@ -174,25 +196,51 @@ function SoloHabitScreen({
       {/* Спейсер — отжимает кнопки вниз */}
       <View style={{ flex: 1 }} />
 
-      {/* Bottom buttons */}
-      <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 24, paddingBottom: 24 }}>
-        <View style={{ flex: 1 }}>
+      {/* Bottom — ветка по checkin_type */}
+      {checkinType === 'count' ? (
+        <View style={{ paddingHorizontal: 24, paddingBottom: 24, gap: 12 }}>
+          {todayLog && todayLog.value > 0 ? (
+            <Text weight="medium" style={{ fontSize: 13, color: c.text.secondary, textAlign: 'center' }}>
+              Сегодня: {todayLog.value}{unitLabel ? ` ${unitLabel}` : ''}{habit.goal_value ? ` / ${habit.goal_value}` : ''}
+            </Text>
+          ) : null}
+          <Input
+            label={unitLabel ? `Количество (${unitLabel})` : 'Количество'}
+            value={countInput}
+            onChangeText={(t) => { setCountInput(t.replace(/[^0-9]/g, '')); if (countError) setCountError(''); }}
+            placeholder={habit.goal_value ? `Цель: ${habit.goal_value}` : 'Введите число'}
+            keyboardType="number-pad"
+            maxLength={6}
+            error={countError}
+          />
           <Button
-            label={successLabel}
+            label="Записать"
             icon={<CheckIcon />}
-            onPress={() => onLog(1)}
+            onPress={handleCountSubmit}
             loading={logLoading}
           />
         </View>
-        <View style={{ flex: 1 }}>
-          <Button
-            label={failLabel}
-            icon={<CloseIcon />}
-            onPress={() => onLog(0)}
-            loading={logLoading}
-          />
+      ) : (
+        <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 24, paddingBottom: 24 }}>
+          <View style={{ flex: 1 }}>
+            <Button
+              label={loggedToday ? 'Выполнено ✓' : successLabel}
+              icon={<CheckIcon />}
+              onPress={() => onLog(1)}
+              loading={logLoading}
+              color={loggedToday ? colors.green[500] : undefined}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button
+              label={failLabel}
+              icon={<CloseIcon />}
+              onPress={() => onLog(0)}
+              loading={logLoading}
+            />
+          </View>
         </View>
-      </View>
+      )}
     </SafeAreaView>
   );
 }

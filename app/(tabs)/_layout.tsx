@@ -6,7 +6,10 @@ export default function TabLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="profile" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="create-habit" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="preset-habits" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="custom-habit" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="habit/[id]" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="edit-habit/[id]" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="profile-settings" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="app-settings" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="about-app" options={{ animation: 'slide_from_right' }} />

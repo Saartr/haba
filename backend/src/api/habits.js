@@ -77,6 +77,11 @@ router.post('/', async (req, res) => {
   const {
     name, description, category = 'steps', type = 'group', goal_value, goal_unit, notifications = true,
     current_form, target_reps, intensity, training_days,
+    // Кастомные поля (новый флоу)
+    checkin_type, unit_preset, progression_start,
+    periodicity, times_per_day, notification_times, weekdays,
+    times_per_week, times_per_month, month_count_type, month_dates,
+    duration_type, period_start, period_end,
   } = req.body;
   if (!name) return res.status(400).json({ message: 'name обязателен' });
 
@@ -93,14 +98,27 @@ router.post('/', async (req, res) => {
     const [habit] = await sql`
       INSERT INTO habits (
         creator_id, name, description, category, type, goal_value, goal_unit, notifications, invite_code,
-        current_form, target_reps, intensity, training_days, pullups_plan
+        current_form, target_reps, intensity, training_days, pullups_plan,
+        checkin_type, unit_preset, progression_start,
+        periodicity, times_per_day, notification_times,
+        times_per_week, times_per_month, month_count_type, month_dates,
+        duration_type, period_start, period_end
       )
       VALUES (
         ${req.userId}, ${name}, ${description ?? null}, ${category}, ${type}, ${goal_value ?? null}, ${goal_unit ?? null}, ${notifications}, ${invite_code},
-        ${current_form ?? null}, ${target_reps ?? null}, ${intensity ?? null}, ${training_days ?? null}, ${pullups_plan ? sql.json(pullups_plan) : null}
+        ${current_form ?? null}, ${target_reps ?? null}, ${intensity ?? null}, ${training_days ?? null}, ${pullups_plan ? sql.json(pullups_plan) : null},
+        ${checkin_type ?? 'boolean'}, ${unit_preset ?? null}, ${progression_start ?? null},
+        ${periodicity ?? 'daily'}, ${times_per_day ?? 1}, ${notification_times ?? null},
+        ${times_per_week ?? null}, ${times_per_month ?? null}, ${month_count_type ?? null}, ${month_dates ?? null},
+        ${duration_type ?? 'unlimited'}, ${period_start ?? null}, ${period_end ?? null}
       )
       RETURNING *
     `;
+    // Для periodicity=weekdays используем training_days (колонка уже есть)
+    if (category === 'custom' && periodicity === 'weekdays' && Array.isArray(weekdays) && weekdays.length > 0) {
+      await sql`UPDATE habits SET training_days = ${weekdays} WHERE id = ${habit.id}`;
+      habit.training_days = weekdays;
+    }
     await sql`INSERT INTO habit_members (habit_id, user_id) VALUES (${habit.id}, ${req.userId})`;
     res.status(201).json({ ...habit, is_creator: true });
   } catch (e) {

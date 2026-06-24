@@ -94,6 +94,9 @@ async function runMigrations() {
   const migratePullups = require('./migrate_pullups');
   await migratePullups();
 
+  const migrateCustomHabits = require('./migrate_custom');
+  await migrateCustomHabits();
+
   console.log('Миграции применены');
 }
 
