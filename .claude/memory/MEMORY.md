@@ -21,5 +21,5 @@
 - [Naming: Haba→Тапа](project_naming_haba_tapa.md) — в UI «Тапа», системные идентификаторы (scheme/package/SecureStore keys) остаются haba
 - [Health Sync WorkManager](project_health_sync_plan.md) — ✅ реализовано: Expo Module health-sync, CoroutineWorker, refreshToken в SharedPreferences, scheduleSync/cancelSync
 - [Pending Features](project_pending_features.md) — отложенная фича: expo-clipboard (нужен prebuild)
-- [Push-уведомления](project_push_plan.md) — ✅ реализовано: FCM HTTP v1 напрямую (без Expo), глобальный тоггл в настройках + per-habit тоггл
+- [Push-уведомления](project_push_notifications.md) — ✅ реализовано: FCM HTTP v1 напрямую (без Expo), глобальный тоггл в настройках + per-habit тоггл, 3 типа пушей
 - [Цель «Подтягивания»](project_pullups_goal_plan.md) — ✅ реализовано: новые колонки в habits + сохранённый план, формула прогрессии, Multiselect, свайп календаря вперёд по плану, solo-only
