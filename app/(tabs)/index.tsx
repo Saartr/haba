@@ -1,4 +1,4 @@
-import { View, Pressable, Image, FlatList, StatusBar, ActivityIndicator } from 'react-native';
+import { View, Pressable, Image, FlatList, StatusBar, ActivityIndicator, TextInput } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -23,7 +23,7 @@ import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import { useAuth } from '@/lib/auth-context';
 import { useSnackbar } from '@/lib/snackbar-context';
-import { getHabits, getHabit, joinHabit, Habit } from '@/lib/api';
+import { getHabits, getHabit, joinHabit, logHabit, Habit } from '@/lib/api';
 
 function Avatar({ firstName, avatarUrl }: { firstName: string | null; avatarUrl: string | null }) {
   const initial = firstName ? firstName[0].toUpperCase() : '?';
@@ -73,12 +73,11 @@ function pluralWord(n: number, one: string, few: string, many: string): string {
 
 function isTodayTrainingDay(trainingDays: number[] | null): boolean {
   if (!trainingDays) return false;
-  const dow = new Date().getDay(); // 0=Вс..6=Сб
-  const isoDay = dow === 0 ? 7 : dow; // 1=Пн..7=Вс
+  const dow = new Date().getDay();
+  const isoDay = dow === 0 ? 7 : dow;
   return trainingDays.includes(isoDay);
 }
 
-// Подтягивания: «N подходов по N повторений» в тренировочный день, иначе «Отдых».
 function pullupsTodayLabel(habit: Habit): string {
   if (!isTodayTrainingDay(habit.training_days)) return 'Отдых';
   const session = (habit.pullups_plan ?? [])[habit.pullups_session_index];
@@ -87,29 +86,53 @@ function pullupsTodayLabel(habit: Habit): string {
     + `по ${session.reps} ${pluralWord(session.reps, 'повторение', 'повторения', 'повторений')}`;
 }
 
-function HabitCard({ habit, extra, onPress }: { habit: Habit; extra: HabitExtra | null; onPress: () => void }) {
+function HabitCard({ habit, extra, onPress, onLogged }: {
+  habit: Habit;
+  extra: HabitExtra | null;
+  onPress: () => void;
+  onLogged?: (habitId: number, value: number) => void;
+}) {
   const c = useColors();
+  const [countInput, setCountInput] = useState('');
+  const [logLoading, setLogLoading] = useState(false);
+
+  const isCount = habit.checkin_type === 'count';
+  const todayVal = extra?.today_value ?? 0;
 
   const subtitle = habit.category === 'smoking' ? 'Без сигарет'
     : habit.category === 'pullups' ? 'Цель на сегодня'
+    : isCount ? (habit.goal_unit ?? 'Количество')
     : 'Шагов за сегодня';
+
   const value = habit.category === 'smoking'
     ? pluralDays(extra?.streak ?? 0)
     : habit.category === 'pullups'
     ? pullupsTodayLabel(habit)
-    : `${extra?.today_value ?? 0}/${habit.goal_value ?? 0}`;
+    : isCount
+      ? `${todayVal}${habit.goal_value ? ` / ${habit.goal_value}` : ''}`
+      : `${todayVal}/${habit.goal_value ?? 0}`;
 
-  // Цель за сегодня выполнена → радостный аватар, иначе — недовольный.
-  // Для подтягиваний день отдыха или выполненная тренировка — тоже радостный.
   const done = habit.category === 'smoking'
     ? (extra?.streak ?? 0) > 0
     : habit.category === 'pullups'
-    ? !isTodayTrainingDay(habit.training_days) || (extra?.today_value ?? 0) >= 1
-    : (extra?.today_value ?? 0) >= (habit.goal_value ?? 0) && (habit.goal_value ?? 0) > 0;
+    ? !isTodayTrainingDay(habit.training_days) || todayVal >= 1
+    : todayVal >= (habit.goal_value ?? 1) && (habit.goal_value ?? 0) > 0;
+
+  async function handleCountLog() {
+    const val = parseInt(countInput);
+    if (!val || val <= 0) return;
+    setLogLoading(true);
+    try {
+      await logHabit(habit.id, val);
+      setCountInput('');
+      onLogged?.(habit.id, val);
+    } catch {}
+    finally { setLogLoading(false); }
+  }
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
-      <Card>
+    <Card>
+      <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16 }}>
           <View style={{
             width: 64, height: 64, borderRadius: 32, overflow: 'hidden',
@@ -137,8 +160,41 @@ function HabitCard({ habit, extra, onPress }: { habit: Habit; extra: HabitExtra 
             {habit.type === 'group' && <HabitTag type={habit.type} />}
           </View>
         </View>
-      </Card>
-    </Pressable>
+      </Pressable>
+      {isCount && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
+          <TextInput
+            value={countInput}
+            onChangeText={t => setCountInput(t.replace(/[^0-9]/g, ''))}
+            placeholder={habit.goal_value ? `Цель: ${habit.goal_value}` : '0'}
+            placeholderTextColor={c.text.secondary}
+            keyboardType="number-pad"
+            maxLength={6}
+            style={{
+              flex: 1, height: 44, borderRadius: 10, borderWidth: 1.5,
+              borderColor: c.border.input, paddingHorizontal: 12,
+              fontSize: 16, fontFamily: 'Manrope_600SemiBold',
+              color: c.text.primary, backgroundColor: c.surface.bg,
+            }}
+          />
+          <Pressable
+            onPress={handleCountLog}
+            disabled={logLoading || !countInput}
+            style={({ pressed }) => ({
+              width: 44, height: 44, borderRadius: 10,
+              backgroundColor: (!countInput || logLoading) ? colors.neutral[200] : colors.purple[500],
+              alignItems: 'center', justifyContent: 'center',
+              opacity: pressed ? 0.8 : 1,
+            })}
+          >
+            {logLoading
+              ? <ActivityIndicator size="small" color={colors.neutral[0]} />
+              : <CheckIcon width={20} height={20} color={(!countInput || logLoading) ? colors.neutral[400] : colors.neutral[0]} />
+            }
+          </Pressable>
+        </View>
+      )}
+    </Card>
   );
 }
 
@@ -270,7 +326,15 @@ export default function HabitsScreen() {
           keyExtractor={h => String(h.id)}
           contentContainerStyle={{ padding: 24, gap: 16 }}
           renderItem={({ item }) => (
-            <HabitCard habit={item} extra={extras[item.id] ?? null} onPress={() => router.push(`/(tabs)/habit/${item.id}`)} />
+            <HabitCard
+                  habit={item}
+                  extra={extras[item.id] ?? null}
+                  onPress={() => router.push(`/(tabs)/habit/${item.id}`)}
+                  onLogged={(id, val) => setExtras(prev => ({
+                    ...prev,
+                    [id]: { streak: prev[id]?.streak ?? 0, today_value: val },
+                  }))}
+                />
           )}
         />
       )}

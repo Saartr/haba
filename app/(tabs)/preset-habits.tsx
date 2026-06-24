@@ -229,7 +229,6 @@ export default function PresetHabitsScreen() {
                   options={NOTIFY_OPTIONS}
                   value={notify}
                   onChange={setNotify}
-                  disabled
                 />
               </>
             ) : (
@@ -252,7 +251,6 @@ export default function PresetHabitsScreen() {
                   options={NOTIFY_OPTIONS}
                   value={notify}
                   onChange={setNotify}
-                  disabled
                 />
               </>
             )}
