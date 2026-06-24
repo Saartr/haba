@@ -17,6 +17,7 @@
 - [База данных](project_database.md) — схема всех таблиц: users, groups, habits, habit_members, habit_logs, refresh_tokens
 - [Деплой бэкенда](project_backend_deploy.md) — backend/ в репо, ручной деплой через `./deploy-backend.ps1` (нет автодеплоя)
 - [Git коммиты](feedback_git_commits.md) — коммитить и пушить только по явной просьбе, не автоматически
+- [Память перед коммитом](feedback_memory_before_commit.md) — перед коммитом проверять и обновлять устаревшие файлы памяти
 - [Naming: Haba→Тапа](project_naming_haba_tapa.md) — в UI «Тапа», системные идентификаторы (scheme/package/SecureStore keys) остаются haba
 - [Health Sync WorkManager](project_health_sync_plan.md) — ✅ реализовано: Expo Module health-sync, CoroutineWorker, refreshToken в SharedPreferences, scheduleSync/cancelSync
 - [Pending Features](project_pending_features.md) — отложенная фича: expo-clipboard (нужен prebuild)
