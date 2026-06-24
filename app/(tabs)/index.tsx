@@ -164,32 +164,35 @@ function HabitCard({ habit, extra, onPress, onLogged }: {
       {isCount && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
           <TextInput
+            className="flex-1 font-manrope-semibold text-body-16 tracking-default"
             value={countInput}
             onChangeText={t => setCountInput(t.replace(/[^0-9]/g, ''))}
             placeholder={habit.goal_value ? `Цель: ${habit.goal_value}` : '0'}
-            placeholderTextColor={c.text.secondary}
+            placeholderTextColor={c.text.placeholder}
             keyboardType="number-pad"
             maxLength={6}
             style={{
-              flex: 1, height: 44, borderRadius: 10, borderWidth: 1.5,
-              borderColor: c.border.input, paddingHorizontal: 12,
-              fontSize: 16, fontFamily: 'Manrope_600SemiBold',
-              color: c.text.primary, backgroundColor: c.surface.bg,
+              height: 44, borderRadius: 12,
+              // @ts-ignore — iOS only, ignored on Android
+              borderCurve: 'continuous',
+              borderWidth: 1, borderColor: c.border.input, paddingHorizontal: 16,
+              color: c.text.primary, backgroundColor: c.surface.input,
             }}
           />
           <Pressable
             onPress={handleCountLog}
             disabled={logLoading || !countInput}
             style={({ pressed }) => ({
-              width: 44, height: 44, borderRadius: 10,
-              backgroundColor: (!countInput || logLoading) ? colors.neutral[200] : colors.purple[500],
+              width: 44, height: 44, borderRadius: 12,
+              // @ts-ignore
+              borderCurve: 'continuous',
+              backgroundColor: (!countInput || logLoading) ? c.surface.disabled : pressed ? c.brand.pressed : c.brand.primary,
               alignItems: 'center', justifyContent: 'center',
-              opacity: pressed ? 0.8 : 1,
             })}
           >
             {logLoading
-              ? <ActivityIndicator size="small" color={colors.neutral[0]} />
-              : <CheckIcon width={20} height={20} color={(!countInput || logLoading) ? colors.neutral[400] : colors.neutral[0]} />
+              ? <ActivityIndicator size="small" color={c.text.onPrimary} />
+              : <CheckIcon width={20} height={20} color={(!countInput || logLoading) ? c.text.secondary : c.text.onPrimary} />
             }
           </Pressable>
         </View>
@@ -327,14 +330,14 @@ export default function HabitsScreen() {
           contentContainerStyle={{ padding: 24, gap: 16 }}
           renderItem={({ item }) => (
             <HabitCard
-                  habit={item}
-                  extra={extras[item.id] ?? null}
-                  onPress={() => router.push(`/(tabs)/habit/${item.id}`)}
-                  onLogged={(id, val) => setExtras(prev => ({
-                    ...prev,
-                    [id]: { streak: prev[id]?.streak ?? 0, today_value: val },
-                  }))}
-                />
+              habit={item}
+              extra={extras[item.id] ?? null}
+              onPress={() => router.push(`/(tabs)/habit/${item.id}`)}
+              onLogged={(id, val) => setExtras(prev => ({
+                ...prev,
+                [id]: { streak: prev[id]?.streak ?? 0, today_value: val },
+              }))}
+            />
           )}
         />
       )}

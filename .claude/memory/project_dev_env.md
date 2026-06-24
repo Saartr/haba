@@ -21,11 +21,11 @@ $env:REACT_NATIVE_PACKAGER_HOSTNAME="192.168.1.143"; npx expo start
 
 **Android-сборка (APK):**
 ```powershell
-# Перед сборкой: секреты в C:\Users\miron\.gradle\gradle.properties (вне репо):
-#   gpr.user=Saartr            — GitHub логин (Telegram SDK из GitHub Packages)
-#   gpr.key=<PAT read:packages>— иначе build падает: "Username must not be null!"
-#   VKIDClientSecret=<секрет>  — иначе VK-вход не работает в рантайме
-# После prebuild --clean пересоздать android/local.properties: sdk.dir=C\:\\Users\\miron\\AppData\\Local\\Android\\Sdk
+# Перед сборкой: секреты в %USERPROFILE%\.gradle\gradle.properties (вне репо):
+#   gpr.user=<GitHub-логин>     — для GitHub Packages (Telegram SDK)
+#   gpr.key=<PAT read:packages> — иначе build падает: "Username must not be null!"
+#   VKIDClientSecret=<секрет>   — иначе VK-вход не работает в рантайме
+# После prebuild --clean пересоздать android/local.properties: sdk.dir=<путь к Android SDK текущего пользователя>
 
 # Первый раз — генерация нативной папки:
 npx expo prebuild --platform android --clean
