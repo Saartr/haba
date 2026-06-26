@@ -9,6 +9,7 @@ import SegmentedControl from '@/components/SegmentedControl';
 import Select from '@/components/Select';
 import Lists from '@/components/Lists';
 import Calendar from '@/components/Calendar';
+import CalendarMonthly from '@/components/CalendarMonthly';
 import NavigationBar from '@/components/NavigationBar';
 import Card from '@/components/Card';
 import HabitTag from '@/components/HabitTag';
@@ -99,6 +100,41 @@ function ConfirmDemo() {
       }} />
       {result && <Text style={{ fontSize: 14 }}>Результат: {result}</Text>}
     </>
+  );
+}
+
+const MONTHLY_LOGS = [
+  '2026-06-03', '2026-06-05', '2026-06-07',
+  '2026-06-10', '2026-06-12', '2026-06-14',
+  '2026-06-17', '2026-06-19', '2026-06-21',
+  '2026-06-24',
+];
+
+function CalendarMonthlyDemo() {
+  const today = new Date();
+  const isoToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const [selected, setSelected] = useState(isoToday);
+  const c = useColors();
+  return (
+    <View style={{ gap: 12 }}>
+      <CalendarMonthly logs={MONTHLY_LOGS} selectedDate={selected} onDateSelect={setSelected} />
+      <Text weight="medium" style={{ fontSize: 13, color: c.text.secondary }}>
+        Выбрана: <Text weight="semibold" style={{ color: c.text.primary }}>{selected}</Text>
+      </Text>
+    </View>
+  );
+}
+
+function CalendarMonthlyPeriodDemo() {
+  const [selected, setSelected] = useState('2026-06-17');
+  return (
+    <CalendarMonthly
+      logs={MONTHLY_LOGS}
+      periodStart="2026-06-10"
+      periodEnd="2026-06-30"
+      selectedDate={selected}
+      onDateSelect={setSelected}
+    />
   );
 }
 
@@ -389,6 +425,19 @@ export default function DevScreen() {
               goalValue={7000}
             />
           </View>
+        </Section>
+
+        {/* CALENDAR MONTHLY */}
+        <Section title="CalendarMonthly">
+          <Label text="Без периода, несколько записей" />
+          <Card>
+            <CalendarMonthlyDemo />
+          </Card>
+
+          <Label text="С ограничением периода 10–30 июня 2026" />
+          <Card>
+            <CalendarMonthlyPeriodDemo />
+          </Card>
         </Section>
 
         {/* NAVIGATION BAR */}

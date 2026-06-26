@@ -130,6 +130,7 @@ export type Habit = {
   times_per_month: number | null;
   month_count_type: 'summary' | 'dates' | null;
   month_dates: number[] | null;
+  weekdays: number[] | null;
   duration_type: 'unlimited' | 'period' | 'until_goal';
   period_start: string | null;
   period_end: string | null;

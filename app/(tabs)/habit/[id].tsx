@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Clipboard } from 'react-native';
 import Calendar from '@/components/Calendar';
+import CalendarMonthly from '@/components/CalendarMonthly';
 import Card from '@/components/Card';
 import Chip from '@/components/Chip';
 import DropdownPopover from '@/components/DropdownPopover';
@@ -42,6 +43,7 @@ import { useSettings } from '@/lib/settings-context';
 import {
   getHabit,
   logHabit,
+  getHabitLogs,
   syncHabitSteps,
   leaveHabit,
   transferHabit,
@@ -49,6 +51,7 @@ import {
   closeHabit,
   getStepHabits,
   HabitDetail,
+  HabitLog,
   HabitMember,
 } from '@/lib/api';
 import { scheduleSync, cancelSync } from '@/modules/health-sync';
@@ -73,12 +76,14 @@ const CHECK_IN_LABELS: Record<string, [string, string]> = {
   'no-smoking': ['Не курил', 'Курил'],
 };
 
+import { pluralUnit, genitiveUnit } from '@/lib/units';
+
 
 function SoloHabitScreen({
   habit, onLog, logLoading, onDelete,
 }: {
   habit: HabitDetail;
-  onLog: (value: number) => void;
+  onLog: (value: number, date?: string) => void;
   logLoading: boolean;
   onDelete: () => void;
 }) {
@@ -87,9 +92,13 @@ function SoloHabitScreen({
   const insets = useSafeAreaInsets();
   const { colorScheme: scheme } = useSettings();
   const [menuVisible, setMenuVisible] = useState(false);
+  const [countModal, setCountModal] = useState(false);
+  const [countMode, setCountMode] = useState<'add' | 'replace'>('add');
   const [countInput, setCountInput] = useState('');
-  const [countError, setCountError] = useState('');
-  const [successLabel, failLabel] = CHECK_IN_LABELS[habit.category ?? ''] ?? ['Выполнено', 'Пропустил'];
+  const [countError, setCountError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<'today' | 'week'>('today');
+  const [editingBoolean, setEditingBoolean] = useState(false);
+  const [successLabel, failLabel] = CHECK_IN_LABELS[habit.category ?? ''] ?? ['Выполнил', 'Не выполнил'];
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
 
@@ -98,20 +107,41 @@ function SoloHabitScreen({
   const todayLog = habit.week_logs.find(l => l.user_id === selfId && l.date.slice(0, 10) === today);
   const loggedToday = todayLog != null && todayLog.value > 0;
 
+  // Сбросить режим редактирования когда лог появился/обновился
+  useEffect(() => {
+    if (todayLog != null) setEditingBoolean(false);
+  }, [todayLog?.id, todayLog?.value]);
+
   const checkinType = habit.checkin_type ?? 'boolean';
   const unitLabel = habit.goal_unit && !['boolean', 'count', 'minutes', 'steps'].includes(habit.goal_unit)
     ? habit.goal_unit
     : null;
 
+  const weekValue = habit.week_logs
+    .filter(l => l.user_id === selfId)
+    .reduce((sum, l) => sum + l.value, 0);
+  const periodValue = period === 'week' ? weekValue : (todayLog?.value ?? 0);
+  const periodGoal = habit.goal_value != null
+    ? (period === 'week' ? habit.goal_value * 7 : habit.goal_value)
+    : null;
+
+  function closeCountModal() {
+    setCountModal(false);
+    setCountMode('add');
+    setCountInput('');
+    setCountError(null);
+  }
+
   function handleCountSubmit() {
-    const val = parseInt(countInput);
-    if (!countInput || isNaN(val) || val <= 0) {
-      setCountError('Введите число больше 0');
+    const input = parseInt(countInput);
+    if (countInput === '' || Number.isNaN(input) || input < 1) {
+      setCountError('Введите число больше нуля');
       return;
     }
-    setCountError('');
-    setCountInput('');
-    onLog(val);
+    const value = countMode === 'add' ? (todayLog?.value ?? 0) + input : input;
+    setCountError(null);
+    closeCountModal();
+    onLog(value);
   }
 
   return (
@@ -172,75 +202,395 @@ function SoloHabitScreen({
           goalValue={habit.goal_value ?? 1}
         />
       </View>
-      <View style={{ padding: 24, gap: 16 }}>
-        <View style={{ flexDirection: 'row', gap: 16 }}>
-          <Card style={{ flex: 1, gap: 4 }}>
-            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
-              Текущий стрик
-            </Text>
-            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
-              {habit.streak?.current ?? 0}
-            </Text>
-          </Card>
-          <Card style={{ flex: 1, gap: 4 }}>
-            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
-              Лучший стрик
-            </Text>
-            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
-              {habit.streak?.max ?? 0}
-            </Text>
-          </Card>
+      {checkinType === 'count' ? (
+        <>
+          <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 24, paddingTop: 16 }}>
+            <Chip label="Сегодня" selected={period === 'today'} onPress={() => setPeriod('today')} />
+            <Chip label="Неделя" selected={period === 'week'} onPress={() => setPeriod('week')} />
+          </View>
+          <Text weight="semibold" style={{ fontSize: 16, lineHeight: 26, color: c.text.primary, paddingHorizontal: 24, paddingTop: 16, letterSpacing: 0.2 }}>
+            Персональный результат
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 8, gap: 16 }}
+          >
+            <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
+              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                {unitLabel
+                  ? (period === 'week' ? `${genitiveUnit(unitLabel)} за неделю` : `${genitiveUnit(unitLabel)} сегодня`)
+                  : (period === 'week' ? 'За неделю' : 'Сегодня')}
+              </Text>
+              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+                {periodValue}{periodGoal != null ? ` / ${periodGoal}` : ''}
+              </Text>
+            </Card>
+            <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
+              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                Стрик
+              </Text>
+              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+                {habit.streak?.current ?? 0}
+              </Text>
+            </Card>
+            <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
+              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                Максимальный
+              </Text>
+              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+                {habit.streak?.max ?? 0}
+              </Text>
+            </Card>
+          </ScrollView>
+        </>
+      ) : (
+        <View style={{ padding: 24, gap: 16 }}>
+          <View style={{ flexDirection: 'row', gap: 16 }}>
+            <Card style={{ flex: 1, gap: 4 }}>
+              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
+                Текущий стрик
+              </Text>
+              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
+                {habit.streak?.current ?? 0}
+              </Text>
+            </Card>
+            <Card style={{ flex: 1, gap: 4 }}>
+              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
+                Лучший стрик
+              </Text>
+              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
+                {habit.streak?.max ?? 0}
+              </Text>
+            </Card>
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Спейсер — отжимает кнопки вниз */}
       <View style={{ flex: 1 }} />
 
       {/* Bottom — ветка по checkin_type */}
       {checkinType === 'count' ? (
-        <View style={{ paddingHorizontal: 24, paddingBottom: 24, gap: 12 }}>
-          {todayLog && todayLog.value > 0 ? (
-            <Text weight="medium" style={{ fontSize: 13, color: c.text.secondary, textAlign: 'center' }}>
-              Сегодня: {todayLog.value}{unitLabel ? ` ${unitLabel}` : ''}{habit.goal_value ? ` / ${habit.goal_value}` : ''}
-            </Text>
-          ) : null}
-          <Input
-            label={unitLabel ? `Количество (${unitLabel})` : 'Количество'}
-            value={countInput}
-            onChangeText={(t) => { setCountInput(t.replace(/[^0-9]/g, '')); if (countError) setCountError(''); }}
-            placeholder={habit.goal_value ? `Цель: ${habit.goal_value}` : 'Введите число'}
-            keyboardType="number-pad"
-            maxLength={6}
-            error={countError}
-          />
+        <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
           <Button
-            label="Записать"
-            icon={<CheckIcon />}
-            onPress={handleCountSubmit}
+            label={`Внести ${pluralUnit(unitLabel)}`}
+            onPress={() => {
+              setCountMode('add');
+              setCountInput('');
+              setCountError(null);
+              setCountModal(true);
+            }}
             loading={logLoading}
+          />
+        </View>
+      ) : todayLog != null && !editingBoolean ? (
+        <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+          <Button
+            label="Редактировать запись"
+            variant="secondary"
+            onPress={() => setEditingBoolean(true)}
           />
         </View>
       ) : (
         <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 24, paddingBottom: 24 }}>
           <View style={{ flex: 1 }}>
             <Button
-              label={loggedToday ? 'Выполнено ✓' : successLabel}
-              icon={<CheckIcon />}
+              label={successLabel}
               onPress={() => onLog(1)}
               loading={logLoading}
-              color={loggedToday ? colors.green[500] : undefined}
+              color={colors.green[500]}
             />
           </View>
           <View style={{ flex: 1 }}>
             <Button
               label={failLabel}
-              icon={<CloseIcon />}
               onPress={() => onLog(0)}
               loading={logLoading}
+              color={colors.red[500]}
             />
           </View>
         </View>
       )}
+
+      {/* Count modal */}
+      <BottomSheet
+        title={`Внести ${pluralUnit(unitLabel)}`}
+        visible={countModal}
+        onClose={closeCountModal}
+      >
+        <View style={{ gap: 16 }}>
+          <SegmentedControl
+            options={[
+              { label: 'Добавить', value: 'add' },
+              { label: 'Заменить', value: 'replace' },
+            ]}
+            value={countMode}
+            onChange={v => {
+              const mode = v as 'add' | 'replace';
+              setCountMode(mode);
+              setCountInput(mode === 'replace' ? String(todayLog?.value ?? 0) : '');
+              setCountError(null);
+            }}
+          />
+          <Input
+            label={countMode === 'add' ? 'Добавление значения' : 'Изменение значения'}
+            value={countInput}
+            onChangeText={t => { setCountInput(t.replace(/[^0-9]/g, '')); if (countError) setCountError(null); }}
+            keyboardType="number-pad"
+            maxLength={6}
+            error={countError ?? undefined}
+          />
+          <Button
+            label="Сохранить"
+            icon={<CheckIcon />}
+            onPress={handleCountSubmit}
+            loading={logLoading}
+          />
+        </View>
+      </BottomSheet>
+    </SafeAreaView>
+  );
+}
+
+// ─── progression helpers ──────────────────────────────────────────────────────
+
+function isRestDay(iso: string, periodicity: string, weekdays: number[] | null): boolean {
+  if (periodicity !== 'weekdays' || !weekdays || weekdays.length === 0) return false;
+  const dow = new Date(iso + 'T00:00:00').getDay(); // 0=Вс..6=Сб
+  const isoDay = dow === 0 ? 7 : dow; // 1=Пн..7=Вс
+  return !weekdays.includes(isoDay);
+}
+
+const MONTHS_RU_GEN = [
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+];
+
+function formatDateRu(iso: string, todayIso: string): string {
+  if (iso === todayIso) return 'Сегодня';
+  const [, m, d] = iso.split('-').map(Number);
+  return `${d} ${MONTHS_RU_GEN[m - 1]}`;
+}
+
+function formatDateDots(iso: string): string {
+  const [y, m, d] = iso.split('-');
+  return `${d}.${m}.${y}`;
+}
+
+function ProgressionHabitScreen({
+  habit, onLog, logLoading, onDelete, reloadTrigger,
+}: {
+  habit: HabitDetail;
+  onLog: (value: number, date?: string) => void;
+  logLoading: boolean;
+  onDelete: () => void;
+  reloadTrigger: number;
+}) {
+  const c = useColors();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { colorScheme: scheme } = useSettings();
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [countModal, setCountModal] = useState(false);
+  const [countMode, setCountMode] = useState<'add' | 'replace'>('add');
+  const [countInput, setCountInput] = useState('');
+  const [countError, setCountError] = useState<string | null>(null);
+  const [allLogs, setAllLogs] = useState<HabitLog[]>([]);
+  const today = new Date().toISOString().slice(0, 10);
+  const [selectedDate, setSelectedDate] = useState(today);
+
+  const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
+  const statusBarStyle = scheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
+
+  const unitLabel = habit.goal_unit ?? null;
+
+  useEffect(() => {
+    const from = habit.created_at.slice(0, 10);
+    const to = today;
+    getHabitLogs(habit.id, from, to)
+      .then(setAllLogs)
+      .catch(() => {});
+  }, [reloadTrigger]);
+
+  const selectedLog = allLogs.find(l => l.date.slice(0, 10) === selectedDate);
+  const isSelectedFuture = selectedDate > today;
+  const isRest = isRestDay(selectedDate, habit.periodicity, habit.weekdays);
+  const bestValue = allLogs.length > 0 ? Math.max(...allLogs.map(l => l.value)) : 0;
+  const goalReached = habit.goal_value != null && bestValue >= habit.goal_value;
+
+  function openCountModal() {
+    setCountMode(selectedLog ? 'replace' : 'add');
+    setCountInput(selectedLog ? String(selectedLog.value) : '');
+    setCountError(null);
+    setCountModal(true);
+  }
+
+  function closeCountModal() {
+    setCountModal(false);
+    setCountMode('add');
+    setCountInput('');
+    setCountError(null);
+  }
+
+  function handleCountSubmit() {
+    const input = parseInt(countInput);
+    if (countInput === '' || Number.isNaN(input) || input < 1) {
+      setCountError('Введите число больше нуля');
+      return;
+    }
+    const value = countMode === 'add' ? (selectedLog?.value ?? 0) + input : input;
+    setCountError(null);
+    closeCountModal();
+    onLog(value, selectedDate);
+  }
+
+  const logDates = allLogs.map(l => l.date.slice(0, 10));
+  const ctaLabel = selectedDate === today
+    ? 'Внести сегодня'
+    : `Внести за ${formatDateRu(selectedDate, today).toLowerCase()}`;
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }} edges={['bottom']}>
+      <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
+
+      <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>
+        <NavigationBar
+          title="Персональная цель"
+          onBack={() => router.back()}
+          right={
+            <Pressable onPress={() => setMenuVisible(true)} hitSlop={8}>
+              {({ pressed }) => (
+                <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1 }}>
+                  <MoreVerticalIcon width={24} height={24} color={c.text.primary} />
+                </View>
+              )}
+            </Pressable>
+          }
+        />
+      </View>
+
+      <DropdownPopover
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        items={[
+          {
+            label: 'Редактировать',
+            icon: () => <EditIcon width={24} height={24} color={c.text.secondary} />,
+            onPress: () => { setMenuVisible(false); router.push(`/(tabs)/edit-habit/${habit.id}` as any); },
+          },
+          {
+            label: 'Удалить',
+            icon: () => <DeleteIcon width={24} height={24} color={colors.red[500]} />,
+            onPress: onDelete,
+            destructive: true,
+          },
+        ]}
+      />
+
+      <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+        {/* Шапка */}
+        <View style={{ paddingHorizontal: 24, paddingTop: 24, gap: 8 }}>
+          <Text weight="bold" style={{ fontSize: 24, lineHeight: 36, color: c.text.primary, letterSpacing: 0.2 }}>
+            {habit.name}
+          </Text>
+          {habit.description ? (
+            <Text weight="semibold" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
+              {habit.description}
+            </Text>
+          ) : null}
+        </View>
+
+        {/* Календарь в карточке */}
+        <View style={{ paddingHorizontal: 24, paddingTop: 16 }}>
+          <Card style={{ paddingHorizontal: 16, paddingVertical: 16, gap: 0 }}>
+            <CalendarMonthly
+              logs={logDates}
+              periodStart={habit.created_at.slice(0, 10)}
+              selectedDate={selectedDate}
+              onDateSelect={setSelectedDate}
+            />
+          </Card>
+        </View>
+
+        {/* Две карточки: результат за выбранную дату + лучший результат/цель */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 12, gap: 16 }}
+        >
+          <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
+            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+              {isRest ? 'День отдыха' : (selectedDate === today ? 'Сегодня' : formatDateDots(selectedDate))}
+            </Text>
+            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+              {isRest ? '—' : (selectedLog
+                ? `${selectedLog.value}${unitLabel ? ' ' + pluralUnit(unitLabel) : ''}`
+                : '0')}
+            </Text>
+          </Card>
+          <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
+            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+              {goalReached ? 'Цель достигнута!' : 'Лучший результат'}
+            </Text>
+            <Text weight="bold" style={{ fontSize: 16, color: goalReached ? c.brand.primary : c.text.primary, letterSpacing: 0.2 }}>
+              {bestValue > 0 ? bestValue : '—'}
+              {habit.goal_value != null ? ` / ${habit.goal_value}` : ''}
+              {unitLabel ? ` ${pluralUnit(unitLabel)}` : ''}
+            </Text>
+          </Card>
+        </ScrollView>
+      </ScrollView>
+
+      {/* CTA */}
+      {!goalReached && !isRest && (
+        <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+          <Button
+            label={selectedLog ? 'Редактировать запись' : ctaLabel}
+            variant={selectedLog ? 'secondary' : undefined}
+            onPress={openCountModal}
+            loading={logLoading}
+            disabled={isSelectedFuture}
+          />
+        </View>
+      )}
+
+      {/* Count modal */}
+      <BottomSheet
+        title="Внести результат"
+        visible={countModal}
+        onClose={closeCountModal}
+      >
+        <View style={{ gap: 16 }}>
+          <SegmentedControl
+            options={[
+              { label: 'Добавить', value: 'add' },
+              { label: 'Заменить', value: 'replace' },
+            ]}
+            value={countMode}
+            onChange={v => {
+              const mode = v as 'add' | 'replace';
+              setCountMode(mode);
+              setCountInput(mode === 'replace' ? String(selectedLog?.value ?? 0) : '');
+              setCountError(null);
+            }}
+          />
+          <Input
+            label={countMode === 'add' ? 'Добавление значения' : 'Изменение значения'}
+            value={countInput}
+            onChangeText={t => { setCountInput(t.replace(/[^0-9]/g, '')); if (countError) setCountError(null); }}
+            keyboardType="number-pad"
+            maxLength={6}
+            error={countError ?? undefined}
+          />
+          <Button
+            label="Сохранить"
+            icon={<CheckIcon />}
+            onPress={handleCountSubmit}
+            loading={logLoading}
+          />
+        </View>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -267,7 +617,7 @@ function PullupsHabitScreen({
   habit, onLog, logLoading, onDelete,
 }: {
   habit: HabitDetail;
-  onLog: (value: number) => void;
+  onLog: (value: number, date?: string) => void;
   logLoading: boolean;
   onDelete: () => void;
 }) {
@@ -515,6 +865,7 @@ export default function HabitScreen() {
 
   const [habit, setHabit] = useState<HabitDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reloadTrigger, setReloadTrigger] = useState(0);
 
   // Сбрасываем стейт при смене habitId — чтобы не показывать данные предыдущей цели
   useEffect(() => {
@@ -542,6 +893,7 @@ export default function HabitScreen() {
     try {
       const data = await getHabit(habitId);
       setHabit(data);
+      setReloadTrigger(t => t + 1);
     } catch (e: any) {
       Alert.alert('Ошибка', e.message);
     } finally {
@@ -807,10 +1159,10 @@ export default function HabitScreen() {
     }
   }
 
-  async function handleSoloLog(value: number) {
+  async function handleSoloLog(value: number, date?: string) {
     setLogLoading(true);
     try {
-      const log = await logHabit(habitId, value);
+      const log = await logHabit(habitId, value, date);
       if (log.pullups_recalculated) {
         showSnackbar('Тренировка пропущена — план пересчитан', 'error');
       }
@@ -856,6 +1208,18 @@ export default function HabitScreen() {
         onLog={handleSoloLog}
         logLoading={logLoading}
         onDelete={handleDeleteSolo}
+      />
+    );
+  }
+
+  if (habit.type === 'solo' && habit.checkin_type === 'progression') {
+    return (
+      <ProgressionHabitScreen
+        habit={habit}
+        onLog={handleSoloLog}
+        logLoading={logLoading}
+        onDelete={handleDeleteSolo}
+        reloadTrigger={reloadTrigger}
       />
     );
   }

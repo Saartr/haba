@@ -17,7 +17,7 @@ import { useSnackbar } from '@/lib/snackbar-context';
 import { useConfirm } from '@/components/ConfirmModal';
 import { createHabit } from '@/lib/api';
 import { useCustomHabit } from './_layout';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const TIMES_PER_DAY_OPTIONS = [
   { label: '1', value: '1' },
@@ -89,6 +89,8 @@ export default function Step3Screen() {
   const [timesPerWeekError, setTimesPerWeekError] = useState('');
   const [timesPerMonthError, setTimesPerMonthError] = useState('');
   const [weekdaysError, setWeekdaysError] = useState('');
+  const [periodStartError, setPeriodStartError] = useState('');
+  const [periodEndError, setPeriodEndError] = useState('');
   const [monthDatesPreset, setMonthDatesPreset] = useState('first');
   const [customMonthDays, setCustomMonthDays] = useState<string[]>([]);
 
@@ -97,11 +99,25 @@ export default function Step3Screen() {
 
   const isProgression = state.checkinType === 'progression';
 
-  const durationOptions = [
-    { label: 'Бессрочно', value: 'unlimited' },
-    { label: 'Период', value: 'period' },
-    ...(isProgression ? [{ label: 'До цели', value: 'until_goal' }] : []),
-  ];
+  // Прогрессия всегда "До цели"
+  useEffect(() => {
+    if (isProgression && state.durationType !== 'until_goal') {
+      set({ durationType: 'until_goal' });
+    }
+  }, [isProgression]);
+
+  function ddmmyyyyToISO(s: string): string | null {
+    const m = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (!m) return null;
+    return `${m[3]}-${m[2]}-${m[1]}`;
+  }
+
+  const durationOptions = isProgression
+    ? [{ label: 'До цели', value: 'until_goal' }]
+    : [
+        { label: 'Бессрочно', value: 'unlimited' },
+        { label: 'Период', value: 'period' },
+      ];
 
   async function handleExit() {
     const ok = await confirm({
@@ -138,6 +154,13 @@ export default function Step3Screen() {
         valid = false;
       }
     }
+    if (state.durationType === 'period') {
+      const start = ddmmyyyyToISO(state.periodStart);
+      const end = ddmmyyyyToISO(state.periodEnd);
+      if (!start) { setPeriodStartError('Введите дату в формате ДД.ММ.ГГГГ'); valid = false; }
+      if (!end) { setPeriodEndError('Введите дату в формате ДД.ММ.ГГГГ'); valid = false; }
+      if (start && end && end < start) { setPeriodEndError('Дата окончания раньше начала'); valid = false; }
+    }
     if (!valid) return;
 
     // Resolve month_dates
@@ -162,8 +185,8 @@ export default function Step3Screen() {
         type: state.habitType,
         category: 'custom',
         checkin_type: state.checkinType,
-        unit_preset: state.checkinType === 'count' ? state.unitPreset : undefined,
-        goal_unit: state.checkinType === 'count' ? unitLabel : undefined,
+        unit_preset: (state.checkinType === 'count' || state.checkinType === 'progression') ? state.unitPreset : undefined,
+        goal_unit: (state.checkinType === 'count' || state.checkinType === 'progression') ? unitLabel : undefined,
         goal_value: state.checkinType === 'count' || state.checkinType === 'progression'
           ? parseInt(state.goalValue)
           : undefined,
@@ -185,8 +208,8 @@ export default function Step3Screen() {
           ? resolvedMonthDates
           : undefined,
         duration_type: state.durationType,
-        period_start: state.durationType === 'period' ? state.periodStart : undefined,
-        period_end: state.durationType === 'period' ? state.periodEnd : undefined,
+        period_start: state.durationType === 'period' ? ddmmyyyyToISO(state.periodStart) ?? undefined : undefined,
+        period_end: state.durationType === 'period' ? ddmmyyyyToISO(state.periodEnd) ?? undefined : undefined,
       });
 
       reset();
@@ -374,7 +397,7 @@ export default function Step3Screen() {
           label="Периодичность"
           options={durationOptions}
           value={state.durationType}
-          onChange={(v) => set({ durationType: v as DurationType, periodStart: '', periodEnd: '' })}
+          onChange={(v) => { set({ durationType: v as DurationType, periodStart: '', periodEnd: '' }); setPeriodStartError(''); setPeriodEndError(''); }}
         />
 
         {state.durationType === 'period' && (
@@ -383,16 +406,20 @@ export default function Step3Screen() {
               <Input
                 label="Дата начала"
                 value={state.periodStart}
-                onChangeText={(t) => set({ periodStart: t })}
+                onChangeText={(t) => { set({ periodStart: t }); setPeriodStartError(''); setPeriodEndError(''); }}
                 placeholder="ДД.ММ.ГГГГ"
+                keyboardType="numeric"
+                error={periodStartError}
               />
             </View>
             <View style={{ flex: 1 }}>
               <Input
                 label="Дата окончания"
                 value={state.periodEnd}
-                onChangeText={(t) => set({ periodEnd: t })}
+                onChangeText={(t) => { set({ periodEnd: t }); setPeriodEndError(''); }}
                 placeholder="ДД.ММ.ГГГГ"
+                keyboardType="numeric"
+                error={periodEndError}
               />
             </View>
           </View>

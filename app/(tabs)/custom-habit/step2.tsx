@@ -80,6 +80,10 @@ export default function Step2Screen() {
     }
 
     if (state.checkinType === 'progression') {
+      if (state.unitPreset === 'custom' && !state.unitLabel.trim()) {
+        setUnitLabelError('Обязательное поле');
+        valid = false;
+      }
       if (!state.progressionStart || isNaN(Number(state.progressionStart)) || Number(state.progressionStart) <= 0) {
         setStartError('Укажите начальное значение');
         valid = false;
@@ -185,6 +189,25 @@ export default function Step2Screen() {
         {/* Прогрессия */}
         {state.checkinType === 'progression' && (
           <>
+            <Select
+              label="Единица измерения"
+              options={UNIT_PRESETS}
+              value={state.unitPreset}
+              onChange={(v) => {
+                set({ unitPreset: v, unitLabel: '' });
+                setUnitLabelError('');
+              }}
+            />
+            {state.unitPreset === 'custom' && (
+              <Input
+                label="Название единицы"
+                value={state.unitLabel}
+                onChangeText={(t) => { set({ unitLabel: t }); setUnitLabelError(''); }}
+                placeholder="граммы, км, страницы..."
+                maxLength={20}
+                error={unitLabelError}
+              />
+            )}
             <Input
               label="Начало"
               value={state.progressionStart}

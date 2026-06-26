@@ -1,4 +1,4 @@
-import { View, Pressable, Image, FlatList, StatusBar, ActivityIndicator, TextInput } from 'react-native';
+import { View, Pressable, Image, FlatList, StatusBar, ActivityIndicator } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -23,7 +23,8 @@ import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import { useAuth } from '@/lib/auth-context';
 import { useSnackbar } from '@/lib/snackbar-context';
-import { getHabits, getHabit, joinHabit, logHabit, Habit } from '@/lib/api';
+import { getHabits, getHabit, joinHabit, Habit } from '@/lib/api';
+import { genitiveUnit } from '@/lib/units';
 
 function Avatar({ firstName, avatarUrl }: { firstName: string | null; avatarUrl: string | null }) {
   const initial = firstName ? firstName[0].toUpperCase() : '?';
@@ -86,22 +87,19 @@ function pullupsTodayLabel(habit: Habit): string {
     + `по ${session.reps} ${pluralWord(session.reps, 'повторение', 'повторения', 'повторений')}`;
 }
 
-function HabitCard({ habit, extra, onPress, onLogged }: {
+function HabitCard({ habit, extra, onPress }: {
   habit: Habit;
   extra: HabitExtra | null;
   onPress: () => void;
-  onLogged?: (habitId: number, value: number) => void;
 }) {
   const c = useColors();
-  const [countInput, setCountInput] = useState('');
-  const [logLoading, setLogLoading] = useState(false);
 
   const isCount = habit.checkin_type === 'count';
   const todayVal = extra?.today_value ?? 0;
 
   const subtitle = habit.category === 'smoking' ? 'Без сигарет'
     : habit.category === 'pullups' ? 'Цель на сегодня'
-    : isCount ? (habit.goal_unit ?? 'Количество')
+    : isCount ? `${genitiveUnit(habit.goal_unit) || 'Количество'} сегодня`
     : 'Шагов за сегодня';
 
   const value = habit.category === 'smoking'
@@ -118,21 +116,9 @@ function HabitCard({ habit, extra, onPress, onLogged }: {
     ? !isTodayTrainingDay(habit.training_days) || todayVal >= 1
     : todayVal >= (habit.goal_value ?? 1) && (habit.goal_value ?? 0) > 0;
 
-  async function handleCountLog() {
-    const val = parseInt(countInput);
-    if (!val || val <= 0) return;
-    setLogLoading(true);
-    try {
-      await logHabit(habit.id, val);
-      setCountInput('');
-      onLogged?.(habit.id, val);
-    } catch {}
-    finally { setLogLoading(false); }
-  }
-
   return (
-    <Card>
-      <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
+    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
+      <Card>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16 }}>
           <View style={{
             width: 64, height: 64, borderRadius: 32, overflow: 'hidden',
@@ -160,44 +146,8 @@ function HabitCard({ habit, extra, onPress, onLogged }: {
             {habit.type === 'group' && <HabitTag type={habit.type} />}
           </View>
         </View>
-      </Pressable>
-      {isCount && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
-          <TextInput
-            className="flex-1 font-manrope-semibold text-body-16 tracking-default"
-            value={countInput}
-            onChangeText={t => setCountInput(t.replace(/[^0-9]/g, ''))}
-            placeholder={habit.goal_value ? `Цель: ${habit.goal_value}` : '0'}
-            placeholderTextColor={c.text.placeholder}
-            keyboardType="number-pad"
-            maxLength={6}
-            style={{
-              height: 44, borderRadius: 12,
-              // @ts-ignore — iOS only, ignored on Android
-              borderCurve: 'continuous',
-              borderWidth: 1, borderColor: c.border.input, paddingHorizontal: 16,
-              color: c.text.primary, backgroundColor: c.surface.input,
-            }}
-          />
-          <Pressable
-            onPress={handleCountLog}
-            disabled={logLoading || !countInput}
-            style={({ pressed }) => ({
-              width: 44, height: 44, borderRadius: 12,
-              // @ts-ignore
-              borderCurve: 'continuous',
-              backgroundColor: (!countInput || logLoading) ? c.surface.disabled : pressed ? c.brand.pressed : c.brand.primary,
-              alignItems: 'center', justifyContent: 'center',
-            })}
-          >
-            {logLoading
-              ? <ActivityIndicator size="small" color={c.text.onPrimary} />
-              : <CheckIcon width={20} height={20} color={(!countInput || logLoading) ? c.text.secondary : c.text.onPrimary} />
-            }
-          </Pressable>
-        </View>
-      )}
-    </Card>
+      </Card>
+    </Pressable>
   );
 }
 
@@ -333,10 +283,6 @@ export default function HabitsScreen() {
               habit={item}
               extra={extras[item.id] ?? null}
               onPress={() => router.push(`/(tabs)/habit/${item.id}`)}
-              onLogged={(id, val) => setExtras(prev => ({
-                ...prev,
-                [id]: { streak: prev[id]?.streak ?? 0, today_value: val },
-              }))}
             />
           )}
         />

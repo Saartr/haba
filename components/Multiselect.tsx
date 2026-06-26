@@ -14,7 +14,7 @@ type Props = {
   options: Option[];
   value: string[];
   onChange: (value: string[]) => void;
-  exactCount: number;
+  exactCount?: number;
   placeholder?: string;
   disabled?: boolean;
   error?: string;
@@ -37,7 +37,7 @@ export default function Multiselect({ label, options, value, onChange, exactCoun
   function toggle(val: string) {
     if (draft.includes(val)) {
       setDraft(draft.filter(v => v !== val));
-    } else if (draft.length < exactCount) {
+    } else if (exactCount === undefined || draft.length < exactCount) {
       setDraft([...draft, val]);
     }
   }
@@ -103,7 +103,7 @@ export default function Multiselect({ label, options, value, onChange, exactCoun
         <View style={{ marginHorizontal: -24 }}>
           {options.map(item => {
             const checked = draft.includes(item.value);
-            const lockedOut = !checked && draft.length >= exactCount;
+            const lockedOut = !checked && exactCount !== undefined && draft.length >= exactCount!;
             return (
               <Pressable
                 key={item.value}
@@ -136,7 +136,7 @@ export default function Multiselect({ label, options, value, onChange, exactCoun
             <Button label="Отмена" variant="secondary" onPress={handleCancel} />
           </View>
           <View style={{ flex: 1 }}>
-            <Button label="Подтвердить" onPress={handleConfirm} disabled={draft.length !== exactCount} />
+            <Button label="Подтвердить" onPress={handleConfirm} disabled={exactCount !== undefined && draft.length !== exactCount} />
           </View>
         </View>
       </BottomSheet>
