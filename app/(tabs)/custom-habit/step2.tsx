@@ -121,10 +121,10 @@ export default function Step2Screen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 24, gap: 20 }} style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
-        <Text weight="semibold" style={{ fontSize: 13, color: c.text.secondary, letterSpacing: 0.4, textTransform: 'uppercase' }}>
+        <Text weight="bold" style={{ fontSize: 20, color: c.text.primary, letterSpacing: 0.2, lineHeight: 30 }}>
           Шаг 2 из 3
         </Text>
-        <Text weight="bold" style={{ fontSize: 20, color: c.text.primary, letterSpacing: 0.2, marginTop: -8 }}>
+        <Text weight="semibold" style={{ fontSize: 14, color: c.text.primary, letterSpacing: 0.2, lineHeight: 19.6 }}>
           В каком формате будет происходить отметка об успехе или фиаско.
         </Text>
 

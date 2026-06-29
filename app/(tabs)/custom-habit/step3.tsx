@@ -9,6 +9,7 @@ import Multiselect from '@/components/Multiselect';
 import SegmentedControl from '@/components/SegmentedControl';
 import NavigationBar from '@/components/NavigationBar';
 import Chip from '@/components/Chip';
+import DatePicker from '@/components/DatePicker';
 import CloseIcon from '@/assets/icons/Close.svg';
 import CheckIcon from '@/assets/icons/Check.svg';
 import { useColors, colors } from '@/lib/colors';
@@ -106,12 +107,6 @@ export default function Step3Screen() {
     }
   }, [isProgression]);
 
-  function ddmmyyyyToISO(s: string): string | null {
-    const m = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
-    if (!m) return null;
-    return `${m[3]}-${m[2]}-${m[1]}`;
-  }
-
   const durationOptions = isProgression
     ? [{ label: 'До цели', value: 'until_goal' }]
     : [
@@ -155,11 +150,11 @@ export default function Step3Screen() {
       }
     }
     if (state.durationType === 'period') {
-      const start = ddmmyyyyToISO(state.periodStart);
-      const end = ddmmyyyyToISO(state.periodEnd);
-      if (!start) { setPeriodStartError('Введите дату в формате ДД.ММ.ГГГГ'); valid = false; }
-      if (!end) { setPeriodEndError('Введите дату в формате ДД.ММ.ГГГГ'); valid = false; }
-      if (start && end && end < start) { setPeriodEndError('Дата окончания раньше начала'); valid = false; }
+      if (!state.periodStart) { setPeriodStartError('Выберите дату начала'); valid = false; }
+      if (!state.periodEnd) { setPeriodEndError('Выберите дату окончания'); valid = false; }
+      if (state.periodStart && state.periodEnd && state.periodEnd < state.periodStart) {
+        setPeriodEndError('Дата окончания раньше начала'); valid = false;
+      }
     }
     if (!valid) return;
 
@@ -208,8 +203,8 @@ export default function Step3Screen() {
           ? resolvedMonthDates
           : undefined,
         duration_type: state.durationType,
-        period_start: state.durationType === 'period' ? ddmmyyyyToISO(state.periodStart) ?? undefined : undefined,
-        period_end: state.durationType === 'period' ? ddmmyyyyToISO(state.periodEnd) ?? undefined : undefined,
+        period_start: state.durationType === 'period' ? state.periodStart || undefined : undefined,
+        period_end: state.durationType === 'period' ? state.periodEnd || undefined : undefined,
       });
 
       reset();
@@ -246,10 +241,10 @@ export default function Step3Screen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 24, gap: 20 }} style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
-        <Text weight="semibold" style={{ fontSize: 13, color: c.text.secondary, letterSpacing: 0.4, textTransform: 'uppercase' }}>
+        <Text weight="bold" style={{ fontSize: 20, color: c.text.primary, letterSpacing: 0.2, lineHeight: 30 }}>
           Шаг 3 из 3
         </Text>
-        <Text weight="bold" style={{ fontSize: 20, color: c.text.primary, letterSpacing: 0.2, marginTop: -8 }}>
+        <Text weight="semibold" style={{ fontSize: 14, color: c.text.primary, letterSpacing: 0.2, lineHeight: 19.6 }}>
           Сколько и как часто ты хочешь отмечать результат по своей цели.
         </Text>
 
@@ -397,28 +392,30 @@ export default function Step3Screen() {
           label="Периодичность"
           options={durationOptions}
           value={state.durationType}
-          onChange={(v) => { set({ durationType: v as DurationType, periodStart: '', periodEnd: '' }); setPeriodStartError(''); setPeriodEndError(''); }}
+          onChange={(v) => {
+            const today = new Date();
+            const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            set({ durationType: v as DurationType, periodStart: v === 'period' ? iso : '', periodEnd: '' });
+            setPeriodStartError('');
+            setPeriodEndError('');
+          }}
         />
 
         {state.durationType === 'period' && (
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <View style={{ flex: 1 }}>
-              <Input
+              <DatePicker
                 label="Дата начала"
-                value={state.periodStart}
-                onChangeText={(t) => { set({ periodStart: t }); setPeriodStartError(''); setPeriodEndError(''); }}
-                placeholder="ДД.ММ.ГГГГ"
-                keyboardType="numeric"
+                value={state.periodStart || null}
+                onChange={(iso) => { set({ periodStart: iso }); setPeriodStartError(''); setPeriodEndError(''); }}
                 error={periodStartError}
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Input
+              <DatePicker
                 label="Дата окончания"
-                value={state.periodEnd}
-                onChangeText={(t) => { set({ periodEnd: t }); setPeriodEndError(''); }}
-                placeholder="ДД.ММ.ГГГГ"
-                keyboardType="numeric"
+                value={state.periodEnd || null}
+                onChange={(iso) => { set({ periodEnd: iso }); setPeriodEndError(''); }}
                 error={periodEndError}
               />
             </View>

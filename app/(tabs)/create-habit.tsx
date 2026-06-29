@@ -58,7 +58,7 @@ export default function CreateHabitScreen() {
   const statusBarStyle = colorScheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }} edges={['bottom']}>
       <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
 
       <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>

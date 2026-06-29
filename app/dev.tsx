@@ -10,6 +10,7 @@ import Select from '@/components/Select';
 import Lists from '@/components/Lists';
 import Calendar from '@/components/Calendar';
 import CalendarMonthly from '@/components/CalendarMonthly';
+import DatePicker from '@/components/DatePicker';
 import NavigationBar from '@/components/NavigationBar';
 import Card from '@/components/Card';
 import HabitTag from '@/components/HabitTag';
@@ -121,6 +122,20 @@ function CalendarMonthlyDemo() {
       <Text weight="medium" style={{ fontSize: 13, color: c.text.secondary }}>
         Выбрана: <Text weight="semibold" style={{ color: c.text.primary }}>{selected}</Text>
       </Text>
+    </View>
+  );
+}
+
+function DatePickerDemoSection() {
+  const [date1, setDate1] = useState<string | null>(null);
+  const [date2, setDate2] = useState<string | null>('2026-06-17');
+  const [date3, setDate3] = useState<string | null>(null);
+  return (
+    <View style={{ gap: 20 }}>
+      <DatePicker label="Без значения" value={date1} onChange={setDate1} placeholder="ДД.ММ.ГГГГ" />
+      <DatePicker label="С выбранной датой" value={date2} onChange={setDate2} />
+      <DatePicker label="Заблокировано" value={date2} onChange={() => {}} disabled />
+      <DatePicker label="С ошибкой" value={date3} onChange={setDate3} error="Выберите дату" />
     </View>
   );
 }
@@ -438,6 +453,11 @@ export default function DevScreen() {
           <Card>
             <CalendarMonthlyPeriodDemo />
           </Card>
+        </Section>
+
+        {/* DATE PICKER */}
+        <Section title="DatePicker">
+          <DatePickerDemoSection />
         </Section>
 
         {/* NAVIGATION BAR */}

@@ -95,25 +95,38 @@ function HabitCard({ habit, extra, onPress }: {
   const c = useColors();
 
   const isCount = habit.checkin_type === 'count';
+  const isBoolean = habit.checkin_type === 'boolean';
+  const isProgression = habit.checkin_type === 'progression';
   const todayVal = extra?.today_value ?? 0;
+  const streak = extra?.streak ?? 0;
 
   const subtitle = habit.category === 'smoking' ? 'Без сигарет'
     : habit.category === 'pullups' ? 'Цель на сегодня'
+    : isBoolean ? 'Текущий стрик'
+    : isProgression ? 'Текущий результат'
     : isCount ? `${genitiveUnit(habit.goal_unit) || 'Количество'} сегодня`
     : 'Шагов за сегодня';
 
   const value = habit.category === 'smoking'
-    ? pluralDays(extra?.streak ?? 0)
+    ? pluralDays(streak)
     : habit.category === 'pullups'
     ? pullupsTodayLabel(habit)
+    : isBoolean
+    ? String(streak)
+    : isProgression
+    ? `${todayVal}/${habit.goal_value ?? 0}`
     : isCount
       ? `${todayVal}${habit.goal_value ? ` / ${habit.goal_value}` : ''}`
       : `${todayVal}/${habit.goal_value ?? 0}`;
 
   const done = habit.category === 'smoking'
-    ? (extra?.streak ?? 0) > 0
+    ? streak > 0
     : habit.category === 'pullups'
     ? !isTodayTrainingDay(habit.training_days) || todayVal >= 1
+    : isBoolean
+    ? todayVal >= 1
+    : isProgression
+    ? habit.goal_value != null && todayVal >= habit.goal_value
     : todayVal >= (habit.goal_value ?? 1) && (habit.goal_value ?? 0) > 0;
 
   return (

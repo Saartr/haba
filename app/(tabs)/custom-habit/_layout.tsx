@@ -26,27 +26,34 @@ export type CustomHabitState = {
   periodEnd: string;
 };
 
-const defaultState: CustomHabitState = {
-  habitType: 'solo',
-  name: '',
-  description: '',
-  checkinType: 'boolean',
-  unitPreset: 'custom',
-  unitLabel: '',
-  goalValue: '',
-  progressionStart: '',
-  periodicity: 'daily',
-  timesPerDay: 1,
-  notificationTimes: ['12:00'],
-  weekdays: [],
-  timesPerWeek: '',
-  timesPerMonth: '',
-  monthCountType: 'summary',
-  monthDates: [],
-  durationType: 'unlimited',
-  periodStart: '',
-  periodEnd: '',
-};
+function todayISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function makeDefaultState(): CustomHabitState {
+  return {
+    habitType: 'solo',
+    name: '',
+    description: '',
+    checkinType: 'boolean',
+    unitPreset: 'custom',
+    unitLabel: '',
+    goalValue: '',
+    progressionStart: '',
+    periodicity: 'daily',
+    timesPerDay: 1,
+    notificationTimes: ['12:00'],
+    weekdays: [],
+    timesPerWeek: '',
+    timesPerMonth: '',
+    monthCountType: 'summary',
+    monthDates: [],
+    durationType: 'unlimited',
+    periodStart: todayISO(),
+    periodEnd: '',
+  };
+}
 
 type ContextType = {
   state: CustomHabitState;
@@ -65,14 +72,14 @@ export function useCustomHabit() {
 }
 
 export default function CustomHabitLayout() {
-  const [state, setState] = useState<CustomHabitState>(defaultState);
+  const [state, setState] = useState<CustomHabitState>(makeDefaultState);
 
   function set(patch: Partial<CustomHabitState>) {
     setState(prev => ({ ...prev, ...patch }));
   }
 
   function reset() {
-    setState(defaultState);
+    setState(makeDefaultState());
   }
 
   return (
