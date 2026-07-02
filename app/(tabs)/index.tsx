@@ -288,7 +288,10 @@ export default function HabitsScreen() {
         </View>
       ) : (
         <FlatList
-          data={habits}
+          data={habits.filter(h => {
+            if (h.duration_type === 'period' && h.period_end && h.period_end < new Date().toISOString().slice(0, 10)) return false;
+            return true;
+          })}
           keyExtractor={h => String(h.id)}
           contentContainerStyle={{ padding: 24, gap: 16 }}
           renderItem={({ item }) => (

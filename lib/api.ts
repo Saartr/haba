@@ -226,7 +226,7 @@ export async function getHabitLogs(id: number, from: string, to: string, userId?
   return request(`/habits/${id}/logs?from=${from}&to=${to}${q}`, {}, true);
 }
 
-export type LogResult = HabitLog & { habit?: Habit; pullups_recalculated?: boolean };
+export type LogResult = HabitLog & { habit?: Habit; pullups_recalculated?: boolean; goal_reached?: boolean };
 
 export async function logHabit(id: number, value: number, date?: string): Promise<LogResult> {
   return request(`/habits/${id}/logs`, { method: 'POST', body: JSON.stringify({ value, date }) }, true);

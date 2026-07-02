@@ -66,6 +66,7 @@ import {
 import SegmentedControl from '@/components/SegmentedControl';
 import { useEffect, useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import CelebAvatarSvg from '@/assets/images/celeb_avatar.svg';
 import { getNotificationsModule } from '@/lib/notifications';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -79,13 +80,32 @@ const CHECK_IN_LABELS: Record<string, [string, string]> = {
 import { pluralUnit, genitiveUnit } from '@/lib/units';
 
 
+function SuccessModal({ visible, onClose, onNewGoal }: { visible: boolean; onClose: () => void; onNewGoal: () => void }) {
+  const c = useColors();
+  return (
+    <BottomSheet title="Успех!" visible={visible} onClose={onClose}>
+      <View style={{ gap: 16 }}>
+        <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+          <CelebAvatarSvg width={200} height={150} />
+        </View>
+        <Text weight="bold" style={{ fontSize: 16, color: c.text.secondary, letterSpacing: 0.2, lineHeight: 16 * 1.6 }}>
+          Поздравляем! Ты достиг поставленной цели, так держать, не останавливайся на достигнутом.
+        </Text>
+        <Button label="Новая цель" onPress={onNewGoal} />
+      </View>
+    </BottomSheet>
+  );
+}
+
 function SoloHabitScreen({
-  habit, onLog, logLoading, onDelete,
+  habit, onLog, logLoading, onDelete, onComplete, onCompleteNewGoal,
 }: {
   habit: HabitDetail;
   onLog: (value: number, date?: string) => void;
   logLoading: boolean;
   onDelete: () => void;
+  onComplete: () => void;
+  onCompleteNewGoal: () => void;
 }) {
   const c = useColors();
   const router = useRouter();
@@ -98,6 +118,7 @@ function SoloHabitScreen({
   const [countError, setCountError] = useState<string | null>(null);
   const [period, setPeriod] = useState<'today' | 'week'>('today');
   const [editingBoolean, setEditingBoolean] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [successLabel, failLabel] = CHECK_IN_LABELS[habit.category ?? ''] ?? ['Выполнил', 'Не выполнил'];
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
@@ -106,6 +127,13 @@ function SoloHabitScreen({
   const today = new Date().toISOString().slice(0, 10);
   const todayLog = habit.week_logs.find(l => l.user_id === selfId && l.date.slice(0, 10) === today);
   const loggedToday = todayLog != null && todayLog.value > 0;
+
+  const isPeriodEnded = habit.duration_type === 'period' && habit.period_end !== null && habit.period_end < today;
+
+  // Показать экран успеха если период завершился
+  useEffect(() => {
+    if (isPeriodEnded) setShowSuccess(true);
+  }, [isPeriodEnded]);
 
   // Сбросить режим редактирования когда лог появился/обновился
   useEffect(() => {
@@ -313,6 +341,12 @@ function SoloHabitScreen({
         </View>
       )}
 
+      <SuccessModal
+        visible={showSuccess}
+        onClose={() => { setShowSuccess(false); onComplete(); }}
+        onNewGoal={() => { setShowSuccess(false); onCompleteNewGoal(); }}
+      />
+
       {/* Count modal */}
       <BottomSheet
         title={`Внести ${pluralUnit(unitLabel)}`}
@@ -379,13 +413,15 @@ function formatDateDots(iso: string): string {
 }
 
 function ProgressionHabitScreen({
-  habit, onLog, logLoading, onDelete, reloadTrigger,
+  habit, onLog, logLoading, onDelete, reloadTrigger, onComplete, onCompleteNewGoal,
 }: {
   habit: HabitDetail;
   onLog: (value: number, date?: string) => void;
   logLoading: boolean;
   onDelete: () => void;
   reloadTrigger: number;
+  onComplete: () => void;
+  onCompleteNewGoal: () => void;
 }) {
   const c = useColors();
   const router = useRouter();
@@ -397,6 +433,7 @@ function ProgressionHabitScreen({
   const [countInput, setCountInput] = useState('');
   const [countError, setCountError] = useState<string | null>(null);
   const [allLogs, setAllLogs] = useState<HabitLog[]>([]);
+  const [showSuccess, setShowSuccess] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
   const [selectedDate, setSelectedDate] = useState(today);
 
@@ -418,6 +455,11 @@ function ProgressionHabitScreen({
   const isRest = isRestDay(selectedDate, habit.periodicity, habit.weekdays);
   const bestValue = allLogs.length > 0 ? Math.max(...allLogs.map(l => l.value)) : 0;
   const goalReached = habit.goal_value != null && bestValue >= habit.goal_value;
+
+  // Показать экран успеха при достижении цели
+  useEffect(() => {
+    if (goalReached) setShowSuccess(true);
+  }, [goalReached]);
 
   function openCountModal() {
     setCountMode(selectedLog ? 'replace' : 'add');
@@ -554,6 +596,12 @@ function ProgressionHabitScreen({
           />
         </View>
       )}
+
+      <SuccessModal
+        visible={showSuccess}
+        onClose={() => { setShowSuccess(false); onComplete(); }}
+        onNewGoal={() => { setShowSuccess(false); onCompleteNewGoal(); }}
+      />
 
       {/* Count modal */}
       <BottomSheet
@@ -1174,6 +1222,17 @@ export default function HabitScreen() {
     }
   }
 
+  async function handleComplete() {
+    try { await closeHabit(habitId); } catch {}
+    router.back();
+  }
+
+  function handleCompleteNewGoal() {
+    closeHabit(habitId).catch(() => {});
+    router.back();
+    router.push('/(tabs)/create-habit' as any);
+  }
+
   if (loading || !habit) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg, alignItems: 'center', justifyContent: 'center' }}>
@@ -1220,6 +1279,8 @@ export default function HabitScreen() {
         logLoading={logLoading}
         onDelete={handleDeleteSolo}
         reloadTrigger={reloadTrigger}
+        onComplete={handleComplete}
+        onCompleteNewGoal={handleCompleteNewGoal}
       />
     );
   }
@@ -1231,6 +1292,8 @@ export default function HabitScreen() {
         onLog={handleSoloLog}
         logLoading={logLoading}
         onDelete={handleDeleteSolo}
+        onComplete={handleComplete}
+        onCompleteNewGoal={handleCompleteNewGoal}
       />
     );
   }

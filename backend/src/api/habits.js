@@ -335,7 +335,13 @@ router.post('/:id/logs', async (req, res) => {
       pullups_habit = updated;
     }
 
-    res.json({ ...log, ...(pullups_habit ? { habit: pullups_habit, pullups_recalculated } : {}) });
+    let goal_reached = false;
+    if (habit.checkin_type === 'progression' && habit.goal_value != null && Number(value) >= Number(habit.goal_value)) {
+      await sql`UPDATE habits SET closed_at = now() WHERE id = ${habitId} AND closed_at IS NULL`;
+      goal_reached = true;
+    }
+
+    res.json({ ...log, goal_reached, ...(pullups_habit ? { habit: pullups_habit, pullups_recalculated } : {}) });
 
     notifyGoalIfReached({
       habitId, userId: req.userId, prevValue: prev?.value ?? null, newValue: log.value, date: logDate,
