@@ -62,7 +62,7 @@ type ContextType = {
 };
 
 const CustomHabitContext = createContext<ContextType>({
-  state: defaultState,
+  state: makeDefaultState(),
   set: () => {},
   reset: () => {},
 });
