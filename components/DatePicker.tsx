@@ -5,7 +5,11 @@ import Button from '@/components/Button';
 import BottomSheet from '@/components/BottomSheet';
 import CalendarMonthIcon from '@/assets/icons/CalendarMonth.svg';
 import ChevronRightIcon from '@/assets/icons/ChevronRight.svg';
-import { useColors } from '@/lib/colors';
+import { colors, useColors } from '@/lib/colors';
+import { useSettings } from '@/lib/settings-context';
+
+// См. CalendarMonthly.tsx — тот же подбор для тёмной темы, локально для этого компонента.
+const OTHER_MONTH_COLOR_DARK = colors.neutral[500];
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 const MONTHS_RU = [
@@ -18,6 +22,13 @@ function toISO(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+function isTodayDate(d: Date): boolean {
+  const t = new Date();
+  return d.getFullYear() === t.getFullYear() &&
+    d.getMonth() === t.getMonth() &&
+    d.getDate() === t.getDate();
 }
 
 function getMonthGrid(year: number, month: number) {
@@ -60,6 +71,8 @@ function PickerCalendar({
   onDateSelect: (iso: string) => void;
 }) {
   const c = useColors();
+  const { colorScheme } = useSettings();
+  const otherMonthColor = colorScheme === 'dark' ? OTHER_MONTH_COLOR_DARK : c.text.secondary;
   const now = new Date();
   const [viewYear, setViewYear] = useState(
     selectedDate ? parseInt(selectedDate.slice(0, 4)) : now.getFullYear(),
@@ -123,7 +136,7 @@ function PickerCalendar({
       <View style={{ flexDirection: 'row', marginBottom: 4 }}>
         {WEEKDAYS.map(d => (
           <View key={d} style={{ flex: 1, alignItems: 'center', paddingVertical: 4 }}>
-            <Text weight="semibold" style={{ fontSize: 13, color: c.text.secondary, letterSpacing: 0.2 }}>
+            <Text weight="semibold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2, lineHeight: 16 * 1.6 }}>
               {d}
             </Text>
           </View>
@@ -139,43 +152,29 @@ function PickerCalendar({
                 const iso = toISO(date);
                 const isSelected = iso === selectedDate;
                 const isOtherMonth = !isCurrentMonth;
+                const isToday = !isOtherMonth && isTodayDate(date);
+                const textColor = isOtherMonth ? otherMonthColor : isToday ? c.brand.primary : c.text.primary;
 
                 return (
                   <Pressable
                     key={di}
                     onPress={isOtherMonth ? undefined : () => onDateSelect(iso)}
                     android_ripple={isOtherMonth ? undefined : { color: 'rgba(0,0,0,0.06)', borderless: true, radius: 20 }}
-                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: 56 }}
+                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: 48 }}
                   >
                     <View style={{
                       width: 40,
-                      height: 48,
+                      height: 40,
                       borderRadius: 8,
                       overflow: 'hidden',
                       backgroundColor: isSelected ? c.surface.cardGrey : 'transparent',
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}>
-                      <Text weight="semibold" style={{
-                        fontSize: 16,
-                        lineHeight: 20,
-                        color: isOtherMonth ? c.text.secondary : isSelected ? c.brand.primary : c.text.primary,
-                      }}>
+                      <Text weight="semibold" style={{ fontSize: 16, lineHeight: 20, color: textColor }}>
                         {date.getDate()}
                       </Text>
                     </View>
-                    {/* Рамка выбранной ячейки вынесена наружу, чтобы overflow:hidden не обрезал border */}
-                    {isSelected && (
-                      <View style={{
-                        position: 'absolute',
-                        width: 40,
-                        height: 48,
-                        borderRadius: 8,
-                        borderWidth: 2,
-                        borderColor: c.brand.primary,
-                        pointerEvents: 'none',
-                      }} />
-                    )}
                   </Pressable>
                 );
               })}

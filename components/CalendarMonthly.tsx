@@ -2,7 +2,14 @@ import { View, Pressable, Animated, PanResponder } from 'react-native';
 import { useState, useRef } from 'react';
 import Text from '@/components/Text';
 import { colors, useColors } from '@/lib/colors';
+import { useSettings } from '@/lib/settings-context';
 import ChevronRightIcon from '@/assets/icons/ChevronRight.svg';
+
+// В тёмной теме text.secondary (#b5b5b5) недостаточно тусклый для неактивных дат —
+// контраст к фону карточки выше, чем у text.secondary в светлой теме, из-за чего
+// прошедшие/недоступные дни визуально не отличаются от обычных. Локальный подбор
+// только для этого компонента, не трогая глобальный token text.secondary.
+const OTHER_MONTH_COLOR_DARK = colors.neutral[500];
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
@@ -11,16 +18,16 @@ const MONTHS_RU = [
   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
 ];
 
-// Состояния ячейки (из Figma TapaDS node 343:401)
-type DayType =
-  | 'other-month'            // Вне текущего месяца или вне period — серый, не кликабельный
-  | 'default'                // Обычный день — тёмный текст
-  | 'has-record'             // Есть запись — тёмный текст + зелёная точка
-  | 'today'                  // Сегодня, не выбран — фиолетовое кольцо (border), тёмный текст
-  | 'today-selected'         // Сегодня + выбран, нет записи — серая карточка, фиолетовый текст
-  | 'today-selected-record'  // Сегодня + выбран + есть запись — серая карточка, фиолетовый текст + зелёная точка
-  | 'selected'               // Выбранный не-сегодня — серая карточка, тёмный текст
-  | 'selected-record';       // Выбранный с записью — серая карточка, тёмный текст + зелёная точка
+// Состояния ячейки (из Figma TapaDS node 344:151 — Grid calendar item, все варианты Type × Selected).
+// Цвет текста определяется только Type (other-month/today/обычный), фон cardGrey — только Selected,
+// зелёная точка — только наличием записи. Эти три флага независимы и комбинируются свободно
+// (в отличие от прежней версии, где типы вроде 'today-selected-record' были захардкожены как единый enum).
+type DayState = {
+  isOtherMonth: boolean;
+  isToday: boolean;
+  isSelected: boolean;
+  hasRecord: boolean;
+};
 
 export type CalendarMonthlyProps = {
   /** ISO-даты с записями: ['2026-06-07', '2026-06-14'] */
@@ -79,63 +86,52 @@ function getMonthGrid(year: number, month: number) {
   return cells;
 }
 
-function getDayType(
+function getDayState(
   date: Date,
   isCurrentMonth: boolean,
   selectedISO: string | undefined,
   logsSet: Set<string>,
   periodStart: string | undefined,
   periodEnd: string | undefined,
-): DayType {
-  if (!isCurrentMonth) return 'other-month';
-
+): DayState {
   const iso = toISO(date);
-  if (periodStart && iso < periodStart) return 'other-month';
-  if (periodEnd && iso > periodEnd) return 'other-month';
+  const outOfPeriod = (periodStart != null && iso < periodStart) || (periodEnd != null && iso > periodEnd);
+  const isOtherMonth = !isCurrentMonth || outOfPeriod;
 
-  const today = isTodayDate(date);
-  const selected = iso === selectedISO;
-  const record = logsSet.has(iso);
-
-  if (today && selected && record) return 'today-selected-record';
-  if (today && selected) return 'today-selected';
-  if (today) return 'today';
-  if (record && selected) return 'selected-record';
-  if (record) return 'has-record';
-  if (selected) return 'selected';
-  return 'default';
+  return {
+    isOtherMonth,
+    isToday: !isOtherMonth && isTodayDate(date),
+    isSelected: !isOtherMonth && iso === selectedISO,
+    hasRecord: !isOtherMonth && logsSet.has(iso),
+  };
 }
 
 function DayCell({
   date,
-  type,
+  state,
   onPress,
 }: {
   date: Date;
-  type: DayType;
+  state: DayState;
   onPress: () => void;
 }) {
   const c = useColors();
+  const { colorScheme } = useSettings();
+  const { isOtherMonth, isToday, isSelected, hasRecord } = state;
 
-  const disabled = type === 'other-month' || isFutureDate(date);
-  const isSelected = type === 'today-selected' || type === 'today-selected-record' || type === 'selected' || type === 'selected-record';
-  const hasRecord = type === 'has-record' || type === 'selected-record' || type === 'today-selected-record';
-  const isTodayRing = type === 'today';
-
-  const textColor =
-    type === 'today-selected' || type === 'today-selected-record' ? c.brand.primary
-    : type === 'other-month' ? c.text.secondary
-    : c.text.primary;
+  const disabled = isOtherMonth || isFutureDate(date);
+  const otherMonthColor = colorScheme === 'dark' ? OTHER_MONTH_COLOR_DARK : c.text.secondary;
+  const textColor = isOtherMonth ? otherMonthColor : isToday ? c.brand.primary : c.text.primary;
 
   return (
     <Pressable
       onPress={disabled ? undefined : onPress}
       android_ripple={disabled ? undefined : { color: 'rgba(0,0,0,0.06)', borderless: true, radius: 20 }}
-      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: 56 }}
+      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: 48 }}
     >
       <View style={{
         width: 40,
-        height: 48,
+        height: 40,
         borderRadius: 8,
         overflow: 'hidden',
         backgroundColor: isSelected ? c.surface.cardGrey : 'transparent',
@@ -156,18 +152,6 @@ function DayCell({
           }} />
         )}
       </View>
-      {/* Кольцо "сегодня" вынесено наружу, чтобы overflow:hidden не обрезал border */}
-      {isTodayRing && (
-        <View style={{
-          position: 'absolute',
-          width: 40,
-          height: 48,
-          borderRadius: 8,
-          borderWidth: 2,
-          borderColor: c.brand.primary,
-          pointerEvents: 'none',
-        }} />
-      )}
     </Pressable>
   );
 }
@@ -269,7 +253,7 @@ export default function CalendarMonthly({
       <View style={{ flexDirection: 'row', marginBottom: 4 }}>
         {WEEKDAYS.map(d => (
           <View key={d} style={{ flex: 1, alignItems: 'center', paddingVertical: 4 }}>
-            <Text weight="semibold" style={{ fontSize: 13, color: c.text.secondary, letterSpacing: 0.2 }}>
+            <Text weight="semibold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2, lineHeight: 16 * 1.6 }}>
               {d}
             </Text>
           </View>
@@ -283,12 +267,12 @@ export default function CalendarMonthly({
           <View key={wi} style={{ flexDirection: 'row' }}>
             {week.map(({ date, isCurrentMonth }, di) => {
               const iso = toISO(date);
-              const type = getDayType(date, isCurrentMonth, selectedDate, logsSet, periodStart, periodEnd);
+              const state = getDayState(date, isCurrentMonth, selectedDate, logsSet, periodStart, periodEnd);
               return (
                 <DayCell
                   key={di}
                   date={date}
-                  type={type}
+                  state={state}
                   onPress={() => onDateSelect?.(iso)}
                 />
               );
