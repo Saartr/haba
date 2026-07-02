@@ -6,6 +6,7 @@ const runMigrations = require('./db/migrate');
 const setupCommands = require('./handlers/commands');
 const { scheduleJobs } = require('./jobs/digest');
 const { scheduleHabitReminders } = require('./jobs/habit-reminders');
+const { scheduleHabitNotificationTimes } = require('./jobs/habit-notification-times');
 const sql = require('./db/client');
 const authRouter = require('./api/auth');
 const habitsRouter = require('./api/habits');
@@ -236,6 +237,7 @@ async function start() {
   ]);
   scheduleJobs(bot);
   scheduleHabitReminders();
+  scheduleHabitNotificationTimes();
   app.listen(process.env.PORT, () => {
     console.log('Сервер запущен на порту ' + process.env.PORT);
   });

@@ -21,6 +21,7 @@ async function sendHabitReminders() {
     JOIN habits h ON h.id = hm.habit_id
     WHERE h.closed_at IS NULL
       AND h.notifications = true
+      AND (h.notification_times IS NULL OR array_length(h.notification_times, 1) IS NULL)
       AND NOT EXISTS (
         SELECT 1 FROM habit_logs hl
         WHERE hl.habit_id = hm.habit_id

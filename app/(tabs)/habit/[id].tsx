@@ -1224,13 +1224,12 @@ export default function HabitScreen() {
 
   async function handleComplete() {
     try { await closeHabit(habitId); } catch {}
-    router.back();
+    router.replace('/(tabs)/' as any);
   }
 
   function handleCompleteNewGoal() {
     closeHabit(habitId).catch(() => {});
-    router.back();
-    router.push('/(tabs)/create-habit' as any);
+    router.replace('/(tabs)/create-habit' as any);
   }
 
   if (loading || !habit) {

@@ -28,9 +28,14 @@ const TIMES_PER_DAY_OPTIONS = [
 
 const NOTIFICATION_DEFAULTS: Record<string, string[]> = {
   '1': ['12:00'],
-  '2': ['9:00', '18:00'],
-  '3': ['9:00', '14:00', '19:00'],
+  '2': ['09:00', '18:00'],
+  '3': ['09:00', '14:00', '19:00'],
 };
+
+const HOUR_OPTIONS = Array.from({ length: 18 }, (_, i) => {
+  const h = String(i + 6).padStart(2, '0');
+  return { label: `${h}:00`, value: `${h}:00` };
+});
 
 const WEEKDAY_OPTIONS = [
   { label: 'Пн', value: '1' },
@@ -190,9 +195,7 @@ export default function Step3Screen() {
           : undefined,
         periodicity: state.periodicity,
         times_per_day: state.periodicity === 'daily' ? state.timesPerDay : undefined,
-        notification_times: state.periodicity === 'daily'
-          ? NOTIFICATION_DEFAULTS[String(state.timesPerDay)] ?? ['12:00']
-          : undefined,
+        notification_times: state.periodicity === 'daily' ? state.notificationTimes : undefined,
         weekdays: state.periodicity === 'weekdays' ? state.weekdays : undefined,
         times_per_week: state.periodicity === 'n_per_week' ? parseInt(state.timesPerWeek) : undefined,
         times_per_month: state.periodicity === 'n_per_month' && state.monthCountType === 'summary'
@@ -279,15 +282,25 @@ export default function Step3Screen() {
               label="Сколько раз в день"
               options={TIMES_PER_DAY_OPTIONS}
               value={String(state.timesPerDay)}
-              onChange={(v) => set({ timesPerDay: Number(v) })}
+              onChange={(v) => set({ timesPerDay: Number(v), notificationTimes: NOTIFICATION_DEFAULTS[v] ?? ['12:00'] })}
             />
-            <Select
-              label="Время выполнения"
-              options={[{ label: NOTIFICATION_DEFAULTS[String(state.timesPerDay)]?.join(', ') ?? '12:00', value: 'default' }]}
-              value="default"
-              onChange={() => {}}
-              disabled
-            />
+            {state.timesPerDay === 1 ? (
+              <Select
+                label="Время выполнения"
+                options={HOUR_OPTIONS}
+                value={state.notificationTimes[0] ?? '12:00'}
+                onChange={(v) => set({ notificationTimes: [v] })}
+              />
+            ) : (
+              <Multiselect
+                label="Время выполнения"
+                placeholder={`Выберите ${state.timesPerDay} времени`}
+                options={HOUR_OPTIONS}
+                value={state.notificationTimes}
+                onChange={(vals) => set({ notificationTimes: vals })}
+                exactCount={state.timesPerDay}
+              />
+            )}
           </>
         )}
 
