@@ -123,11 +123,13 @@ export default function Step3Screen() {
     const ok = await confirm({
       title: 'Выйти из создания цели?',
       confirmLabel: 'Выйти',
+      confirmIcon: () => null,
       destructive: true,
     });
     if (ok) {
       reset();
       router.dismissAll();
+      router.replace('/(tabs)/' as any);
     }
   }
 
