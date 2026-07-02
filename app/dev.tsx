@@ -8,7 +8,7 @@ import TextArea from '@/components/TextArea';
 import SegmentedControl from '@/components/SegmentedControl';
 import Select from '@/components/Select';
 import Lists from '@/components/Lists';
-import Calendar from '@/components/Calendar';
+import CalendarWeek from '@/components/CalendarWeek';
 import CalendarMonthly from '@/components/CalendarMonthly';
 import DatePicker from '@/components/DatePicker';
 import NavigationBar from '@/components/NavigationBar';
@@ -429,11 +429,11 @@ export default function DevScreen() {
           />
         </Section>
 
-        {/* CALENDAR */}
-        <Section title="Calendar">
+        {/* CALENDAR WEEK */}
+        <Section title="Calendar Week">
           <Label text="Живой календарь (данные не загружаются в галерее)" />
           <View style={{ marginHorizontal: -24 }}>
-            <Calendar
+            <CalendarWeek
               habitId={-1}
               habitCreatedAt={new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()}
               currentWeekLogs={[]}

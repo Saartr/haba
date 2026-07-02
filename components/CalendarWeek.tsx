@@ -235,9 +235,12 @@ type Props = {
   horizontalPadding?: number;
   /** Длительность плана в неделях (pullups) — позволяет свайпнуть вперёд и увидеть запланированные тренировки. */
   totalWeeks?: number;
+  /** Приветственная wiggle-анимация при маунте. По умолчанию включена; выключить там, где
+   * компонент перемонтируется не как первое появление экрана (например, переключатель вида). */
+  welcomeAnimation?: boolean;
 };
 
-export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, userId, pageWidth: pageWidthProp, horizontalPadding = 24, totalWeeks }: Props) {
+export default function CalendarWeek({ habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, userId, pageWidth: pageWidthProp, horizontalPadding = 24, totalWeeks, welcomeAnimation = true }: Props) {
   const createdAt = new Date(habitCreatedAt);
   createdAt.setUTCHours(0, 0, 0, 0);
 
@@ -261,6 +264,7 @@ export default function Calendar({ habitId, habitCreatedAt, currentWeekLogs, goa
 
   // Welcome-анимация с ease-in-out через Animated listener → scrollToOffset
   useEffect(() => {
+    if (!welcomeAnimation) return;
     const baseOffset = currentIndex * pageWidth;
     const anim = new Animated.Value(0);
     anim.addListener(({ value }) => {

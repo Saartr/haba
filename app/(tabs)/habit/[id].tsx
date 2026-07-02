@@ -12,7 +12,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Clipboard } from 'react-native';
-import Calendar from '@/components/Calendar';
+import CalendarWeek from '@/components/CalendarWeek';
 import CalendarMonthly from '@/components/CalendarMonthly';
 import Card from '@/components/Card';
 import Chip from '@/components/Chip';
@@ -64,7 +64,7 @@ import {
   getStepsByDays,
 } from '@/lib/health';
 import SegmentedControl from '@/components/SegmentedControl';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import CelebAvatarSvg from '@/assets/images/celeb_avatar.svg';
 import { getNotificationsModule } from '@/lib/notifications';
@@ -223,7 +223,7 @@ function SoloHabitScreen({
       </View>
 
       <View style={{ marginTop: 24 }}>
-        <Calendar
+        <CalendarWeek
           habitId={habit.id}
           habitCreatedAt={habit.created_at}
           currentWeekLogs={habit.week_logs.filter(l => l.user_id === selfId)}
@@ -650,6 +650,22 @@ function isTodayTrainingDay(trainingDays: number[] | null): boolean {
   return trainingDays.includes(isoDay);
 }
 
+// Локальный (не UTC) ISO-формат — new Date().toISOString() сдвигает дату у пользователей
+// восточнее UTC (например, Москва), т.к. local-полночь конвертируется в предыдущий день UTC.
+function dateToLocalISO(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function isTrainingDayDate(iso: string, trainingDays: number[] | null): boolean {
+  if (!trainingDays) return false;
+  const dow = new Date(iso + 'T00:00:00').getDay(); // 0=Вс..6=Сб
+  const isoDay = dow === 0 ? 7 : dow; // 1=Пн..7=Вс
+  return trainingDays.includes(isoDay);
+}
+
 function pluralWord(n: number, one: string, few: string, many: string): string {
   const mod10 = n % 10;
   const mod100 = n % 100;
@@ -662,25 +678,101 @@ function pluralWord(n: number, one: string, few: string, many: string): string {
 const INTENSITY_LABEL: Record<string, string> = { low: 'низкой', medium: 'средней', high: 'высокой' };
 
 function PullupsHabitScreen({
-  habit, onLog, logLoading, onDelete,
+  habit, onLog, logLoading, onDelete, reloadTrigger,
 }: {
   habit: HabitDetail;
   onLog: (value: number, date?: string) => void;
   logLoading: boolean;
   onDelete: () => void;
+  reloadTrigger: number;
 }) {
   const c = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colorScheme: scheme } = useSettings();
   const [menuVisible, setMenuVisible] = useState(false);
+  const [allLogs, setAllLogs] = useState<HabitLog[]>([]);
+  const today = dateToLocalISO(new Date());
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [calendarView, setCalendarView] = useState<'week' | 'month'>('week');
+  // Приветственная wiggle-анимация недельного календаря — только при самом первом появлении
+  // экрана, не при каждом возврате на "Неделя" через переключатель.
+  const weekAnimShownRef = useRef(false);
+  useEffect(() => {
+    if (calendarView === 'week') weekAnimShownRef.current = true;
+  }, [calendarView]);
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
+
+  useEffect(() => {
+    const from = habit.created_at.slice(0, 10);
+    getHabitLogs(habit.id, from, today)
+      .then(setAllLogs)
+      .catch(() => {});
+  }, [reloadTrigger]);
+
+  // Точка в календаре — только за реально выполненные тренировки (value >= 1),
+  // "Не выполнил" тоже создаёт запись (value=0), но не должен выглядеть как отметка о выполнении.
+  const completedDates = allLogs.filter(l => l.value >= 1).map(l => l.date.slice(0, 10));
+  const completedSet = new Set(completedDates);
 
   const plan = habit.pullups_plan ?? [];
   const goalAchieved = habit.pullups_session_index >= plan.length;
   const isTrainingDay = !goalAchieved && isTodayTrainingDay(habit.training_days);
   const session = isTrainingDay ? plan[habit.pullups_session_index] : null;
+
+  // Красная точка — тренировочный день без выполненной отметки: явное "Не выполнил" (value=0)
+  // в любой момент, или прошедший (до сегодня) тренировочный день, по которому вообще нет записи.
+  const missedDates = (() => {
+    const explicitMiss = new Set(allLogs.filter(l => l.value === 0).map(l => l.date.slice(0, 10)));
+    const result: string[] = [];
+    const cursor = new Date(habit.created_at.slice(0, 10) + 'T00:00:00');
+    const end = new Date(today + 'T00:00:00');
+    while (cursor <= end) {
+      const iso = dateToLocalISO(cursor);
+      if (isTrainingDayDate(iso, habit.training_days) && !completedSet.has(iso)) {
+        if (iso < today || explicitMiss.has(iso)) result.push(iso);
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return result;
+  })();
+
+  // Дата последней тренировки по плану — весь план (plan.length сессий), спроецированный
+  // вперёд от даты создания цели по training_days. Даёт periodEnd для календаря: дни после
+  // неё вне плана, показываются как "вне периода" — так же, как дни до старта (periodStart).
+  const planEndDate = (() => {
+    if (!habit.training_days || habit.training_days.length === 0 || plan.length === 0) return undefined;
+    const cursor = new Date(habit.created_at.slice(0, 10) + 'T00:00:00');
+    let count = 0;
+    let last = dateToLocalISO(cursor);
+    let guard = 0;
+    while (count < plan.length && guard < 3650) {
+      const iso = dateToLocalISO(cursor);
+      if (isTrainingDayDate(iso, habit.training_days)) {
+        count++;
+        last = iso;
+      }
+      cursor.setDate(cursor.getDate() + 1);
+      guard++;
+    }
+    return last;
+  })();
+
+  // Серая точка — будущие тренировки по плану, от завтра до planEndDate включительно.
+  const plannedDates = (() => {
+    if (!planEndDate) return [];
+    const result: string[] = [];
+    const cursor = new Date(today + 'T00:00:00');
+    cursor.setDate(cursor.getDate() + 1);
+    const end = new Date(planEndDate + 'T00:00:00');
+    while (cursor <= end) {
+      const iso = dateToLocalISO(cursor);
+      if (isTrainingDayDate(iso, habit.training_days)) result.push(iso);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return result;
+  })();
 
   const sessionsPerWeek = habit.training_days?.length ?? 0;
   const totalWeeks = sessionsPerWeek > 0 ? Math.round(plan.length / sessionsPerWeek) : 0;
@@ -751,15 +843,44 @@ function PullupsHabitScreen({
         )}
       </View>
 
-      <View style={{ marginTop: 24 }}>
-        <Calendar
-          habitId={habit.id}
-          habitCreatedAt={habit.created_at}
-          currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
-          goalValue={1}
-          trainingDays={habit.training_days}
-          totalWeeks={totalWeeks}
-        />
+      <View style={{ paddingTop: 24, gap: 16 }}>
+        <View style={{ paddingHorizontal: 24 }}>
+          <SegmentedControl
+            options={[
+              { label: 'Неделя', value: 'week' },
+              { label: 'Месяц', value: 'month' },
+            ]}
+            value={calendarView}
+            onChange={v => setCalendarView(v as 'week' | 'month')}
+          />
+        </View>
+        {calendarView === 'week' ? (
+          // Без paddingHorizontal-обёртки — CalendarWeek сам управляет шириной FlatList
+          // (пейджинг по полной ширине экрана) и применяет отступ 24 внутри каждой страницы.
+          <CalendarWeek
+            habitId={habit.id}
+            habitCreatedAt={habit.created_at}
+            currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
+            goalValue={1}
+            trainingDays={habit.training_days}
+            totalWeeks={totalWeeks}
+            welcomeAnimation={!weekAnimShownRef.current}
+          />
+        ) : (
+          <View style={{ paddingHorizontal: 24 }}>
+            <Card style={{ paddingHorizontal: 16, paddingVertical: 16, gap: 0 }}>
+              <CalendarMonthly
+                logs={completedDates}
+                missedDates={missedDates}
+                plannedDates={plannedDates}
+                periodStart={habit.created_at.slice(0, 10)}
+                periodEnd={planEndDate}
+                selectedDate={selectedDate}
+                onDateSelect={setSelectedDate}
+              />
+            </Card>
+          </View>
+        )}
       </View>
 
       {!goalAchieved && (
@@ -1298,6 +1419,7 @@ export default function HabitScreen() {
         onLog={handleSoloLog}
         logLoading={logLoading}
         onDelete={handleDeleteSolo}
+        reloadTrigger={reloadTrigger}
       />
     );
   }
@@ -1396,7 +1518,7 @@ export default function HabitScreen() {
           ) : null}
         </View>
 
-        <Calendar
+        <CalendarWeek
           habitId={habit.id}
           habitCreatedAt={habit.created_at}
           currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
@@ -1724,7 +1846,7 @@ export default function HabitScreen() {
             </View>
 
             {/* Календарь участника */}
-            <Calendar
+            <CalendarWeek
               habitId={habit.id}
               habitCreatedAt={habit.created_at}
               currentWeekLogs={habit.week_logs.filter(l => l.user_id === detailMember.id)}

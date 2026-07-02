@@ -22,16 +22,25 @@ const MONTHS_RU = [
 // Цвет текста определяется только Type (other-month/today/обычный), фон cardGrey — только Selected,
 // зелёная точка — только наличием записи. Эти три флага независимы и комбинируются свободно
 // (в отличие от прежней версии, где типы вроде 'today-selected-record' были захардкожены как единый enum).
+// hasMissed (красная точка) и hasPlanned (серая точка) в самой Figma не описаны — состояния
+// добавлены по прямому запросу пользователя для экрана подтягиваний: красная — пропущенная/
+// непройденная тренировка, серая — тренировка по плану впереди (ещё не наступила).
 type DayState = {
   isOtherMonth: boolean;
   isToday: boolean;
   isSelected: boolean;
   hasRecord: boolean;
+  hasMissed: boolean;
+  hasPlanned: boolean;
 };
 
 export type CalendarMonthlyProps = {
   /** ISO-даты с записями: ['2026-06-07', '2026-06-14'] */
   logs?: string[];
+  /** ISO-даты без записи/с провалом (красная точка вместо зелёной). Приоритет — у logs. */
+  missedDates?: string[];
+  /** ISO-даты будущих тренировок по плану (серая точка). Приоритет — у logs и missedDates. */
+  plannedDates?: string[];
   /** Начало периода цели (включительно). Дни до — как other-month. */
   periodStart?: string;
   /** Конец периода цели (включительно). Дни после — как other-month. */
@@ -91,18 +100,24 @@ function getDayState(
   isCurrentMonth: boolean,
   selectedISO: string | undefined,
   logsSet: Set<string>,
+  missedSet: Set<string>,
+  plannedSet: Set<string>,
   periodStart: string | undefined,
   periodEnd: string | undefined,
 ): DayState {
   const iso = toISO(date);
   const outOfPeriod = (periodStart != null && iso < periodStart) || (periodEnd != null && iso > periodEnd);
   const isOtherMonth = !isCurrentMonth || outOfPeriod;
+  const hasRecord = !isOtherMonth && logsSet.has(iso);
+  const hasMissed = !isOtherMonth && !hasRecord && missedSet.has(iso);
 
   return {
     isOtherMonth,
     isToday: !isOtherMonth && isTodayDate(date),
     isSelected: !isOtherMonth && iso === selectedISO,
-    hasRecord: !isOtherMonth && logsSet.has(iso),
+    hasRecord,
+    hasMissed,
+    hasPlanned: !isOtherMonth && !hasRecord && !hasMissed && plannedSet.has(iso),
   };
 }
 
@@ -117,7 +132,8 @@ function DayCell({
 }) {
   const c = useColors();
   const { colorScheme } = useSettings();
-  const { isOtherMonth, isToday, isSelected, hasRecord } = state;
+  const { isOtherMonth, isToday, isSelected, hasRecord, hasMissed, hasPlanned } = state;
+  const dotColor = hasRecord ? colors.green[500] : hasMissed ? colors.red[500] : hasPlanned ? colors.neutral[400] : null;
 
   const disabled = isOtherMonth || isFutureDate(date);
   const otherMonthColor = colorScheme === 'dark' ? OTHER_MONTH_COLOR_DARK : c.text.secondary;
@@ -141,14 +157,14 @@ function DayCell({
         <Text weight="semibold" style={{ fontSize: 16, color: textColor, lineHeight: 20 }}>
           {date.getDate()}
         </Text>
-        {hasRecord && (
+        {dotColor && (
           <View style={{
             position: 'absolute',
             bottom: 4,
             width: 5,
             height: 5,
             borderRadius: 2.5,
-            backgroundColor: colors.green[500],
+            backgroundColor: dotColor,
           }} />
         )}
       </View>
@@ -164,11 +180,25 @@ function shiftMonth(year: number, month: number, delta: number) {
   return { year: y, month: m };
 }
 
+function parseYearMonth(iso: string): { y: number; m: number } {
+  return { y: parseInt(iso.slice(0, 4), 10), m: parseInt(iso.slice(5, 7), 10) - 1 };
+}
+
+function isSameOrBeforeMonth(y: number, m: number, ref: { y: number; m: number }): boolean {
+  return y < ref.y || (y === ref.y && m <= ref.m);
+}
+
+function isSameOrAfterMonth(y: number, m: number, ref: { y: number; m: number }): boolean {
+  return y > ref.y || (y === ref.y && m >= ref.m);
+}
+
 const SWIPE_THRESHOLD = 50;
 const SWIPE_OUT_X = 350;
 
 export default function CalendarMonthly({
   logs = [],
+  missedDates = [],
+  plannedDates = [],
   periodStart,
   periodEnd,
   selectedDate,
@@ -182,6 +212,15 @@ export default function CalendarMonthly({
   const translateX = useRef(new Animated.Value(0)).current;
 
   const logsSet = new Set(logs);
+  const missedSet = new Set(missedDates);
+  const plannedSet = new Set(plannedDates);
+
+  // Границы навигации по periodStart/periodEnd — на месяце начала/конца периода
+  // соответствующая стрелка скрывается, дальше листать некуда.
+  const startYM = periodStart ? parseYearMonth(periodStart) : null;
+  const endYM = periodEnd ? parseYearMonth(periodEnd) : null;
+  const canGoPrev = !startYM || !isSameOrBeforeMonth(viewYear, viewMonth, startYM);
+  const canGoNext = !endYM || !isSameOrAfterMonth(viewYear, viewMonth, endYM);
 
   // goRef и animateRef объявлены до panResponder, чтобы PanResponder (создаётся один раз)
   // всегда видел актуальный месяц и функцию анимации через .current
@@ -216,6 +255,10 @@ export default function CalendarMonthly({
   };
 
   function animateAndGo(direction: 'prev' | 'next') {
+    if ((direction === 'prev' && !canGoPrev) || (direction === 'next' && !canGoNext)) {
+      Animated.spring(translateX, { toValue: 0, useNativeDriver: true, tension: 200, friction: 20 }).start();
+      return;
+    }
     const toX = direction === 'next' ? -SWIPE_OUT_X : SWIPE_OUT_X;
     Animated.timing(translateX, {
       toValue: toX,
@@ -234,19 +277,28 @@ export default function CalendarMonthly({
 
   return (
     <View>
-      {/* Заголовок месяца */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 16, gap: 16 }}>
-        <Pressable onPress={() => animateAndGo('prev')} hitSlop={12} android_ripple={{ color: 'rgba(0,0,0,0.06)', borderless: true, radius: 20 }}>
-          <View style={{ transform: [{ rotate: '180deg' }] }}>
-            <ChevronRightIcon width={24} height={24} color={c.text.primary} />
-          </View>
-        </Pressable>
-        <Text weight="semibold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2, minWidth: 140, textAlign: 'center' }}>
+      {/* Заголовок месяца — боковые колонки фиксированной ширины (24), чтобы название
+          месяца всегда оставалось по центру независимо от того, скрыта ли стрелка */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+        <View style={{ width: 24, alignItems: 'flex-start' }}>
+          {canGoPrev && (
+            <Pressable onPress={() => animateAndGo('prev')} hitSlop={12} android_ripple={{ color: 'rgba(0,0,0,0.06)', borderless: true, radius: 20 }}>
+              <View style={{ transform: [{ rotate: '180deg' }] }}>
+                <ChevronRightIcon width={24} height={24} color={c.text.primary} />
+              </View>
+            </Pressable>
+          )}
+        </View>
+        <Text weight="semibold" style={{ flex: 1, fontSize: 16, color: c.text.primary, letterSpacing: 0.2, textAlign: 'center' }}>
           {MONTHS_RU[viewMonth]} {viewYear}
         </Text>
-        <Pressable onPress={() => animateAndGo('next')} hitSlop={12} android_ripple={{ color: 'rgba(0,0,0,0.06)', borderless: true, radius: 20 }}>
-          <ChevronRightIcon width={24} height={24} color={c.text.primary} />
-        </Pressable>
+        <View style={{ width: 24, alignItems: 'flex-end' }}>
+          {canGoNext && (
+            <Pressable onPress={() => animateAndGo('next')} hitSlop={12} android_ripple={{ color: 'rgba(0,0,0,0.06)', borderless: true, radius: 20 }}>
+              <ChevronRightIcon width={24} height={24} color={c.text.primary} />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {/* Заголовок дней недели */}
@@ -267,7 +319,7 @@ export default function CalendarMonthly({
           <View key={wi} style={{ flexDirection: 'row' }}>
             {week.map(({ date, isCurrentMonth }, di) => {
               const iso = toISO(date);
-              const state = getDayState(date, isCurrentMonth, selectedDate, logsSet, periodStart, periodEnd);
+              const state = getDayState(date, isCurrentMonth, selectedDate, logsSet, missedSet, plannedSet, periodStart, periodEnd);
               return (
                 <DayCell
                   key={di}
