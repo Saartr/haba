@@ -933,6 +933,10 @@ export default function HabitScreen() {
   const [transferModal, setTransferModal] = useState(false);
   const [period, setPeriod] = useState<'today' | 'week'>('today');
   const [detailMember, setDetailMember] = useState<HabitMember | null>(null);
+  const [groupCountModal, setGroupCountModal] = useState(false);
+  const [groupCountMode, setGroupCountMode] = useState<'add' | 'replace'>('add');
+  const [groupCountInput, setGroupCountInput] = useState('');
+  const [groupCountError, setGroupCountError] = useState<string | null>(null);
 
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' : 'dark-content';
@@ -1154,6 +1158,34 @@ export default function HabitScreen() {
     setStepsMode('add');
     setStepsInput('');
     setStepsError(null);
+  }
+
+  function closeGroupCountModal() {
+    setGroupCountModal(false);
+    setGroupCountMode('add');
+    setGroupCountInput('');
+    setGroupCountError(null);
+  }
+
+  async function handleGroupCountSubmit() {
+    const input = parseInt(groupCountInput);
+    if (groupCountInput === '' || Number.isNaN(input) || input <= 0) {
+      setGroupCountError('Введите число');
+      return;
+    }
+    const prev = myTodayLog?.value ?? 0;
+    const value = groupCountMode === 'add' ? prev + input : input;
+    setGroupCountError(null);
+    setLogLoading(true);
+    closeGroupCountModal();
+    try {
+      await logHabit(habitId, value);
+      load();
+    } catch (e: any) {
+      Alert.alert('Ошибка', e.message);
+    } finally {
+      setLogLoading(false);
+    }
   }
 
   async function handleStepsSubmit() {
@@ -1436,21 +1468,48 @@ export default function HabitScreen() {
       </ScrollView>
 
       <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
-        <Button
-          label="Внести шаги"
-          onPress={() => {
-            const manualOverrideToday = myTodayLog?.source === 'manual';
-            if (settings.googleFit === 'on' && !manualOverrideToday) {
-              setGfInfoModal(true);
-            } else {
-              setStepsMode('add');
-              setStepsInput('');
-              setStepsModal(true);
-            }
-          }}
-          loading={logLoading}
-          icon={<FootprintIcon />}
-        />
+        {habit.category === 'steps' ? (
+          <Button
+            label="Внести шаги"
+            onPress={() => {
+              const manualOverrideToday = myTodayLog?.source === 'manual';
+              if (settings.googleFit === 'on' && !manualOverrideToday) {
+                setGfInfoModal(true);
+              } else {
+                setStepsMode('add');
+                setStepsInput('');
+                setStepsModal(true);
+              }
+            }}
+            loading={logLoading}
+            icon={<FootprintIcon />}
+          />
+        ) : habit.checkin_type === 'count' ? (
+          <Button
+            label={`Внести ${pluralUnit(habit.goal_unit ?? '')}`}
+            onPress={() => {
+              setGroupCountMode('add');
+              setGroupCountInput('');
+              setGroupCountError(null);
+              setGroupCountModal(true);
+            }}
+            loading={logLoading}
+          />
+        ) : habit.checkin_type === 'boolean' ? (
+          <Button
+            label={myTodayLog?.value ? 'Выполнено' : 'Отметить выполнение'}
+            onPress={async () => {
+              if (myTodayLog?.value) return;
+              setLogLoading(true);
+              try { await logHabit(habitId, 1); load(); }
+              catch (e: any) { Alert.alert('Ошибка', e.message); }
+              finally { setLogLoading(false); }
+            }}
+            loading={logLoading}
+            color={myTodayLog?.value ? colors.green[500] : undefined}
+            icon={<CheckIcon />}
+          />
+        ) : null}
       </View>
 
       {/* Invite modal */}
@@ -1525,84 +1584,126 @@ export default function HabitScreen() {
         </View>
       </BottomSheet>
 
-      {/* GF Info modal — показывается первым когда Google Fit подключён */}
-      <BottomSheet
-        title="Внести шаги"
-        visible={gfInfoModal}
-        onClose={() => setGfInfoModal(false)}
-      >
-        <View style={{ gap: 16 }}>
-          <Text weight="medium" style={{ fontSize: 16, lineHeight: 16 * 1.6, color: c.text.secondary, letterSpacing: 0.2 }}>
-            {'У тебя подключён Google Fit — шаги подтянутся сами, без твоего участия. Если выберешь ручной ввод, то автосинхронизация на сегодня отключится. Завтра снова включится.'}
-          </Text>
-          {habit.last_synced_at != null && (
-            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-              {'Последнее обновление: ' + formatSyncedAt(habit.last_synced_at)}
-            </Text>
-          )}
-          <Button
-            variant="secondary"
-            label="Ввести вручную"
-            onPress={() => {
-              setGfInfoModal(false);
-              setStepsMode('add');
-              setStepsInput('');
-              setStepsError(null);
-              setStepsModal(true);
-            }}
-          />
-        </View>
-      </BottomSheet>
+      {/* GF Info modal + Steps modal — только для category=steps */}
+      {habit.category === 'steps' && (
+        <>
+          <BottomSheet
+            title="Внести шаги"
+            visible={gfInfoModal}
+            onClose={() => setGfInfoModal(false)}
+          >
+            <View style={{ gap: 16 }}>
+              <Text weight="medium" style={{ fontSize: 16, lineHeight: 16 * 1.6, color: c.text.secondary, letterSpacing: 0.2 }}>
+                {'У тебя подключён Google Fit — шаги подтянутся сами, без твоего участия. Если выберешь ручной ввод, то автосинхронизация на сегодня отключится. Завтра снова включится.'}
+              </Text>
+              {habit.last_synced_at != null && (
+                <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                  {'Последнее обновление: ' + formatSyncedAt(habit.last_synced_at)}
+                </Text>
+              )}
+              <Button
+                variant="secondary"
+                label="Ввести вручную"
+                onPress={() => {
+                  setGfInfoModal(false);
+                  setStepsMode('add');
+                  setStepsInput('');
+                  setStepsError(null);
+                  setStepsModal(true);
+                }}
+              />
+            </View>
+          </BottomSheet>
 
-      {/* Steps modal — форма с Segmented (Добавить / Заменить) */}
-      <BottomSheet
-        title="Внести шаги"
-        visible={stepsModal}
-        onClose={closeStepsModal}
-      >
-        <View style={{ gap: 16 }}>
-          {settings.googleFit === 'on' && myTodayLog?.source === 'manual' && (
-            <Text weight="medium" style={{ fontSize: 16, lineHeight: 16 * 1.6, color: c.text.secondary, letterSpacing: 0.2 }}>
-              Автосинхронизация с Google Fit на сегодня отключена. Завтра снова включится.
-            </Text>
-          )}
-          <SegmentedControl
-            options={[
-              { label: 'Добавить', value: 'add' },
-              { label: 'Заменить', value: 'replace' },
-            ]}
-            value={stepsMode}
-            onChange={v => {
-              const mode = v as 'add' | 'replace';
-              setStepsMode(mode);
-              setStepsInput(mode === 'replace' ? String(myTodayLog?.value ?? 0) : '');
-              setStepsError(null);
-            }}
-          />
-          <Input
-            label={stepsMode === 'add' ? 'Добавление значения' : 'Изменение значения'}
-            value={stepsInput}
-            onChangeText={t => { setStepsInput(t.replace(/[^0-9]/g, '')); if (stepsError) setStepsError(null); }}
-            keyboardType="number-pad"
-            maxLength={6}
-            error={stepsError ?? undefined}
-          />
-          <Button
-            label="Сохранить"
-            icon={<CheckIcon />}
-            onPress={handleStepsSubmit}
-            loading={logLoading}
-          />
-          {settings.googleFit !== 'on' && (
-            <Button
-              variant="secondary"
-              label="Подключить Google Fit"
-              onPress={handleConnectTracker}
-              loading={trackerLoading}
+          <BottomSheet
+            title="Внести шаги"
+            visible={stepsModal}
+            onClose={closeStepsModal}
+          >
+            <View style={{ gap: 16 }}>
+              {settings.googleFit === 'on' && myTodayLog?.source === 'manual' && (
+                <Text weight="medium" style={{ fontSize: 16, lineHeight: 16 * 1.6, color: c.text.secondary, letterSpacing: 0.2 }}>
+                  Автосинхронизация с Google Fit на сегодня отключена. Завтра снова включится.
+                </Text>
+              )}
+              <SegmentedControl
+                options={[
+                  { label: 'Добавить', value: 'add' },
+                  { label: 'Заменить', value: 'replace' },
+                ]}
+                value={stepsMode}
+                onChange={v => {
+                  const mode = v as 'add' | 'replace';
+                  setStepsMode(mode);
+                  setStepsInput(mode === 'replace' ? String(myTodayLog?.value ?? 0) : '');
+                  setStepsError(null);
+                }}
+              />
+              <Input
+                label={stepsMode === 'add' ? 'Добавление значения' : 'Изменение значения'}
+                value={stepsInput}
+                onChangeText={t => { setStepsInput(t.replace(/[^0-9]/g, '')); if (stepsError) setStepsError(null); }}
+                keyboardType="number-pad"
+                maxLength={6}
+                error={stepsError ?? undefined}
+              />
+              <Button
+                label="Сохранить"
+                icon={<CheckIcon />}
+                onPress={handleStepsSubmit}
+                loading={logLoading}
+              />
+              {settings.googleFit !== 'on' && (
+                <Button
+                  variant="secondary"
+                  label="Подключить Google Fit"
+                  onPress={handleConnectTracker}
+                  loading={trackerLoading}
+                />
+              )}
+            </View>
+          </BottomSheet>
+        </>
+      )}
+
+      {/* Count modal — для групповых custom-целей с type=count */}
+      {habit.checkin_type === 'count' && (
+        <BottomSheet
+          title={`Внести ${pluralUnit(habit.goal_unit ?? '')}`}
+          visible={groupCountModal}
+          onClose={closeGroupCountModal}
+        >
+          <View style={{ gap: 16 }}>
+            <SegmentedControl
+              options={[
+                { label: 'Добавить', value: 'add' },
+                { label: 'Заменить', value: 'replace' },
+              ]}
+              value={groupCountMode}
+              onChange={v => {
+                const mode = v as 'add' | 'replace';
+                setGroupCountMode(mode);
+                setGroupCountInput(mode === 'replace' ? String(myTodayLog?.value ?? 0) : '');
+                setGroupCountError(null);
+              }}
             />
-          )}
-        </View>
-      </BottomSheet>
+            <Input
+              label={groupCountMode === 'add' ? 'Добавление значения' : 'Изменение значения'}
+              value={groupCountInput}
+              onChangeText={t => { setGroupCountInput(t.replace(/[^0-9]/g, '')); if (groupCountError) setGroupCountError(null); }}
+              keyboardType="number-pad"
+              maxLength={6}
+              error={groupCountError ?? undefined}
+            />
+            <Button
+              label="Сохранить"
+              icon={<CheckIcon />}
+              onPress={handleGroupCountSubmit}
+              loading={logLoading}
+            />
+          </View>
+        </BottomSheet>
+      )}
 
       {/* Детализация участника — «Показать данные» */}
       <BottomSheet
