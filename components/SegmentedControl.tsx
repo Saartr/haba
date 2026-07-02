@@ -12,7 +12,7 @@ const SEGMENT_SHADOW = {
   elevation: 2,
 } as const;
 
-type Option = { label: string; value: string };
+type Option = { label: string; value: string; disabled?: boolean };
 
 type Props = {
   label?: string;
@@ -77,7 +77,8 @@ export default function SegmentedControl({ label, options, value, onChange, disa
         )}
 
         {options.map((opt, i) => {
-          const selected = opt.value === value && !disabled;
+          const optDisabled = disabled || opt.disabled;
+          const selected = opt.value === value && !optDisabled;
           return (
             <View
               key={opt.value}
@@ -87,8 +88,8 @@ export default function SegmentedControl({ label, options, value, onChange, disa
               }}
             >
               <Pressable
-                onPress={() => !disabled && onChange(opt.value)}
-                android_ripple={{ color: 'rgba(0,0,0,0.08)', borderless: false }}
+                onPress={() => !optDisabled && onChange(opt.value)}
+                android_ripple={optDisabled ? undefined : { color: 'rgba(0,0,0,0.08)', borderless: false }}
                 style={{
                   height: 40,
                   flexDirection: 'row',
@@ -105,7 +106,7 @@ export default function SegmentedControl({ label, options, value, onChange, disa
                   fontSize: 14,
                   letterSpacing: 0.2,
                   lineHeight: 14 * 1.4,
-                  color: selected ? c.text.link : c.text.secondary,
+                  color: opt.disabled ? c.text.placeholder : selected ? c.text.link : c.text.secondary,
                   flexShrink: 1,
                 }}>
                   {opt.label}

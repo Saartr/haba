@@ -31,7 +31,16 @@ const NOTIFY_OPTIONS = [
 const CATEGORY_OPTIONS = [
   { label: 'Курение', value: 'smoking' },
   { label: 'Подтягивания', value: 'pullups' },
+  { label: 'Шаги', value: 'steps' },
 ];
+
+// У каждой готовой категории пока ровно один поддерживаемый тип — остальное
+// нигде дальше по приложению не реализовано (нет экрана/валидации под комбинацию).
+const CATEGORY_TYPE: Record<string, 'solo' | 'group'> = {
+  smoking: 'solo',
+  pullups: 'solo',
+  steps: 'group',
+};
 
 const NUMBER_OPTIONS = Array.from({ length: 30 }, (_, i) => ({ label: String(i + 1), value: String(i + 1) }));
 
@@ -53,16 +62,6 @@ const WEEKDAY_OPTIONS = [
 
 const SESSIONS_PER_WEEK: Record<string, number> = { low: 2, medium: 3, high: 4 };
 
-const DURATION_OPTIONS = [
-  { label: 'Постоянная', value: 'permanent' },
-];
-
-const CHECKIN_OPTIONS = [
-  { label: 'Да / Нет', value: 'boolean' },
-  { label: 'Количество', value: 'count' },
-  { label: 'Время', value: 'time' },
-];
-
 const GROUP_GOAL_OPTIONS = [
   { label: '5 000', value: '5000' },
   { label: '7 000', value: '7000' },
@@ -79,10 +78,8 @@ export default function PresetHabitsScreen() {
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState('');
   const [description, setDescription] = useState('');
-  const [type, setType] = useState<'solo' | 'group'>('solo');
   const [category, setCategory] = useState('smoking');
-  const [duration, setDuration] = useState('permanent');
-  const [checkin, setCheckin] = useState('boolean');
+  const [type, setType] = useState<'solo' | 'group'>(CATEGORY_TYPE[category]);
   const [notify, setNotify] = useState('yes');
   const [groupGoal, setGroupGoal] = useState('7000');
   const [loading, setLoading] = useState(false);
@@ -91,6 +88,11 @@ export default function PresetHabitsScreen() {
   const [targetReps, setTargetReps] = useState('');
   const [intensity, setIntensity] = useState<'low' | 'medium' | 'high'>('medium');
   const [trainingDays, setTrainingDays] = useState<string[]>([]);
+
+  function handleCategoryChange(v: string) {
+    setCategory(v);
+    setType(CATEGORY_TYPE[v]);
+  }
 
   function handleIntensityChange(v: string) {
     const next = v as 'low' | 'medium' | 'high';
@@ -107,7 +109,7 @@ export default function PresetHabitsScreen() {
       return;
     }
 
-    const isPullups = type === 'solo' && category === 'pullups';
+    const isPullups = category === 'pullups';
     if (isPullups && (!currentForm || !targetReps || trainingDays.length !== SESSIONS_PER_WEEK[intensity])) {
       Alert.alert('Ошибка', 'Заполните текущую форму, конечную цель и дни недели');
       return;
@@ -115,14 +117,12 @@ export default function PresetHabitsScreen() {
 
     setLoading(true);
     try {
-      const goalUnit = type === 'solo'
-        ? checkin === 'boolean' ? 'boolean' : checkin === 'count' ? 'count' : 'minutes'
-        : 'steps';
+      const goalUnit = category === 'steps' ? 'steps' : 'boolean';
 
       const habit = await createHabit({
         name: name.trim(),
         description: description.trim() || undefined,
-        category: type === 'solo' ? category : 'steps',
+        category,
         type,
         goal_value: type === 'group' ? parseInt(groupGoal) : undefined,
         goal_unit: isPullups ? undefined : goalUnit,
@@ -160,6 +160,21 @@ export default function PresetHabitsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 24, gap: 16 }} style={{ flex: 1 }}>
+        <Select
+          label="Категория"
+          placeholder="Выберите категорию"
+          options={CATEGORY_OPTIONS}
+          value={category}
+          onChange={handleCategoryChange}
+        />
+
+        <SegmentedControl
+          label="Тип"
+          options={TYPE_OPTIONS.map(o => ({ ...o, disabled: o.value !== CATEGORY_TYPE[category] }))}
+          value={type}
+          onChange={(v) => setType(v as 'solo' | 'group')}
+        />
+
         <Input
           label="Название"
           value={name}
@@ -177,99 +192,60 @@ export default function PresetHabitsScreen() {
           maxLength={90}
         />
 
-        <SegmentedControl
-          label="Тип"
-          options={TYPE_OPTIONS}
-          value={type}
-          onChange={(v) => setType(v as 'solo' | 'group')}
-        />
-
-        {type === 'solo' ? (
+        {category === 'pullups' ? (
           <>
             <Select
-              label="Категория"
-              placeholder="Выберите категорию"
-              options={CATEGORY_OPTIONS}
-              value={category}
-              onChange={setCategory}
+              label="Текущая форма"
+              placeholder="Повторений в подходе сейчас"
+              options={NUMBER_OPTIONS}
+              value={currentForm}
+              onChange={setCurrentForm}
             />
-
-            {category === 'pullups' ? (
-              <>
-                <Select
-                  label="Текущая форма"
-                  placeholder="Повторений в подходе сейчас"
-                  options={NUMBER_OPTIONS}
-                  value={currentForm}
-                  onChange={setCurrentForm}
-                />
-                <Select
-                  label="Конечная цель"
-                  placeholder="Повторений в подходе в финале"
-                  options={NUMBER_OPTIONS}
-                  value={targetReps}
-                  onChange={setTargetReps}
-                />
-                <Select
-                  label="Интенсивность"
-                  options={INTENSITY_OPTIONS}
-                  value={intensity}
-                  onChange={handleIntensityChange}
-                />
-                <Multiselect
-                  label="Дни недели"
-                  placeholder="Выберите дни тренировок"
-                  options={WEEKDAY_OPTIONS}
-                  value={trainingDays}
-                  onChange={setTrainingDays}
-                  exactCount={SESSIONS_PER_WEEK[intensity]}
-                />
-                <SegmentedControl
-                  label="Уведомления"
-                  options={NOTIFY_OPTIONS}
-                  value={notify}
-                  onChange={setNotify}
-                />
-              </>
-            ) : (
-              <>
-                <Select
-                  label="Длительность"
-                  options={DURATION_OPTIONS}
-                  value={duration}
-                  onChange={setDuration}
-                />
-                <SegmentedControl
-                  label="Чекин"
-                  options={CHECKIN_OPTIONS}
-                  value={checkin}
-                  onChange={setCheckin}
-                  disabled
-                />
-                <SegmentedControl
-                  label="Уведомления"
-                  options={NOTIFY_OPTIONS}
-                  value={notify}
-                  onChange={setNotify}
-                />
-              </>
-            )}
+            <Select
+              label="Конечная цель"
+              placeholder="Повторений в подходе в финале"
+              options={NUMBER_OPTIONS}
+              value={targetReps}
+              onChange={setTargetReps}
+            />
+            <Select
+              label="Интенсивность"
+              options={INTENSITY_OPTIONS}
+              value={intensity}
+              onChange={handleIntensityChange}
+            />
+            <Multiselect
+              label="Дни недели"
+              placeholder="Выберите дни тренировок"
+              options={WEEKDAY_OPTIONS}
+              value={trainingDays}
+              onChange={setTrainingDays}
+              exactCount={SESSIONS_PER_WEEK[intensity]}
+            />
+            <SegmentedControl
+              label="Уведомления"
+              options={NOTIFY_OPTIONS}
+              value={notify}
+              onChange={setNotify}
+            />
           </>
-        ) : (
+        ) : category === 'steps' ? (
           <>
-            <Select
-              label="Категория"
-              options={[{ label: 'Шаги', value: 'steps' }]}
-              value="steps"
-              onChange={() => {}}
-              disabled
-            />
             <Select
               label="Цель за день"
               options={GROUP_GOAL_OPTIONS}
               value={groupGoal}
               onChange={setGroupGoal}
             />
+            <SegmentedControl
+              label="Уведомления"
+              options={NOTIFY_OPTIONS}
+              value={notify}
+              onChange={setNotify}
+            />
+          </>
+        ) : (
+          <>
             <SegmentedControl
               label="Уведомления"
               options={NOTIFY_OPTIONS}
