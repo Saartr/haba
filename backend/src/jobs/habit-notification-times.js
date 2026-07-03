@@ -37,7 +37,7 @@ async function sendNotificationTimeReminders() {
       await sendToUser(row.user_id, {
         title: 'Тапа',
         body: `Не забудь отметить цель «${row.name}» 🎯`,
-        data: { type: 'reminder', habit_id: String(row.habit_id) },
+        data: { type: 'reminder', habitId: String(row.habit_id) },
       });
     } catch (e) {
       console.error('[notif-times] send error for user', row.user_id, e.message);

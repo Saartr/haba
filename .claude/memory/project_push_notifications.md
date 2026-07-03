@@ -1,6 +1,6 @@
 ---
 name: project-push-notifications
-description: Push-уведомления — FCM HTTP v1 напрямую (без Expo); 3 типа пушей и их триггеры
+description: Push-уведомления — FCM HTTP v1 напрямую (без Expo); 4 типа пушей и их триггеры, включая кастомное время
 metadata:
   type: project
 ---
@@ -17,7 +17,8 @@ FCM HTTP v1 без Expo Push Service. Бэкенд сам ходит в Google F
 - `push_tokens` — отдельная таблица (не колонка в `users`), см. [[project_database]]
 - `backend/src/push/fcm.js` — кэш OAuth2 access token, обработка UNREGISTERED/404 (чистит протухший токен из `push_tokens`)
 - `backend/src/push/notify.js` — `notifyHabitJoin`, `notifyGoalIfReached` (учитывают `habits.notifications`)
-- `backend/src/jobs/habit-reminders.js` — cron `0 19 * * *` МСК
+- `backend/src/jobs/habit-reminders.js` — cron `0 19 * * *` МСК; исключает привычки с заданным `notification_times` (их покрывает hourly-джоб ниже)
+- `backend/src/jobs/habit-notification-times.js` — cron `0 * * * *` МСК (ежечасно), напоминания по кастомному времени привычки (`habits.notification_times TEXT[]`), см. пуш №4 ниже
 - `app/_layout.tsx` — регистрация токена после логина, слушатель ротации токена, обработка тапа по пушу
 
 ## Два тоггла
@@ -50,5 +51,12 @@ FCM HTTP v1 без Expo Push Service. Бэкенд сам ходит в Google F
    - Текст: заголовок — название цели, тело «{Имя} выполнил цель на сегодня 🎯»
    - Тап → переход на экран цели
    - Применимо только к целям с числовым `goal_value` (групповые цели по шагам); у «Подтягиваний» и курения `goal_value` нет, этот пуш для них не срабатывает
+
+4. **Напоминание по кастомному времени** (`backend/src/jobs/habit-notification-times.js`, `sendNotificationTimeReminders`)
+   - Когда: ежечасно (cron `0 * * * *` МСК) — если текущий час есть в `habits.notification_times` (`TEXT[]`, напр. `['09:00','18:00']`) привычки, и участник ещё не залогировался сегодня
+   - Настраивается только при создании привычки через мастер (`custom-habit/step3.tsx`, 1-3 раза в день + выбор часа 06:00-23:00); в `edit-habit` — нередактируемо, `PATCH /habits/:id` это поле не принимает
+   - Не зависит от `goal_value` — работает для любой периодичности `daily`
+   - Текст: заголовок «Тапа», тело «Не забудь отметить цель «{название}» 🎯»
+   - Тап → переход на экран цели (`data.habitId`)
 
 **How to apply:** при добавлении нового типа пуша — класть текст/адресацию в `backend/src/push/notify.js` (транспорт через `fcm.js` не трогать), указывать `data.habitId` если нужен переход по тапу, и не забывать проверку `habit.notifications` перед отправкой.
