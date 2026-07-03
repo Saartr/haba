@@ -1594,8 +1594,8 @@ export default function HabitScreen() {
               </Card>
             </View>
 
-            {/* Все участники */}
-            <SectionTitle>Все участники</SectionTitle>
+            {/* Общая статистика */}
+            <SectionTitle>Общая статистика</SectionTitle>
             <View style={{ paddingHorizontal: 24 }}>
               <Card style={{ gap: 16 }}>
                 {habit.members.map(m => (

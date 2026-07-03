@@ -65,7 +65,7 @@ const UNIT_LABELS: Record<string, string> = {
   page: 'Страница', rep: 'Повторение', custom: '',
 };
 
-type Periodicity = 'daily' | 'weekdays' | 'n_per_week' | 'n_per_month';
+type Periodicity = 'daily' | 'weekdays' | 'n_per_week' | 'n_per_month' | 'any';
 type DurationType = 'unlimited' | 'period' | 'until_goal';
 type MonthCountType = 'summary' | 'dates';
 
@@ -74,6 +74,7 @@ const PERIODICITY_TABS: { key: Periodicity; label: string }[] = [
   { key: 'weekdays', label: 'Дни недели' },
   { key: 'n_per_week', label: 'N раз в неделю' },
   { key: 'n_per_month', label: 'N раз в месяц' },
+  { key: 'any', label: 'Без ограничений' },
 ];
 
 const MONTH_SEGMENT_OPTIONS = [
@@ -404,7 +405,7 @@ export default function Step3Screen() {
 
         {/* Длительность */}
         <SegmentedControl
-          label="Периодичность"
+          label="Срок"
           options={durationOptions}
           value={state.durationType}
           onChange={(v) => {

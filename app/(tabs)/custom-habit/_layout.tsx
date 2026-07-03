@@ -13,7 +13,7 @@ export type CustomHabitState = {
   goalValue: string;
   progressionStart: string;
   // Шаг 3
-  periodicity: 'daily' | 'weekdays' | 'n_per_week' | 'n_per_month';
+  periodicity: 'daily' | 'weekdays' | 'n_per_week' | 'n_per_month' | 'any';
   timesPerDay: number;
   notificationTimes: string[];
   weekdays: number[];

@@ -25,6 +25,26 @@ const NOTIFY_OPTIONS = [
   { label: 'Нет', value: 'no' },
 ];
 
+const UNIT_PRESETS = [
+  { label: 'Минута', value: 'minute' },
+  { label: 'Час', value: 'hour' },
+  { label: 'Шаг', value: 'step' },
+  { label: 'Калория', value: 'calorie' },
+  { label: 'Километр', value: 'km' },
+  { label: 'Метр', value: 'm' },
+  { label: 'Стакан', value: 'glass' },
+  { label: 'Литр', value: 'litre' },
+  { label: 'Страница', value: 'page' },
+  { label: 'Повторение', value: 'rep' },
+  { label: 'Свой вариант', value: 'custom' },
+];
+
+const UNIT_LABELS: Record<string, string> = {
+  minute: 'Минута', hour: 'Час', step: 'Шаг', calorie: 'Калория',
+  km: 'Километр', m: 'Метр', glass: 'Стакан', litre: 'Литр',
+  page: 'Страница', rep: 'Повторение', custom: '',
+};
+
 export default function EditHabitScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const habitId = parseInt(id);
@@ -40,6 +60,11 @@ export default function EditHabitScreen() {
   const [groupGoal, setGroupGoal] = useState('7000');
   const [notify, setNotify] = useState('yes');
   const [habitType, setHabitType] = useState<'solo' | 'group'>('solo');
+  const [category, setCategory] = useState('');
+  const [checkinType, setCheckinType] = useState('boolean');
+  const [unitPreset, setUnitPreset] = useState('custom');
+  const [unitLabel, setUnitLabel] = useState('');
+  const [unitLabelError, setUnitLabelError] = useState('');
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
 
@@ -52,6 +77,12 @@ export default function EditHabitScreen() {
         setName(habit.name);
         setDescription(habit.description ?? '');
         setHabitType(habit.type);
+        setCategory(habit.category);
+        setCheckinType(habit.checkin_type ?? 'boolean');
+        if (habit.unit_preset) {
+          setUnitPreset(habit.unit_preset);
+          if (habit.unit_preset === 'custom') setUnitLabel(habit.goal_unit ?? '');
+        }
         if (habit.goal_value != null) {
           setGroupGoal(String(habit.goal_value));
         }
@@ -61,9 +92,15 @@ export default function EditHabitScreen() {
       .catch(() => router.back());
   }, [habitId]);
 
+  const hasUnit = checkinType === 'count' || checkinType === 'progression';
+
   async function handleSave() {
     if (!name.trim()) {
       setNameError('Обязательное поле');
+      return;
+    }
+    if (hasUnit && unitPreset === 'custom' && !unitLabel.trim()) {
+      setUnitLabelError('Обязательное поле');
       return;
     }
     setLoading(true);
@@ -71,8 +108,13 @@ export default function EditHabitScreen() {
       await updateHabit(habitId, {
         name: name.trim(),
         description: description.trim() || undefined,
-        goal_value: habitType === 'group' ? parseInt(groupGoal) : undefined,
+        // «Цель за день» с пресетами шагов относится только к category=steps — для остальных
+        // типов (кастомные count/boolean) поле не показывается и goal_value не трогаем,
+        // чтобы не затереть реальную (или отсутствующую) цель пресетом 5000/7000/10000.
+        goal_value: category === 'steps' && habitType === 'group' ? parseInt(groupGoal) : undefined,
         notifications: notify === 'yes',
+        unit_preset: hasUnit ? unitPreset : undefined,
+        goal_unit: hasUnit ? (unitPreset === 'custom' ? unitLabel.trim() : UNIT_LABELS[unitPreset] ?? '') : undefined,
       });
       showSnackbar('Изменения сохранены', 'success');
       router.back();
@@ -111,13 +153,34 @@ export default function EditHabitScreen() {
           maxLength={90}
         />
 
-        {habitType === 'group' && (
+        {habitType === 'group' && category === 'steps' && (
           <Select
             label="Цель за день"
             options={GROUP_GOAL_OPTIONS}
             value={groupGoal}
             onChange={setGroupGoal}
           />
+        )}
+
+        {hasUnit && (
+          <>
+            <Select
+              label="Единица измерения"
+              options={UNIT_PRESETS}
+              value={unitPreset}
+              onChange={(v) => { setUnitPreset(v); setUnitLabel(''); setUnitLabelError(''); }}
+            />
+            {unitPreset === 'custom' && (
+              <Input
+                label="Название единицы"
+                value={unitLabel}
+                onChangeText={(t) => { setUnitLabel(t); if (unitLabelError) setUnitLabelError(''); }}
+                placeholder="стаканы, км, страницы..."
+                maxLength={20}
+                error={unitLabelError}
+              />
+            )}
+          </>
         )}
 
         <SegmentedControl

@@ -183,7 +183,7 @@ export async function createHabit(data: {
   checkin_type?: 'boolean' | 'count' | 'progression';
   unit_preset?: string;
   progression_start?: number;
-  periodicity?: 'daily' | 'weekdays' | 'n_per_week' | 'n_per_month';
+  periodicity?: 'daily' | 'weekdays' | 'n_per_week' | 'n_per_month' | 'any';
   times_per_day?: number;
   notification_times?: string[];
   weekdays?: number[];
@@ -264,7 +264,7 @@ export async function transferHabit(habitId: number, userId: number): Promise<vo
   return request(`/habits/${habitId}/transfer`, { method: 'POST', body: JSON.stringify({ user_id: userId }) }, true);
 }
 
-export async function updateHabit(id: number, data: { name: string; description?: string; goal_value?: number; notifications?: boolean }): Promise<Habit> {
+export async function updateHabit(id: number, data: { name: string; description?: string; goal_value?: number; notifications?: boolean; unit_preset?: string; goal_unit?: string }): Promise<Habit> {
   return request(`/habits/${id}`, { method: 'PATCH', body: JSON.stringify(data) }, true);
 }
 

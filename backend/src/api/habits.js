@@ -216,22 +216,31 @@ router.get('/:id', async (req, res) => {
 // PATCH /api/v1/habits/:id — редактировать привычку (только создатель)
 router.patch('/:id', async (req, res) => {
   const habitId = parseInt(req.params.id);
-  const { name, description, goal_value, notifications } = req.body;
+  const { name, description, goal_value, notifications, unit_preset, goal_unit } = req.body;
   if (!name?.trim()) return res.status(400).json({ message: 'name обязателен' });
   try {
-    const [habit] = await sql`SELECT creator_id, notifications FROM habits WHERE id = ${habitId}`;
+    const [habit] = await sql`
+      SELECT creator_id, notifications, goal_value, unit_preset, goal_unit FROM habits WHERE id = ${habitId}
+    `;
     if (!habit) return res.status(404).json({ message: 'Не найдено' });
     if (habit.creator_id !== req.userId) return res.status(403).json({ message: 'Нет прав' });
 
     // notifications не передан (старый клиент) — сохраняем текущее значение, не сбрасываем на true
     const nextNotifications = typeof notifications === 'boolean' ? notifications : habit.notifications;
+    // Поля ниже не передаются, если не относятся к этому типу цели на экране редактирования —
+    // сохраняем текущее значение; явный null в теле запроса всё ещё очищает поле.
+    const nextGoalValue = goal_value !== undefined ? goal_value : habit.goal_value;
+    const nextUnitPreset = unit_preset !== undefined ? unit_preset : habit.unit_preset;
+    const nextGoalUnit = goal_unit !== undefined ? goal_unit : habit.goal_unit;
 
     const [updated] = await sql`
       UPDATE habits
       SET name = ${name.trim()},
           description = ${description?.trim() || null},
-          goal_value = ${goal_value ?? null},
-          notifications = ${nextNotifications}
+          goal_value = ${nextGoalValue},
+          notifications = ${nextNotifications},
+          unit_preset = ${nextUnitPreset},
+          goal_unit = ${nextGoalUnit}
       WHERE id = ${habitId}
       RETURNING *
     `;
