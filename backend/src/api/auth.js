@@ -75,35 +75,78 @@ function downloadFile(url, dest) {
   });
 }
 
-async function fetchAndSaveAvatar(bot, tgId, userId, photoUrl) {
+// Фото профиля через VK API users.get с сервисным токеном — в отличие от
+// пользовательского access_token, сервисный не привязан к IP устройства, поэтому
+// можно звать с сервера в любой момент (не только сразу после клиентского логина).
+// photo_max_orig/photo_100 — фоллбэк на случай, если у фото нет варианта 200px
+// (VK не отдаёт photo_200, если исходник меньше 200×200).
+async function fetchVkPhotoUrl(vkId) {
+  const params = new URLSearchParams({
+    user_ids: vkId,
+    fields: 'photo_max_orig,photo_200,photo_100',
+    access_token: VK_SERVICE_TOKEN,
+    v: '5.199',
+  });
+  const res = await fetch(`https://api.vk.com/method/users.get?${params}`);
+  const data = await res.json();
+  const u = data.response?.[0];
+  if (!u) return null;
+  return u.photo_max_orig || u.photo_200 || u.photo_100 || null;
+}
+
+// Кандидаты URL фото профиля из ЛЮБОГО привязанного провайдера (если привязаны и tg_id,
+// и vk_id — проверяем оба). Порядок: Telegram Bot API (надёжнее временных URL) → VK
+// users.get (сервисный токен) → freshProviderPhotoUrl (photo_url из виджета/OIDC claims —
+// последний фоллбэк на случай, если оба провайдер-специфичных способа не сработали).
+async function fetchProviderAvatarCandidates(bot, user, freshProviderPhotoUrl) {
+  const candidates = [];
+  if (user.tg_id) {
+    try {
+      const photos = await bot.api.getUserProfilePhotos(Number(user.tg_id), { limit: 1 });
+      if (photos.total_count) {
+        const fileId = photos.photos[0][0].file_id;
+        const file = await bot.api.getFile(fileId);
+        candidates.push(`https://api.telegram.org/file/bot${TELEGRAM_TOKEN}/${file.file_path}`);
+      }
+    } catch (e) {
+      console.error('Avatar: Telegram Bot API lookup failed:', e.message);
+    }
+  }
+  if (user.vk_id) {
+    try {
+      const url = await fetchVkPhotoUrl(user.vk_id);
+      if (url) candidates.push(url);
+    } catch (e) {
+      console.error('Avatar: VK users.get lookup failed:', e.message);
+    }
+  }
+  if (freshProviderPhotoUrl) candidates.push(freshProviderPhotoUrl);
+  return candidates;
+}
+
+// Скачивает первый доступный кандидат, сохраняет как avatar_url пользователя.
+async function downloadFirstAvatar(userId, candidates) {
   const destPath = path.join(AVATARS_DIR, `${userId}.jpg`);
   fs.mkdirSync(AVATARS_DIR, { recursive: true });
 
-  // Сначала пробуем Bot API — надёжнее чем временный photo_url из виджета
-  try {
-    const photos = await bot.api.getUserProfilePhotos(tgId, { limit: 1 });
-    if (photos.total_count) {
-      const fileId = photos.photos[0][0].file_id;
-      const file = await bot.api.getFile(fileId);
-      const fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_TOKEN}/${file.file_path}`;
-      await downloadFile(fileUrl, destPath);
-      return `${AVATARS_URL}/${userId}.jpg`;
-    }
-  } catch (e) {
-    console.error('Avatar download via Bot API failed:', e.message);
-  }
-
-  // Fallback на photo_url из виджета
-  if (photoUrl) {
+  for (const url of candidates) {
     try {
-      await downloadFile(photoUrl, destPath);
-      return `${AVATARS_URL}/${userId}.jpg`;
+      await downloadFile(url, destPath);
+      const avatarUrl = `${AVATARS_URL}/${userId}.jpg`;
+      await sql`UPDATE users SET avatar_url = ${avatarUrl} WHERE id = ${userId}`;
+      return avatarUrl;
     } catch (e) {
-      console.error('Avatar download from widget URL failed:', e.message);
+      console.error('Avatar download failed for', url, ':', e.message);
     }
   }
-
   return null;
+}
+
+// Пытается подтянуть аватар, если его ещё нет — вызывается при логине/привязке.
+async function ensureAvatar(bot, user, freshProviderPhotoUrl) {
+  if (user.avatar_url) return user.avatar_url;
+  const candidates = await fetchProviderAvatarCandidates(bot, user, freshProviderPhotoUrl);
+  return downloadFirstAvatar(user.id, candidates);
 }
 
 const VK_SERVICE_TOKEN = process.env.VK_SERVICE_TOKEN;
@@ -152,26 +195,15 @@ router.post('/vk', async (req, res) => {
       INSERT INTO users (vk_id, first_name, last_name, email, phone, last_login_provider)
       VALUES (${vkId}, ${firstName}, ${lastName}, ${emailVal}, ${phoneVal}, 'vk')
       ON CONFLICT (vk_id) DO UPDATE SET
-        first_name = COALESCE(EXCLUDED.first_name, users.first_name),
-        last_name  = COALESCE(EXCLUDED.last_name,  users.last_name),
+        first_name = COALESCE(users.first_name, EXCLUDED.first_name),
+        last_name  = COALESCE(users.last_name,  EXCLUDED.last_name),
         email      = COALESCE(EXCLUDED.email,      users.email),
         phone      = COALESCE(EXCLUDED.phone,      users.phone),
         last_login_provider = 'vk'
       RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
     `;
 
-    let avatarUrl = user.avatar_url;
-    if (!avatarUrl && photoUrl) {
-      const destPath = path.join(AVATARS_DIR, `${user.id}.jpg`);
-      try {
-        fs.mkdirSync(AVATARS_DIR, { recursive: true });
-        await downloadFile(photoUrl, destPath);
-        avatarUrl = `${AVATARS_URL}/${user.id}.jpg`;
-        await sql`UPDATE users SET avatar_url = ${avatarUrl} WHERE id = ${user.id}`;
-      } catch (e) {
-        console.error('VK avatar download failed:', e.message);
-      }
-    }
+    const avatarUrl = await ensureAvatar(req.bot, user, photoUrl);
 
     const newAccessToken = makeAccessToken(user.id);
     const refreshToken = makeRefreshToken(user.id);
@@ -238,21 +270,15 @@ router.post('/telegram-native', async (req, res) => {
       INSERT INTO users (tg_id, username, first_name, last_name, phone, last_login_provider)
       VALUES (${tgId}, ${username}, ${firstName}, ${lastName}, ${phone}, 'telegram')
       ON CONFLICT (tg_id) DO UPDATE SET
-        username   = COALESCE(EXCLUDED.username,   users.username),
-        first_name = COALESCE(EXCLUDED.first_name, users.first_name),
-        last_name  = COALESCE(EXCLUDED.last_name,  users.last_name),
+        username   = COALESCE(users.username,   EXCLUDED.username),
+        first_name = COALESCE(users.first_name, EXCLUDED.first_name),
+        last_name  = COALESCE(users.last_name,  EXCLUDED.last_name),
         phone      = COALESCE(EXCLUDED.phone,      users.phone),
         last_login_provider = 'telegram'
       RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
     `;
 
-    // Аватар: claims.picture — URL фото из Telegram. Скачиваем через тот же helper
-    // (по Bot API надёжнее, picture может протухать), fallback на текущий.
-    let avatarUrl = await fetchAndSaveAvatar(req.bot, tgId, user.id, claims.picture || null);
-    if (!avatarUrl) avatarUrl = user.avatar_url;
-    if (avatarUrl && avatarUrl !== user.avatar_url) {
-      await sql`UPDATE users SET avatar_url = ${avatarUrl} WHERE id = ${user.id}`;
-    }
+    const avatarUrl = await ensureAvatar(req.bot, user, claims.picture || null);
 
     const accessToken = makeAccessToken(user.id);
     const refreshToken = makeRefreshToken(user.id);
@@ -385,6 +411,42 @@ router.patch('/me', requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/v1/auth/refresh-avatar — принудительно перекачать аватар из привязанных
+// провайдеров (в отличие от ensureAvatar игнорирует текущий avatar_url) — кнопка
+// «Обновить аватар» в настройках профиля.
+router.post('/refresh-avatar', requireAuth, async (req, res) => {
+  try {
+    const [user] = await sql`SELECT id, tg_id, vk_id FROM users WHERE id = ${req.userId}`;
+    if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
+    if (!user.tg_id && !user.vk_id) {
+      return res.status(400).json({ message: 'Нет привязанного Telegram или VK' });
+    }
+
+    const candidates = await fetchProviderAvatarCandidates(req.bot, user);
+    const avatarUrl = await downloadFirstAvatar(user.id, candidates);
+    if (!avatarUrl) {
+      return res.status(422).json({ message: 'Не удалось получить фото профиля' });
+    }
+
+    const [full] = await sql`
+      SELECT username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
+      FROM users WHERE id = ${req.userId}
+    `;
+    res.json({
+      username:   full.username   || null,
+      first_name: full.first_name || null,
+      last_name:  full.last_name  || null,
+      avatar_url: full.avatar_url || null,
+      tg_id:      full.tg_id ? String(full.tg_id) : null,
+      vk_id:      full.vk_id     || null,
+      last_login_provider: full.last_login_provider || null,
+    });
+  } catch (e) {
+    console.error('refresh-avatar error:', e);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
 // Объединяет данные двух аккаунтов: переносит всё из deleteId в keepId, удаляет deleteId.
 // Используется при привязке второго способа входа, если tg_id/vk_id уже занят другим аккаунтом.
 async function mergeUsers(keepId, deleteId) {
@@ -482,17 +544,10 @@ router.post('/link/telegram', requireAuth, async (req, res) => {
         last_name  = COALESCE(last_name,  ${lastName}),
         phone      = COALESCE(phone,      ${phone})
       WHERE id = ${req.userId}
-      RETURNING username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
+      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
     `;
 
-    let avatarUrl = user.avatar_url;
-    if (!avatarUrl) {
-      const fetched = await fetchAndSaveAvatar(req.bot, tgId, req.userId, claims.picture || null);
-      if (fetched) {
-        avatarUrl = fetched;
-        await sql`UPDATE users SET avatar_url = ${avatarUrl} WHERE id = ${req.userId}`;
-      }
-    }
+    const avatarUrl = await ensureAvatar(req.bot, user, claims.picture || null);
 
     res.json({
       username:   user.username   || null,
@@ -537,21 +592,10 @@ router.post('/link/vk', requireAuth, async (req, res) => {
         email      = COALESCE(email,      ${email           || null}),
         phone      = COALESCE(phone,      ${phone           || null})
       WHERE id = ${req.userId}
-      RETURNING username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
+      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
     `;
 
-    let avatarUrl = user.avatar_url;
-    if (!avatarUrl && photo200) {
-      try {
-        const destPath = path.join(AVATARS_DIR, `${req.userId}.jpg`);
-        fs.mkdirSync(AVATARS_DIR, { recursive: true });
-        await downloadFile(photo200, destPath);
-        avatarUrl = `${AVATARS_URL}/${req.userId}.jpg`;
-        await sql`UPDATE users SET avatar_url = ${avatarUrl} WHERE id = ${req.userId}`;
-      } catch (e) {
-        console.error('VK avatar download failed:', e.message);
-      }
-    }
+    const avatarUrl = await ensureAvatar(req.bot, user, photo200 || null);
 
     res.json({
       username:   user.username   || null,

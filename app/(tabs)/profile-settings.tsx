@@ -8,12 +8,13 @@ import Button from '@/components/Button';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import { useAuth } from '@/lib/auth-context';
-import { updateProfile, linkTelegram, linkVk } from '@/lib/api';
+import { updateProfile, linkTelegram, linkVk, refreshAvatar } from '@/lib/api';
 import { signInWithTelegram } from '@/modules/telegram-login';
 import { signInWithVK } from '@/modules/vk-id';
 import NavigationBar from '@/components/NavigationBar';
 import TelegramIcon from '@/assets/icons/Telegram.svg';
 import VKIcon from '@/assets/icons/VK.svg';
+import AutorenewIcon from '@/assets/icons/Autorenew.svg';
 
 export default function ProfileSettingsScreen() {
   const router = useRouter();
@@ -27,6 +28,7 @@ export default function ProfileSettingsScreen() {
   const [saving, setSaving] = useState(false);
   const [linkingTg, setLinkingTg] = useState(false);
   const [linkingVk, setLinkingVk] = useState(false);
+  const [refreshingAvatar, setRefreshingAvatar] = useState(false);
 
   const save = async () => {
     const trimmed = name.trim();
@@ -75,6 +77,18 @@ export default function ProfileSettingsScreen() {
     }
   };
 
+  const handleRefreshAvatar = async () => {
+    setRefreshingAvatar(true);
+    try {
+      const updated = await refreshAvatar();
+      updateUser(updated);
+    } catch (e: any) {
+      Alert.alert('Ошибка', e?.message ?? 'Не удалось обновить аватар');
+    } finally {
+      setRefreshingAvatar(false);
+    }
+  };
+
   const hasTg = !!user?.tg_id;
   const hasVk = !!user?.vk_id;
 
@@ -93,6 +107,14 @@ export default function ProfileSettingsScreen() {
           onSubmitEditing={save}
           onBlur={save}
           disabled={saving}
+        />
+
+        <Button
+          label="Обновить аватар"
+          variant="secondary"
+          icon={<AutorenewIcon />}
+          onPress={handleRefreshAvatar}
+          loading={refreshingAvatar}
         />
 
         {/* Связанные аккаунты */}

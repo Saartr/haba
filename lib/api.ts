@@ -94,6 +94,11 @@ export async function linkVk(data: { accessToken: string; userId: string; firstN
   return request('/auth/link/vk', { method: 'POST', body: JSON.stringify(data) }, true);
 }
 
+/** Принудительно перекачать аватар с привязанного провайдера (Telegram/VK). */
+export async function refreshAvatar(): Promise<UserProfile> {
+  return request('/auth/refresh-avatar', { method: 'POST' }, true);
+}
+
 // ── Habits ────────────────────────────────────────────────────────────────────
 
 export type PullupsSession = { session: number; sets: number; reps: number };
