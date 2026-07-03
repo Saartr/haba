@@ -71,14 +71,50 @@ app.get('/miniapp', (req, res) => {
   res.sendFile(path.join(__dirname, 'miniapp/index.html'));
 });
 
+// Экранирование для вставки пользовательских данных (имя цели, имя пригласившего) в HTML.
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // GET /join/:code — страница-редирект инвайта в приложение.
 // По образцу telegram-callback: кнопка + авто-редирект на haba://join/<code>.
-// fallback-текст если приложение не установлено.
-app.get('/join/:code', (req, res) => {
+// fallback-текст если приложение не установлено. Показывает название цели и того,
+// кто пригласил — до того, как определим на сервере, стоит ли приложение.
+app.get('/join/:code', async (req, res) => {
   const code = String(req.params.code).replace(/[^A-Za-z0-9_-]/g, '');
   const deeplink = `haba://join/${code}`;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
+
+  let habitName = null;
+  let inviterName = null;
+  try {
+    const [row] = await sql`
+      SELECT h.name, u.first_name, u.username
+      FROM habits h
+      JOIN users u ON u.id = h.creator_id
+      WHERE h.invite_code = ${code} AND h.closed_at IS NULL
+    `;
+    if (row) {
+      habitName = row.name;
+      inviterName = row.first_name || row.username;
+    }
+  } catch (e) {
+    console.error('join page lookup error:', e);
+  }
+
+  const intro = habitName
+    ? `Вас пригласили в групповую цель «${escapeHtml(habitName)}»`
+    : 'Вас пригласили в групповую цель';
+  const inviter = inviterName
+    ? `<p>Приглашает: ${escapeHtml(inviterName)}</p>`
+    : '';
+
   res.send(`<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -92,7 +128,8 @@ app.get('/join/:code', (req, res) => {
   </style>
 </head>
 <body>
-  <p>Вас пригласили в групповую цель</p>
+  <p>${intro}</p>
+  ${inviter}
   <a class="btn" id="btn" href="${deeplink}">Открыть Тапа</a>
   <p id="fallback" style="display:none">Если приложение не открылось — установите Тапа и откройте ссылку снова.</p>
   <script>
