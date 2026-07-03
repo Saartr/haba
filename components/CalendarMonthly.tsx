@@ -210,6 +210,19 @@ export default function CalendarMonthly({
   const [viewMonth, setViewMonth] = useState(now.getMonth());
 
   const translateX = useRef(new Animated.Value(0)).current;
+  // Блокирует начало нового жеста/повторный тап по стрелке, пока текущая анимация
+  // смены месяца не завершилась — без этого быстрый повторный свайп прерывает
+  // ещё летящую Animated.timing, translateX уезжает за пределы ±SWIPE_OUT_X,
+  // и сетка дат визуально уезжает за overflow:hidden (выглядит как пустое место).
+  const isAnimatingRef = useRef(false);
+
+  // Заголовок «Месяц Год» анимируется отдельно от сетки: гаснет и уезжает
+  // в сторону свайпа, пока едет сетка, затем появляется с противоположной
+  // стороны сразу после смены месяца — без этого текст менялся мгновенно
+  // и выглядело дёргано на фоне плавно едущей сетки.
+  const titleOpacity = useRef(new Animated.Value(1)).current;
+  const titleTranslateX = useRef(new Animated.Value(0)).current;
+  const TITLE_SHIFT = 16;
 
   const logsSet = new Set(logs);
   const missedSet = new Set(missedDates);
@@ -229,7 +242,7 @@ export default function CalendarMonthly({
 
   const panResponder = useRef(PanResponder.create({
     onMoveShouldSetPanResponder: (_, gs) =>
-      Math.abs(gs.dx) > 8 && Math.abs(gs.dx) > Math.abs(gs.dy),
+      !isAnimatingRef.current && Math.abs(gs.dx) > 8 && Math.abs(gs.dx) > Math.abs(gs.dy),
     onPanResponderMove: (_, gs) => translateX.setValue(gs.dx),
     onPanResponderRelease: (_, gs) => {
       if (gs.dx < -SWIPE_THRESHOLD) {
@@ -255,18 +268,35 @@ export default function CalendarMonthly({
   };
 
   function animateAndGo(direction: 'prev' | 'next') {
+    if (isAnimatingRef.current) return;
     if ((direction === 'prev' && !canGoPrev) || (direction === 'next' && !canGoNext)) {
-      Animated.spring(translateX, { toValue: 0, useNativeDriver: true, tension: 200, friction: 20 }).start();
+      isAnimatingRef.current = true;
+      Animated.spring(translateX, { toValue: 0, useNativeDriver: true, tension: 200, friction: 20 }).start(() => {
+        isAnimatingRef.current = false;
+      });
       return;
     }
+    isAnimatingRef.current = true;
     const toX = direction === 'next' ? -SWIPE_OUT_X : SWIPE_OUT_X;
-    Animated.timing(translateX, {
-      toValue: toX,
-      duration: 180,
-      useNativeDriver: true,
-    }).start(() => {
+    const titleExitX = direction === 'next' ? -TITLE_SHIFT : TITLE_SHIFT;
+    Animated.parallel([
+      Animated.timing(translateX, {
+        toValue: toX,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(titleOpacity, { toValue: 0, duration: 140, useNativeDriver: true }),
+      Animated.timing(titleTranslateX, { toValue: titleExitX, duration: 140, useNativeDriver: true }),
+    ]).start(() => {
       goRef.current(direction);
       translateX.setValue(0);
+      titleTranslateX.setValue(-titleExitX);
+      Animated.parallel([
+        Animated.timing(titleOpacity, { toValue: 1, duration: 160, useNativeDriver: true }),
+        Animated.timing(titleTranslateX, { toValue: 0, duration: 160, useNativeDriver: true }),
+      ]).start(() => {
+        isAnimatingRef.current = false;
+      });
     });
   }
   animateRef.current = animateAndGo;
@@ -289,9 +319,11 @@ export default function CalendarMonthly({
             </Pressable>
           )}
         </View>
-        <Text weight="semibold" style={{ flex: 1, fontSize: 16, color: c.text.primary, letterSpacing: 0.2, textAlign: 'center' }}>
-          {MONTHS_RU[viewMonth]} {viewYear}
-        </Text>
+        <Animated.View style={{ flex: 1, opacity: titleOpacity, transform: [{ translateX: titleTranslateX }] }}>
+          <Text weight="semibold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2, textAlign: 'center' }}>
+            {MONTHS_RU[viewMonth]} {viewYear}
+          </Text>
+        </Animated.View>
         <View style={{ width: 24, alignItems: 'flex-end' }}>
           {canGoNext && (
             <Pressable onPress={() => animateAndGo('next')} hitSlop={12} android_ripple={{ color: 'rgba(0,0,0,0.06)', borderless: true, radius: 20 }}>
