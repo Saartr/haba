@@ -127,6 +127,9 @@ function HabitCard({ habit, extra, onPress }: {
     ? todayVal >= 1
     : isProgression
     ? habit.goal_value != null && todayVal >= habit.goal_value
+    // count без цели (безлимитная групповая) — всегда довольный Тапа, даже при 0 за день
+    : isCount && habit.goal_value == null
+    ? true
     : todayVal >= (habit.goal_value ?? 1) && (habit.goal_value ?? 0) > 0;
 
   return (
