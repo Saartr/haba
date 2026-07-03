@@ -75,7 +75,14 @@ export default function Step2Screen() {
         setUnitLabelError('Обязательное поле');
         valid = false;
       }
-      if (!state.goalValue || isNaN(Number(state.goalValue)) || Number(state.goalValue) <= 0) {
+      // Для групповой count-цели «Цель» необязательна — пусто = без ограничения.
+      // Для соло — обязательна, как раньше.
+      if (state.habitType === 'group') {
+        if (state.goalValue && (isNaN(Number(state.goalValue)) || Number(state.goalValue) <= 0)) {
+          setGoalError('Цель должна быть больше 0');
+          valid = false;
+        }
+      } else if (!state.goalValue || isNaN(Number(state.goalValue)) || Number(state.goalValue) <= 0) {
         setGoalError('Укажите цель больше 0');
         valid = false;
       }
@@ -178,10 +185,10 @@ export default function Step2Screen() {
               />
             )}
             <Input
-              label="Цель"
+              label={state.habitType === 'group' ? 'Цель (опционально)' : 'Цель'}
               value={state.goalValue}
               onChangeText={(t) => { set({ goalValue: t }); setGoalError(''); }}
-              placeholder="Сколько нужно сделать"
+              placeholder={state.habitType === 'group' ? 'Оставь пустым — без ограничения' : 'Сколько нужно сделать'}
               keyboardType="numeric"
               error={goalError}
             />

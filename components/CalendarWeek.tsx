@@ -100,6 +100,7 @@ function buildDays(
   habitCreatedAt: Date,
   goalValue: number,
   trainingDays?: number[] | null,
+  noMissIndicator?: boolean,
 ): CalendarDay[] {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
@@ -122,6 +123,10 @@ function buildDays(
       status = 'inactive';
     } else if (diff > 0) {
       status = 'future';
+    } else if (noMissIndicator) {
+      // Без порога/красного: запись есть — галочка, нет — пустой серый кружок
+      // (тот же вид, что и у будущих дней), независимо от того, прошедший день это или сегодня.
+      status = loggedValue !== undefined && loggedValue > 0 ? 'check' : 'future';
     } else if (diff === 0) {
       if (loggedValue !== undefined && loggedValue >= goalValue) status = 'check';
       else if (loggedValue !== undefined) status = 'miss';
@@ -163,9 +168,10 @@ type WeekPageProps = {
   pageWidth: number;
   userId?: number;
   horizontalPadding: number;
+  noMissIndicator?: boolean;
 };
 
-function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, pageWidth, userId, horizontalPadding }: WeekPageProps) {
+function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, pageWidth, userId, horizontalPadding, noMissIndicator }: WeekPageProps) {
   const [logs, setLogs] = useState<Map<string, number> | null>(
     weekOffset === 0 ? null : null,
   );
@@ -202,7 +208,7 @@ function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalVa
   }, [currentWeekLogs, weekOffset]);
 
   const mon = getWeekMonday(weekOffset);
-  const days = logs ? buildDays(mon, logs, habitCreatedAt, goalValue, trainingDays) : [];
+  const days = logs ? buildDays(mon, logs, habitCreatedAt, goalValue, trainingDays, noMissIndicator) : [];
 
   return (
     <View style={{ width: pageWidth, paddingHorizontal: horizontalPadding, height: 86 }}>
@@ -238,9 +244,12 @@ type Props = {
   /** Приветственная wiggle-анимация при маунте. По умолчанию включена; выключить там, где
    * компонент перемонтируется не как первое появление экрана (например, переключатель вида). */
   welcomeAnimation?: boolean;
+  /** Без порога/красного индикатора пропуска: запись есть — галочка, нет — пустой серый
+   * кружок (как у будущих дней). Для целей без дневного лимита (например, count без goal_value). */
+  noMissIndicator?: boolean;
 };
 
-export default function CalendarWeek({ habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, userId, pageWidth: pageWidthProp, horizontalPadding = 24, totalWeeks, welcomeAnimation = true }: Props) {
+export default function CalendarWeek({ habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, userId, pageWidth: pageWidthProp, horizontalPadding = 24, totalWeeks, welcomeAnimation = true, noMissIndicator }: Props) {
   const createdAt = new Date(habitCreatedAt);
   createdAt.setUTCHours(0, 0, 0, 0);
 
@@ -305,6 +314,7 @@ export default function CalendarWeek({ habitId, habitCreatedAt, currentWeekLogs,
           pageWidth={pageWidth}
           userId={userId}
           horizontalPadding={horizontalPadding}
+          noMissIndicator={noMissIndicator}
         />
       )}
     />

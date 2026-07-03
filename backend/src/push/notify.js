@@ -60,4 +60,26 @@ async function notifyGoalIfReached({ habitId, userId, prevValue, newValue, date 
   await notifyGoalReached(habit, userId);
 }
 
-module.exports = { notifyHabitJoin, notifyGoalIfReached };
+// Групповая count-цель без обязательного дневного порога (см. project_pending_features/
+// кастомная групповая цель): уведомляем остальных участников при КАЖДОЙ записи, а не только
+// при пересечении goal_value — иначе не для чего слать пуш, если у цели нет лимита.
+async function notifyEntryAdded(habit, userId, total) {
+  if (!habit.notifications) return;
+  const [author] = await sql`SELECT first_name, username FROM users WHERE id = ${userId}`;
+  const members = await sql`
+    SELECT user_id FROM habit_members
+    WHERE habit_id = ${habit.id} AND user_id != ${userId}
+  `;
+  const name = displayName(author);
+  await Promise.all(
+    members.map(m =>
+      sendToUser(m.user_id, {
+        title: habit.name,
+        body: `${name} добавил отметку о выполнении цели «${habit.name}». За всё время: ${total}`,
+        data: { type: 'entry', habitId: habit.id },
+      }),
+    ),
+  );
+}
+
+module.exports = { notifyHabitJoin, notifyGoalIfReached, notifyEntryAdded };

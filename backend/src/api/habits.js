@@ -2,7 +2,7 @@ const { Router } = require('express');
 const crypto = require('crypto');
 const sql = require('../db/client');
 const { requireAuth } = require('./auth');
-const { notifyHabitJoin, notifyGoalIfReached } = require('../push/notify');
+const { notifyHabitJoin, notifyGoalIfReached, notifyEntryAdded } = require('../push/notify');
 const { buildPullupsPlan, advanceOrRecalc } = require('../pullups');
 
 const router = Router();
@@ -195,7 +195,18 @@ router.get('/:id', async (req, res) => {
     `;
     const last_synced_at = syncRow?.last_synced_at ?? null;
 
-    res.json({ ...habit, members, week_logs, streak, member_streaks, last_synced_at });
+    // Суммарное значение за всё время цели по каждому участнику — для групповых
+    // count-целей без дневного лимита (goal_value может быть NULL), где важен не
+    // сегодняшний/недельный срез, а общий накопленный результат.
+    const totalsRows = await sql`
+      SELECT user_id, COALESCE(SUM(value), 0) AS total FROM habit_logs
+      WHERE habit_id = ${habitId}
+      GROUP BY user_id
+    `;
+    const entry_totals = {};
+    for (const r of totalsRows) entry_totals[r.user_id] = Number(r.total);
+
+    res.json({ ...habit, members, week_logs, streak, member_streaks, last_synced_at, entry_totals });
   } catch (e) {
     console.error('get habit error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
@@ -262,6 +273,30 @@ router.get('/:id/logs', async (req, res) => {
     res.json(logs);
   } catch (e) {
     console.error('get habit logs error:', e);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// GET /api/v1/habits/:id/logs/day?date=2026-07-03 — значения всех участников группы за один день
+router.get('/:id/logs/day', async (req, res) => {
+  const habitId = parseInt(req.params.id);
+  const { date } = req.query;
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ message: 'Параметр date обязателен (YYYY-MM-DD)' });
+  }
+  try {
+    const [membership] = await sql`
+      SELECT 1 FROM habit_members WHERE habit_id = ${habitId} AND user_id = ${req.userId}
+    `;
+    if (!membership) return res.status(403).json({ message: 'Нет доступа' });
+
+    const logs = await sql`
+      SELECT user_id, value FROM habit_logs
+      WHERE habit_id = ${habitId} AND date = ${date}
+    `;
+    res.json(logs);
+  } catch (e) {
+    console.error('get habit day logs error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
@@ -346,6 +381,13 @@ router.post('/:id/logs', async (req, res) => {
     notifyGoalIfReached({
       habitId, userId: req.userId, prevValue: prev?.value ?? null, newValue: log.value, date: logDate,
     }).catch(e => console.error('notify goal error:', e.message));
+
+    // Групповая count-цель — уведомляем об отметке независимо от goal_value (его может не быть).
+    if (habit.type === 'group' && habit.checkin_type === 'count') {
+      sql`SELECT COALESCE(SUM(value), 0) AS total FROM habit_logs WHERE habit_id = ${habitId} AND user_id = ${req.userId}`
+        .then(([{ total }]) => notifyEntryAdded(habit, req.userId, Number(total)))
+        .catch(e => console.error('notify entry error:', e.message));
+    }
   } catch (e) {
     console.error('log habit error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });

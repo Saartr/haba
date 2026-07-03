@@ -163,6 +163,8 @@ export type HabitDetail = Habit & {
   streak: Streak;
   member_streaks: Record<number, Streak>;
   last_synced_at: string | null;
+  /** Сумма value за всё время цели по каждому участнику (userId → total). */
+  entry_totals: Record<number, number>;
 };
 
 export async function createHabit(data: {
@@ -224,6 +226,11 @@ export async function joinHabit(invite_code: string): Promise<Habit> {
 export async function getHabitLogs(id: number, from: string, to: string, userId?: number): Promise<HabitLog[]> {
   const q = userId != null ? `&userId=${userId}` : '';
   return request(`/habits/${id}/logs?from=${from}&to=${to}${q}`, {}, true);
+}
+
+/** Значения всех участников группы за один день. */
+export async function getHabitDayLogs(id: number, date: string): Promise<Pick<HabitLog, 'user_id' | 'value'>[]> {
+  return request(`/habits/${id}/logs/day?date=${date}`, {}, true);
 }
 
 export type LogResult = HabitLog & { habit?: Habit; pullups_recalculated?: boolean; goal_reached?: boolean };

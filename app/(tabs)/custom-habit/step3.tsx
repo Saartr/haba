@@ -189,7 +189,7 @@ export default function Step3Screen() {
         checkin_type: state.checkinType,
         unit_preset: (state.checkinType === 'count' || state.checkinType === 'progression') ? state.unitPreset : undefined,
         goal_unit: (state.checkinType === 'count' || state.checkinType === 'progression') ? unitLabel : undefined,
-        goal_value: state.checkinType === 'count' || state.checkinType === 'progression'
+        goal_value: (state.checkinType === 'count' || state.checkinType === 'progression') && state.goalValue
           ? parseInt(state.goalValue)
           : undefined,
         progression_start: state.checkinType === 'progression'
