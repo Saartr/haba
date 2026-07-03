@@ -29,9 +29,9 @@ const NOTIFY_OPTIONS = [
 ];
 
 const CATEGORY_OPTIONS = [
-  { label: 'Курение', value: 'smoking' },
-  { label: 'Подтягивания', value: 'pullups' },
   { label: 'Шаги', value: 'steps' },
+  { label: 'Подтягивания', value: 'pullups' },
+  { label: 'Отказ от курения', value: 'smoking' },
 ];
 
 // У каждой готовой категории пока ровно один поддерживаемый тип — остальное
@@ -78,7 +78,7 @@ export default function PresetHabitsScreen() {
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('smoking');
+  const [category, setCategory] = useState('steps');
   const [type, setType] = useState<'solo' | 'group'>(CATEGORY_TYPE[category]);
   const [notify, setNotify] = useState('yes');
   const [groupGoal, setGroupGoal] = useState('7000');
