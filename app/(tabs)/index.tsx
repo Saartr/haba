@@ -2,7 +2,7 @@ import { View, Pressable, Image, FlatList, StatusBar, ActivityIndicator } from '
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import Text from '@/components/Text';
 import Card, { useCardShadow } from '@/components/Card';
 import HabitTag from '@/components/HabitTag';
@@ -175,6 +175,7 @@ export default function HabitsScreen() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [extras, setExtras] = useState<Record<number, HabitExtra>>({});
   const [loading, setLoading] = useState(true);
+  const openingHabitRef = useRef(false);
 
   const [joinModal, setJoinModal] = useState(false);
   const [joinCode, setJoinCode] = useState('');
@@ -244,7 +245,18 @@ export default function HabitsScreen() {
   useFocusEffect(useCallback(() => {
     setLoading(true);
     load();
+    // Сбрасываем гейт от двойного тапа по карточке при каждом возврате на экран.
+    openingHabitRef.current = false;
   }, [load]));
+
+  // Быстрый двойной тап по карточке до начала перехода успевал вызвать router.push
+  // дважды — в стеке оказывалось два экрана цели. Блокируем повторный переход, пока
+  // не вернёмся на этот экран (см. сброс во focus-эффекте выше).
+  function openHabit(id: number) {
+    if (openingHabitRef.current) return;
+    openingHabitRef.current = true;
+    router.push(`/(tabs)/habit/${id}`);
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }} edges={['bottom']}>
@@ -298,7 +310,7 @@ export default function HabitsScreen() {
             <HabitCard
               habit={item}
               extra={extras[item.id] ?? null}
-              onPress={() => router.push(`/(tabs)/habit/${item.id}`)}
+              onPress={() => openHabit(item.id)}
             />
           )}
         />

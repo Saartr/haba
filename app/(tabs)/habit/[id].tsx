@@ -1705,16 +1705,38 @@ export default function HabitScreen() {
             icon={<FootprintIcon />}
           />
         ) : habit.checkin_type === 'count' ? (
-          <Button
-            label={`Внести ${pluralUnit(habit.goal_unit ?? '')}`}
-            onPress={() => {
-              setGroupCountMode('add');
-              setGroupCountInput('');
-              setGroupCountError(null);
-              setGroupCountModal(true);
-            }}
-            loading={logLoading}
-          />
+          <View style={{ flexDirection: 'row', gap: 16 }}>
+            <View style={{ flex: 1 }}>
+              <Button
+                label={`Изменить ${pluralUnit(habit.goal_unit ?? '')}`}
+                variant="secondary"
+                onPress={() => {
+                  setGroupCountMode('add');
+                  setGroupCountInput('');
+                  setGroupCountError(null);
+                  setGroupCountModal(true);
+                }}
+                loading={logLoading}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button
+                label={`+1 ${pluralUnit(habit.goal_unit ?? '')}`}
+                onPress={async () => {
+                  setLogLoading(true);
+                  try {
+                    await logHabit(habitId, (myTodayLog?.value ?? 0) + 1);
+                    load();
+                  } catch (e: any) {
+                    Alert.alert('Ошибка', e.message);
+                  } finally {
+                    setLogLoading(false);
+                  }
+                }}
+                loading={logLoading}
+              />
+            </View>
+          </View>
         ) : habit.checkin_type === 'boolean' ? (
           <Button
             label={myTodayLog?.value ? 'Выполнено' : 'Отметить выполнение'}
