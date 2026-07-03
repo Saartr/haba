@@ -1,7 +1,7 @@
 # Memory Index
 
 - [iOS Build Plan](project_ios_plan.md) — EAS Build when Apple Developer Account obtained; Android-only until then
-- [Авторизация](project_auth_refactor.md) — два способа: Telegram (нативный OIDC-логин, не браузер/виджет) и VK ID (нативный SDK 2.6.0, Expo Module, New Arch); фикс гонки в /auth/refresh (2026-06-21)
+- [Авторизация](project_auth_refactor.md) — два способа: Telegram (нативный OIDC-логин, не браузер/виджет) и VK ID (нативный SDK 2.7.1, Expo Module, New Arch); фикс гонки в /auth/refresh (2026-06-21)
 - [Telegram OIDC / Native Login](project_telegram_oidc.md) — ✅ работает + телефон (scope=phone). SDK = браузерный OIDC через oauth.telegram.org. 🔴 требует VPN без split-tunnel; ⚠️ release-сборка требует release SHA-256 в BotFather
 - [Android config-плагины](project_android_config_plugins.md) — нативные SDK (VK/TG): maven-репо + manifest-placeholders через config-плагины, т.к. `prebuild --clean` стирает `android/`. Секреты в `~/.gradle/gradle.properties`
 - [Health Connect](project_health_connect.md) — ✅ работает на debug; причина бывшего пустого requestPermission — отсутствие Android-14 rationale activity-alias в манифесте, НЕ верификация

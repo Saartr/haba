@@ -20,7 +20,7 @@ metadata:
 ## VK ID авторизация — завершена (2026-05-29)
 
 **Флоу:**
-1. Нажимает «Войти через VK» → `VkIdModule.signIn()` (нативный VK ID SDK 2.6.0)
+1. Нажимает «Войти через VK» → `VkIdModule.signIn()` (нативный VK ID SDK 2.7.1)
 2. SDK показывает системный диалог (One Tap или браузер)
 3. SDK возвращает `AccessToken` с `userData` (имя, фото, email, телефон)
 4. `POST /auth/vk` → `secure.checkToken` (сервисный ключ, не привязан к IP) → upsert user → JWT
@@ -33,7 +33,7 @@ metadata:
 
 **Нативный модуль:**
 - `modules/vk-id/android/src/main/java/pro/mihmih/haba/vkid/VkIdModule.kt` — Expo Module (New Arch совместимый)
-- `modules/vk-id/android/build.gradle` — зависимость `com.vk.id:vkid:2.6.0`
+- `modules/vk-id/android/build.gradle` — зависимость `com.vk.id:vkid:2.7.1` (обновлено с 2.6.0 — версия 2.6.0 упала на `Certificate pinning failure` при обмене кода на токен, т.к. VK перевыпустил сертификат `id.vk.ru` на новый CA (HARICA), а старые версии SDK содержат захардкоженные устаревшие пины; 2.7.1 их обновляет)
 - `modules/vk-id/expo-module.config.json` — автолинкинг через `nativeModulesDir`
 - `modules/vk-id/index.ts` — JS-обёртка `signInWithVK()`
 - Manifest placeholders: `VKIDClientID=54615454`, `VKIDClientSecret`, `VKIDRedirectHost=vk.com`, `VKIDRedirectScheme=vk54615454`
