@@ -694,7 +694,13 @@ function PullupsHabitScreen({
   const [menuVisible, setMenuVisible] = useState(false);
   const [allLogs, setAllLogs] = useState<HabitLog[]>([]);
   const today = dateToLocalISO(new Date());
-  const [selectedDate, setSelectedDate] = useState(today);
+  const [dayDetailDate, setDayDetailDate] = useState<string | null>(null);
+  // Держит последнюю выбранную дату, пока модалка не закрылась полностью — иначе
+  // dayDetailDate обнуляется сразу при тапе на крестик, и заголовок/текст успевают
+  // мигнуть на дефолтные значения ещё во время анимации сворачивания BottomSheet.
+  const lastDayDetailDateRef = useRef<string | null>(null);
+  if (dayDetailDate != null) lastDayDetailDateRef.current = dayDetailDate;
+  const dayDetailDisplayDate = dayDetailDate ?? lastDayDetailDateRef.current;
   const [calendarView, setCalendarView] = useState<'week' | 'month'>('week');
   // Приветственная wiggle-анимация недельного календаря — только при самом первом появлении
   // экрана, не при каждом возврате на "Неделя" через переключатель.
@@ -721,6 +727,30 @@ function PullupsHabitScreen({
   const goalAchieved = habit.pullups_session_index >= plan.length;
   const isTrainingDay = !goalAchieved && isTodayTrainingDay(habit.training_days);
   const session = isTrainingDay ? plan[habit.pullups_session_index] : null;
+
+  // 0-based номер тренировки в plan для произвольной даты — считаем тренировочные дни
+  // от даты создания цели до выбранной даты включительно. Нужно для тапа по календарю:
+  // показать план (подходы/повторения) не только на сегодня, а на любой день в периоде.
+  function sessionIndexForDate(iso: string): number {
+    if (!habit.training_days || habit.training_days.length === 0) return -1;
+    if (!isTrainingDayDate(iso, habit.training_days)) return -1;
+    const cursor = new Date(habit.created_at.slice(0, 10) + 'T00:00:00');
+    const target = new Date(iso + 'T00:00:00');
+    let index = -1;
+    let guard = 0;
+    while (cursor <= target && guard < 3650) {
+      if (isTrainingDayDate(dateToLocalISO(cursor), habit.training_days)) index++;
+      cursor.setDate(cursor.getDate() + 1);
+      guard++;
+    }
+    return index;
+  }
+
+  const dayDetailIsTrainingDay = dayDetailDisplayDate != null && isTrainingDayDate(dayDetailDisplayDate, habit.training_days);
+  const dayDetailSessionIndex = dayDetailDisplayDate != null && dayDetailIsTrainingDay ? sessionIndexForDate(dayDetailDisplayDate) : -1;
+  const dayDetailSession = dayDetailSessionIndex >= 0 && dayDetailSessionIndex < plan.length
+    ? plan[dayDetailSessionIndex]
+    : null;
 
   // Красная точка — тренировочный день без выполненной отметки: явное "Не выполнил" (value=0)
   // в любой момент, или прошедший (до сегодня) тренировочный день, по которому вообще нет записи.
@@ -866,6 +896,7 @@ function PullupsHabitScreen({
             trainingDays={habit.training_days}
             totalWeeks={totalWeeks}
             welcomeAnimation={!weekAnimShownRef.current}
+            onDateSelect={setDayDetailDate}
           />
         ) : (
           <View style={{ paddingHorizontal: 24 }}>
@@ -876,8 +907,9 @@ function PullupsHabitScreen({
                 plannedDates={plannedDates}
                 periodStart={habit.created_at.slice(0, 10)}
                 periodEnd={planEndDate}
-                selectedDate={selectedDate}
-                onDateSelect={setSelectedDate}
+                selectedDate={dayDetailDate ?? undefined}
+                onDateSelect={setDayDetailDate}
+                allowFutureSelect
               />
             </Card>
           </View>
@@ -898,6 +930,19 @@ function PullupsHabitScreen({
           </Card>
         </View>
       )}
+
+      {/* Модалка с планом на выбранную в календаре дату (тап по дню в месячном виде) */}
+      <BottomSheet
+        title={dayDetailDisplayDate ? formatDateRu(dayDetailDisplayDate, today) : 'План на день'}
+        visible={dayDetailDate != null}
+        onClose={() => setDayDetailDate(null)}
+      >
+        <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
+          {dayDetailSession
+            ? `${dayDetailSession.sets} ${pluralWord(dayDetailSession.sets, 'подход', 'подхода', 'подходов')} по ${dayDetailSession.reps} ${pluralWord(dayDetailSession.reps, 'повторение', 'повторения', 'повторений')}`
+            : 'Отдых'}
+        </Text>
+      </BottomSheet>
 
       {/* Спейсер — отжимает кнопки/CTA вниз */}
       <View style={{ flex: 1 }} />
@@ -1061,6 +1106,11 @@ export default function HabitScreen() {
   const [groupCountError, setGroupCountError] = useState<string | null>(null);
   const [calendarView, setCalendarView] = useState<'week' | 'month'>('week');
   const [dayDetailDate, setDayDetailDate] = useState<string | null>(null);
+  // Держит последнюю выбранную дату, пока модалка не закрылась полностью — иначе
+  // заголовок успевает мигнуть на «Значения за день» ещё во время анимации сворачивания.
+  const lastDayDetailDateRef = useRef<string | null>(null);
+  if (dayDetailDate != null) lastDayDetailDateRef.current = dayDetailDate;
+  const dayDetailDisplayDate = dayDetailDate ?? lastDayDetailDateRef.current;
   const [dayDetailLogs, setDayDetailLogs] = useState<{ user_id: number; value: number }[]>([]);
   const [dayDetailLoading, setDayDetailLoading] = useState(false);
   const [monthLogDates, setMonthLogDates] = useState<string[]>([]);
@@ -1950,7 +2000,7 @@ export default function HabitScreen() {
       {/* Значения участников за выбранный в календаре день */}
       {habit.checkin_type === 'count' && (
         <BottomSheet
-          title={dayDetailDate ? `Значения за ${formatDateDots(dayDetailDate)}` : 'Значения за день'}
+          title={dayDetailDisplayDate ? `Значения за ${formatDateDots(dayDetailDisplayDate)}` : 'Значения за день'}
           visible={dayDetailDate != null}
           onClose={() => setDayDetailDate(null)}
         >

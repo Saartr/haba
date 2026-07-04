@@ -8,8 +8,18 @@ import { useSettings } from '@/lib/settings-context';
 // Цвет зависит от темы: светлая — neutral[300]; тёмная — neutral[900].
 export function useCardShadow() {
   const { colorScheme } = useSettings();
+  if (colorScheme === 'dark') {
+    // На тёмной теме подложка и так контрастирует с фоном — тень выключена по требованию.
+    return {
+      shadowColor: colors.neutral[900],
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0,
+      shadowRadius: 10,
+      elevation: 0,
+    } as const;
+  }
   return {
-    shadowColor: colorScheme === 'dark' ? colors.neutral[900] : colors.neutral[300],
+    shadowColor: colors.neutral[300],
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 10,

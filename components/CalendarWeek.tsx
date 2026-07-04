@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { View, FlatList, Dimensions, ActivityIndicator, Animated, Easing } from 'react-native';
+import { View, Pressable, FlatList, Dimensions, ActivityIndicator, Animated, Easing } from 'react-native';
 import Text from '@/components/Text';
 import CheckCircleIcon from '@/assets/icons/CheckCircle.svg';
 import DoNotDisturbIcon from '@/assets/icons/DoNotDisturb.svg';
@@ -15,6 +15,7 @@ export type CalendarDay = {
   weekday: string;
   status: DayStatus;
   isToday: boolean;
+  iso: string;
 };
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -45,7 +46,7 @@ function DayIcon({ status, color }: { status: DayStatus; color: string | null })
   return <CircleOutlineIcon width={24} height={24} color={color} />;
 }
 
-function DayCell({ day, weekday, status, isToday }: CalendarDay) {
+function DayCell({ day, weekday, status, isToday, iso, onPress }: CalendarDay & { onPress?: (iso: string) => void }) {
   const { colorScheme } = useSettings();
   const dark = colorScheme === 'dark';
   const boxBg = isToday ? (dark ? colors.purple[900] : colors.purple[100]) : (dark ? colors.neutral[800] : colors.neutral[100]);
@@ -54,28 +55,33 @@ function DayCell({ day, weekday, status, isToday }: CalendarDay) {
   const dayColor = isToday ? (dark ? colors.purple[400] : colors.purple[500]) : colors.neutral[500];
   const iconColor = (dark ? ICON_DARK : ICON_LIGHT)[status];
 
+  const Box = onPress ? Pressable : View;
+
   return (
     <View style={{ flex: 1, gap: 4 }}>
       <Text weight="bold" style={{ fontSize: 14, lineHeight: 20, textAlign: 'center', color: weekdayColor }}>
         {weekday}
       </Text>
-      <View style={{
-        height: 62,
-        borderRadius: 16,
-        backgroundColor: boxBg,
-        borderWidth: 2,
-        borderColor: boxBorder,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 8,
-      }}>
+      <Box
+        onPress={onPress ? () => onPress(iso) : undefined}
+        android_ripple={onPress ? { color: 'rgba(0,0,0,0.06)', borderless: false } : undefined}
+        style={{
+          height: 62,
+          borderRadius: 16,
+          backgroundColor: boxBg,
+          borderWidth: 2,
+          borderColor: boxBorder,
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 8,
+        }}>
         <View style={{ alignItems: 'center', gap: 2 }}>
           <Text weight="bold" style={{ fontSize: 14, lineHeight: 20, color: dayColor }}>
             {day}
           </Text>
           <DayIcon status={status} color={iconColor} />
         </View>
-      </View>
+      </Box>
     </View>
   );
 }
@@ -134,7 +140,7 @@ function buildDays(
     } else {
       status = loggedValue !== undefined && loggedValue >= goalValue ? 'check' : 'miss';
     }
-    return { day: d.getUTCDate(), weekday: WEEKDAYS[i], status, isToday: diff === 0 };
+    return { day: d.getUTCDate(), weekday: WEEKDAYS[i], status, isToday: diff === 0, iso: dateStr };
   });
 }
 
@@ -169,9 +175,10 @@ type WeekPageProps = {
   userId?: number;
   horizontalPadding: number;
   noMissIndicator?: boolean;
+  onDateSelect?: (iso: string) => void;
 };
 
-function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, pageWidth, userId, horizontalPadding, noMissIndicator }: WeekPageProps) {
+function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, pageWidth, userId, horizontalPadding, noMissIndicator, onDateSelect }: WeekPageProps) {
   const [logs, setLogs] = useState<Map<string, number> | null>(
     weekOffset === 0 ? null : null,
   );
@@ -219,7 +226,7 @@ function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalVa
         />
       ) : (
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          {days.map((d, i) => <DayCell key={i} {...d} />)}
+          {days.map((d, i) => <DayCell key={i} {...d} onPress={onDateSelect} />)}
         </View>
       )}
     </View>
@@ -247,9 +254,11 @@ type Props = {
   /** Без порога/красного индикатора пропуска: запись есть — галочка, нет — пустой серый
    * кружок (как у будущих дней). Для целей без дневного лимита (например, count без goal_value). */
   noMissIndicator?: boolean;
+  /** Тап по дню — если передан, ячейки становятся нажимаемыми (для просмотра плана на дату). */
+  onDateSelect?: (iso: string) => void;
 };
 
-export default function CalendarWeek({ habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, userId, pageWidth: pageWidthProp, horizontalPadding = 24, totalWeeks, welcomeAnimation = true, noMissIndicator }: Props) {
+export default function CalendarWeek({ habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, userId, pageWidth: pageWidthProp, horizontalPadding = 24, totalWeeks, welcomeAnimation = true, noMissIndicator, onDateSelect }: Props) {
   const createdAt = new Date(habitCreatedAt);
   createdAt.setUTCHours(0, 0, 0, 0);
 
@@ -315,6 +324,7 @@ export default function CalendarWeek({ habitId, habitCreatedAt, currentWeekLogs,
           userId={userId}
           horizontalPadding={horizontalPadding}
           noMissIndicator={noMissIndicator}
+          onDateSelect={onDateSelect}
         />
       )}
     />

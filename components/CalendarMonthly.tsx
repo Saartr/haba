@@ -48,6 +48,10 @@ export type CalendarMonthlyProps = {
   /** Текущая выбранная ISO-дата. */
   selectedDate?: string;
   onDateSelect?: (isoDate: string) => void;
+  /** Разрешить тап по будущим датам (в пределах periodStart/periodEnd) — например,
+   * чтобы посмотреть план тренировок вперёд. По умолчанию будущие дни не тапаются
+   * (используется там, где тап = логирование значения, а будущее логировать нельзя). */
+  allowFutureSelect?: boolean;
 };
 
 function toISO(d: Date): string {
@@ -125,17 +129,19 @@ function DayCell({
   date,
   state,
   onPress,
+  allowFutureSelect,
 }: {
   date: Date;
   state: DayState;
   onPress: () => void;
+  allowFutureSelect?: boolean;
 }) {
   const c = useColors();
   const { colorScheme } = useSettings();
   const { isOtherMonth, isToday, isSelected, hasRecord, hasMissed, hasPlanned } = state;
   const dotColor = hasRecord ? colors.green[500] : hasMissed ? colors.red[500] : hasPlanned ? colors.neutral[400] : null;
 
-  const disabled = isOtherMonth || isFutureDate(date);
+  const disabled = isOtherMonth || (!allowFutureSelect && isFutureDate(date));
   const otherMonthColor = colorScheme === 'dark' ? OTHER_MONTH_COLOR_DARK : c.text.secondary;
   const textColor = isOtherMonth ? otherMonthColor : isToday ? c.brand.primary : c.text.primary;
 
@@ -203,6 +209,7 @@ export default function CalendarMonthly({
   periodEnd,
   selectedDate,
   onDateSelect,
+  allowFutureSelect,
 }: CalendarMonthlyProps) {
   const c = useColors();
   const now = new Date();
@@ -358,6 +365,7 @@ export default function CalendarMonthly({
                   date={date}
                   state={state}
                   onPress={() => onDateSelect?.(iso)}
+                  allowFutureSelect={allowFutureSelect}
                 />
               );
             })}
