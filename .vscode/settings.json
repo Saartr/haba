@@ -3,5 +3,10 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
-  }
+  },
+  // Gradle for Java: не индексировать вложенные модули (modules/*/android без своего
+  // wrapper'а расширение конфигурирует дефолтным Gradle 7.5.1, несовместимым с Java 21).
+  // Сборка идёт только через android/gradlew (wrapper 9.0.0), расширение не нужно.
+  "gradle.nestedProjects": false,
+  "java.import.gradle.enabled": false
 }
