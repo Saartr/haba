@@ -1,10 +1,9 @@
-import { View, Pressable, Image, FlatList, StatusBar, ActivityIndicator } from 'react-native';
+import { View, Pressable, Image, FlatList, StatusBar, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useRef, useState } from 'react';
 import Text from '@/components/Text';
-import { useCardShadow } from '@/components/Card';
 import HabitTag from '@/components/HabitTag';
 import ProgressBar from '@/components/ProgressBar';
 import Toolbar from '@/components/Toolbar';
@@ -185,6 +184,7 @@ export default function HabitsScreen() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [extras, setExtras] = useState<Record<number, HabitExtra>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const openingHabitRef = useRef(false);
 
   const [joinModal, setJoinModal] = useState(false);
@@ -250,6 +250,13 @@ export default function HabitsScreen() {
     openingHabitRef.current = false;
   }, [load]));
 
+  // Pull-to-refresh — тот же load, но со спиннером RefreshControl вместо полноэкранного.
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
+
   // Быстрый двойной тап по карточке до начала перехода успевал вызвать router.push
   // дважды — в стеке оказывалось два экрана цели. Блокируем повторный переход, пока
   // не вернёмся на этот экран (см. сброс во focus-эффекте выше).
@@ -269,7 +276,6 @@ export default function HabitsScreen() {
   const allDone = total > 0 && doneCount === total;
   const statusText = allDone ? 'Все цели выполнены' : `${doneCount}/${total} целей выполнено`;
 
-  const sheetShadow = useCardShadow();
   const isEmpty = !loading && habits.length === 0;
 
   return (
@@ -332,7 +338,6 @@ export default function HabitsScreen() {
             backgroundColor: c.surface.input,
             borderTopLeftRadius: 32,
             borderTopRightRadius: 32,
-            ...sheetShadow,
           }}>
             {loading ? (
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -343,6 +348,16 @@ export default function HabitsScreen() {
                 data={visibleHabits}
                 keyExtractor={h => String(h.id)}
                 contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 96, gap: 16 }}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={handleRefresh}
+                    colors={[c.brand.primary]}
+                    tintColor={c.brand.primary}
+                    progressBackgroundColor={c.surface.input}
+                    progressViewOffset={56}
+                  />
+                }
                 renderItem={({ item }) => (
                   <HabitCard
                     habit={item}
