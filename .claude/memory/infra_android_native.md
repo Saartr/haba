@@ -1,5 +1,5 @@
 ---
-name: project-android-config-plugins
+name: infra-android-native
 description: "Нативные SDK (VK, Telegram) требуют config-плагинов для репозиториев и manifest-placeholders — иначе prebuild --clean ломает сборку"
 metadata:
   type: project
@@ -16,7 +16,7 @@ metadata:
 - `plugins/with-vk-manifest-placeholders.js` (`withAppBuildGradle`) — добавляет в `defaultConfig.manifestPlaceholders`: `VKIDClientID=54615454`, `VKIDRedirectHost=vk.com`, `VKIDRedirectScheme=vk54615454`, `VKIDClientSecret` (читается из gradle-проперти, НЕ хардкод).
 - `plugins/with-telegram-applink.js` — App Link intent-filter на MainActivity (host `app4160742593-login.tg.dev`, `/tglogin`, autoVerify).
 - `plugins/with-tg-queries.js` — `<queries>` для схемы `tg` в манифесте (Android 11+ package visibility) — без этого `Linking.openURL('tg://...')` молча не срабатывает.
-- `plugins/with-health-permissions.js` — `READ_STEPS` permission + Android-14 rationale `activity-alias`, см. [[project_health_connect]].
+- `plugins/with-health-permissions.js` — `READ_STEPS` permission + Android-14 rationale `activity-alias`, см. [[feature-health-connect]].
 - `plugins/with-signing-config.js` — release-подпись APK из `~/.gradle/gradle.properties` (`TAPA_STORE_FILE` и т.д.), фоллбэк на debug-подпись если свойств нет (CI/чужая машина).
 
 **Секреты НЕ в гите — в `~/.gradle/gradle.properties` (глобально, вне репо):**
@@ -27,4 +27,4 @@ VKIDClientSecret=<vk client secret>
 ```
 Плагины читают их через `project.findProperty(...)`. На новой машине/CI эти строки надо добавить вручную.
 
-**How to apply:** Новый нативный SDK с кастомным maven-репо или manifest-placeholder'ом → добавлять в соответствующий config-плагин, НЕ править `android/` руками. Секреты — в `~/.gradle/gradle.properties`, плагин читает через `findProperty`. Build-артефакты модулей игнорируются правилом `modules/*/android/build/` в `.gitignore`. См. [[project-telegram-oidc]], [[project-auth-refactor]], [[project-dev-env]].
+**How to apply:** Новый нативный SDK с кастомным maven-репо или manifest-placeholder'ом → добавлять в соответствующий config-плагин, НЕ править `android/` руками. Секреты — в `~/.gradle/gradle.properties`, плагин читает через `findProperty`. Build-артефакты модулей игнорируются правилом `modules/*/android/build/` в `.gitignore`. См. [[feature-telegram-login]], [[feature-auth]], [[infra-dev-env]].

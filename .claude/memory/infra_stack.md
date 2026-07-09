@@ -1,5 +1,5 @@
 ---
-name: project-stack
+name: infra-stack
 description: "Стек проекта Тапа — фронтенд, бэкенд, инфраструктура"
 metadata: 
   node_type: memory
@@ -31,6 +31,6 @@ metadata:
 
 **JWT:** accessToken TTL 15 мин, refreshToken TTL 30 дней (ротируется при использовании)
 
-**Деплой бэкенда:** ручной скрипт `deploy-backend.ps1` в корне репо. Подробности — [[project-backend-deploy]].
+**Деплой бэкенда:** ручной скрипт `deploy-backend.ps1` в корне репо. Подробности — [[rules-backend-deploy]].
 
 **How to apply:** При написании кода — Expo SDK 55, читать доки на https://docs.expo.dev/versions/v55.0.0/. Бэкенд — Express 5, `postgres` tag-библиотека. Серверные правки коммитить в `backend/`, деплоить через `./deploy-backend.ps1` после пуша в `main`.

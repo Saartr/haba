@@ -1,22 +1,22 @@
 ---
-name: project-push-notifications
-description: Push-уведомления — FCM HTTP v1 напрямую (без Expo); 4 типа пушей и их триггеры, включая кастомное время
+name: feature-push
+description: Push-уведомления — FCM HTTP v1 напрямую (без Expo); 5 типов пушей и их триггеры, включая кастомное время и запись в групповой count-цели
 metadata:
   type: project
 ---
 
 ## Архитектура
 
-FCM HTTP v1 без Expo Push Service. Бэкенд сам ходит в Google FCM API по service account (`service-account.json` на сервере, `/var/www/haba/backend/service-account.json`, НЕ в git). Только Android (iOS отложен — [[project_ios_plan]]).
+FCM HTTP v1 без Expo Push Service. Бэкенд сам ходит в Google FCM API по service account (`service-account.json` на сервере, `/var/www/haba/backend/service-account.json`, НЕ в git). Только Android (iOS отложен — [[infra-ios-plan]]).
 
 **Why:** Приложение для РФ, не хочется зависеть от Expo серверов в США. FCM работает у 95%+ пользователей в РФ.
 
 **Файлы:**
 - `lib/notifications.ts` — `registerForPush()` (permission + `getDevicePushTokenAsync` + `registerPushToken()` на бэкенд), `unregisterCurrentPushToken()`, `addTokenRotationListener()`, `getNotificationsModule()` (ленивый `require('expo-notifications')`, безопасно для Expo Go/несобранного APK)
 - `lib/api.ts` — `registerPushToken(token, platform)` / `unregisterPushToken(token)` → `POST`/`DELETE /push/register`
-- `push_tokens` — отдельная таблица (не колонка в `users`), см. [[project_database]]
+- `push_tokens` — отдельная таблица (не колонка в `users`), см. [[infra-database]]
 - `backend/src/push/fcm.js` — кэш OAuth2 access token, обработка UNREGISTERED/404 (чистит протухший токен из `push_tokens`)
-- `backend/src/push/notify.js` — `notifyHabitJoin`, `notifyGoalIfReached` (учитывают `habits.notifications`)
+- `backend/src/push/notify.js` — `notifyHabitJoin`, `notifyGoalIfReached`, `notifyEntryAdded` (учитывают `habits.notifications`)
 - `backend/src/jobs/habit-reminders.js` — cron `0 19 * * *` МСК; исключает привычки с заданным `notification_times` (их покрывает hourly-джоб ниже)
 - `backend/src/jobs/habit-notification-times.js` — cron `0 * * * *` МСК (ежечасно), напоминания по кастомному времени привычки (`habits.notification_times TEXT[]`), см. пуш №4 ниже
 - `app/_layout.tsx` — регистрация токена после логина, слушатель ротации токена, обработка тапа по пушу
@@ -27,7 +27,7 @@ FCM HTTP v1 без Expo Push Service. Бэкенд сам ходит в Google F
   - Выключение → `unregisterCurrentPushToken()` (отписывает текущий FCM-токен на бэкенде немедленно)
   - Включение → `registerForPush()` (регистрирует токен заново)
   - `app/_layout.tsx`: эффект авто-регистрации токена после логина зависит от `settings.notifications` — если `off`, токен не регистрируется даже при старте приложения
-- **Per-habit** (`habits.notifications`, см. [[project_database]]) — тоггл «Уведомления» при создании/редактировании цели (`create-habit.tsx`, `edit-habit/[id].tsx`); `PATCH /habits/:id` принимает `notifications`, сохраняя текущее значение если поле не передано (старый клиент)
+- **Per-habit** (`habits.notifications`, см. [[infra-database]]) — тоггл «Уведомления» при создании/редактировании цели (`create-habit.tsx`, `edit-habit/[id].tsx`); `PATCH /habits/:id` принимает `notifications`, сохраняя текущее значение если поле не передано (старый клиент)
 
 Каждый из 3 пушей ниже учитывает оба тоггла — если выключен любой, пуш не уходит.
 
@@ -58,5 +58,11 @@ FCM HTTP v1 без Expo Push Service. Бэкенд сам ходит в Google F
    - Не зависит от `goal_value` — работает для любой периодичности `daily`
    - Текст: заголовок «Тапа», тело «Не забудь отметить цель «{название}» 🎯»
    - Тап → переход на экран цели (`data.habitId`)
+
+5. **Запись в групповой count-цели** (`notifyEntryAdded`, при `POST /habits/:id/logs` для `type='group' AND checkin_type='count'`)
+   - Когда: при КАЖДОЙ записи (не только при пересечении `goal_value` — у безлимитной цели его нет), см. [[feature-group-count-goal]]
+   - Кому: всем остальным участникам группы
+   - Текст: заголовок — название цели, тело «{Имя} добавил отметку о выполнении цели «{название}». За всё время: {N}» (N — сумма участника за всю историю цели)
+   - Тап → переход на экран цели
 
 **How to apply:** при добавлении нового типа пуша — класть текст/адресацию в `backend/src/push/notify.js` (транспорт через `fcm.js` не трогать), указывать `data.habitId` если нужен переход по тапу, и не забывать проверку `habit.notifications` перед отправкой.

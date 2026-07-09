@@ -1,5 +1,5 @@
 ---
-name: project-ios-plan
+name: infra-ios-plan
 description: iOS build plan — EAS Build when Apple Developer Account is obtained
 metadata: 
   node_type: memory

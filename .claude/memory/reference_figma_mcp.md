@@ -23,4 +23,4 @@ Figma Dev Mode MCP-сервер для вытягивания макетов и�
 
 **Node-id:** из URL Figma `?node-id=682-2535` → в API передавать как `682:2535` (дефис→двоеточие).
 
-**How to apply:** При работе по макету сначала пробовать `mcp__figma__*` инструменты. Если их нет в сессии — curl-обход. Реальные значения (отступы/радиусы/цвета) брать из `get_variable_defs`/`get_design_context`, не на глаз — см. [[feedback-figma-source-of-truth]]. Файлы Figma: TapaDS (дизайн-система) и Tapa App (`yTlBE7MQqQTvxez3UP4n48`, экраны).
+**How to apply:** При работе по макету сначала пробовать `mcp__figma__*` инструменты. Если их нет в сессии — curl-обход. Реальные значения (отступы/радиусы/цвета) брать из `get_variable_defs`/`get_design_context`, не на глаз — см. [[rules-figma]]. Файлы Figma: TapaDS (дизайн-система) и Tapa App (`yTlBE7MQqQTvxez3UP4n48`, экраны).

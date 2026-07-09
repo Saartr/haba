@@ -1,5 +1,5 @@
 ---
-name: project-ui-modals
+name: ui-modals
 description: "Модалки и меню — BottomSheet, ConfirmModal/useConfirm, DropdownPopover: общие конвенции анимации и оверлея"
 metadata:
   type: project
@@ -13,7 +13,7 @@ metadata:
 
 - `<Modal transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>` — `animationType="none"`, анимация ручная через `Animated.Value`
 - `mounted` стейт отдельно от `visible` — при `visible=false` сначала доигрывается анимация скрытия (200мс), потом `setMounted(false)` и `Modal` реально размонтируется
-- Оверлей: `colors.blackTransparent[80]` (тёмная тема) / `colors.blackTransparent[24]` (светлая) — через `useSettings().colorScheme`, см. [[feedback_design_system_usage]]
+- Оверлей: `colors.blackTransparent[80]` (тёмная тема) / `colors.blackTransparent[24]` (светлая) — через `useSettings().colorScheme`, см. [[rules-design-system]]
 - Закрытие: тап на оверлей (`Pressable` поверх) + системная кнопка «назад» (`onRequestClose`)
 - Длительность анимации — 200мс на появление и скрытие контента; у `DropdownPopover` оверлей появляется медленнее (500мс) при открытии
 - `elevation: 0` на Android, чтобы не было системной тени поверх кастомной

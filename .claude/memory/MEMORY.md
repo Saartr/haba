@@ -1,25 +1,43 @@
 # Memory Index
 
-- [iOS Build Plan](project_ios_plan.md) — EAS Build when Apple Developer Account obtained; Android-only until then
-- [Авторизация](project_auth_refactor.md) — два способа: Telegram (нативный OIDC-логин, не браузер/виджет) и VK ID (нативный SDK 2.7.1, Expo Module, New Arch); фикс гонки в /auth/refresh (2026-06-21)
-- [Telegram OIDC / Native Login](project_telegram_oidc.md) — ✅ работает + телефон (scope=phone). SDK = браузерный OIDC через oauth.telegram.org. 🔴 требует VPN без split-tunnel; ⚠️ release-сборка требует release SHA-256 в BotFather
-- [Android config-плагины](project_android_config_plugins.md) — нативные SDK (VK/TG): maven-репо + manifest-placeholders через config-плагины, т.к. `prebuild --clean` стирает `android/`. Секреты в `~/.gradle/gradle.properties`
-- [Health Connect](project_health_connect.md) — ✅ работает на debug; причина бывшего пустого requestPermission — отсутствие Android-14 rationale activity-alias в манифесте, НЕ верификация
-- [Главный экран](project_main_screen.md) — 🚧 идёт редизайн (маскот+прогресс-бар+Toolbar вместо шторки, карточки без иллюстраций), не закоммичен, продолжение завтра
-- [UI: модалки и меню](project_ui_modals.md) — BottomSheet, ConfirmModal/useConfirm, DropdownPopover; единая анимация, elevation:0 на Android
+Схема имён: `rules_` — правила работы · `infra_` — стек/окружение/БД · `feature_` — фичи продукта · `ui_` — UI-паттерны · `backlog` — отложенное · `reference_` — внешние ресурсы.
+
+## Правила работы
+
+- [Git-процесс](rules_git_workflow.md) — коммитить/пушить только по явной просьбе, сообщения по-русски; перед коммитом актуализировать память
+- [Деплой бэкенда](rules_backend_deploy.md) — серверный код правится только локально в `backend/`, ручной деплой `./deploy-backend.ps1` (нет автодеплоя); прямой SSH — только логи/рестарт/.env
+- [Figma — источник правды](rules_figma.md) — иконки/цвета/компоненты/отступы только из TapaDS; в SVG `fill="currentColor"` можно править без спроса
+- [Дизайн-система](rules_design_system.md) — не хардкодить цвета (colors.ts/useColors), готовые компоненты вместо примитивов; карточки/подложки без теней
+- [Naming: Haba→Тапа](rules_naming.md) — в UI «Тапа», системные идентификаторы (scheme/package/SecureStore keys) остаются haba
+
+## Инфраструктура
+
+- [Стек проекта](infra_stack.md) — Expo SDK 55, Express 5, postgres tag, PM2, grammy, BASE_URL, JWT TTL
+- [Окружение разработки](infra_dev_env.md) — IP компьютера/телефона, запуск dev-сервера, Android APK-сборка
+- [База данных](infra_database.md) — схема всех таблиц: users, groups, habits (+кастомные/pullups колонки), habit_members, habit_logs, push_tokens, refresh_tokens
+- [Android нативные SDK](infra_android_native.md) — maven-репо + manifest-placeholders через config-плагины, т.к. `prebuild --clean` стирает `android/`; секреты в `~/.gradle/gradle.properties`
+- [iOS план](infra_ios_plan.md) — EAS Build когда появится Apple Developer Account; до тех пор Android-only
+
+## Фичи
+
+- [Авторизация](feature_auth.md) — Telegram (нативный OIDC) + VK ID (SDK 2.7.1, Expo Module); фикс гонки /auth/refresh; имя не затирается при повторном логине; аватар с любого привязанного провайдера + POST /auth/refresh-avatar
+- [Telegram Login](feature_telegram_login.md) — ✅ работает + телефон (scope=phone). SDK = браузерный OIDC через oauth.telegram.org. 🔴 требует VPN без split-tunnel; ⚠️ release-сборка требует release SHA-256 в BotFather
+- [Health Connect](feature_health_connect.md) — ✅ работает на debug; причина бывшего пустого requestPermission — отсутствие Android-14 rationale activity-alias в манифесте, НЕ верификация
+- [Health Sync WorkManager](feature_health_sync.md) — ✅ реализовано: Expo Module health-sync, CoroutineWorker, refreshToken в SharedPreferences, scheduleSync/cancelSync
+- [Push-уведомления](feature_push.md) — ✅ реализовано: FCM HTTP v1 напрямую (без Expo), глобальный + per-habit тогглы, 5 типов пушей
+- [Главный экран](feature_main_screen.md) — редизайн влит в main: маскот+прогресс-бар+Toolbar вместо шторки, плоские карточки со статус-тегом, pull-to-refresh; ⚠️ регрессия: профиль недостижим из UI
+- [Цель «Подтягивания»](feature_pullups.md) — ✅ реализовано: колонки в habits + сохранённый план, формула прогрессии, Multiselect, календарь Неделя/Месяц, тап по дате → модалка плана, solo-only
+- [Групповая count-цель](feature_group_count_goal.md) — безлимитная (goal_value NULL), пуш на каждую запись, entry_totals/«Общая статистика», кнопка +1, календарь без красного
+
+## UI-паттерны
+
+- [Модалки и меню](ui_modals.md) — BottomSheet, ConfirmModal/useConfirm, DropdownPopover; единая анимация, elevation:0 на Android
+- [Клавиатура на Android](ui_keyboard.md) — edge-to-edge не ресайзит окно: useKeyboardPadding + «парящая» кнопка на экранах форм
+
+## Бэклог
+
+- [Отложенное и известные баги](backlog.md) — expo-clipboard (нужен prebuild); профиль недостижим после редизайна; карточки «Шаги» показывают стрик; Fab-меню уезжает за экран вне угловой обёртки
+
+## Справочники
+
 - [Figma MCP](reference_figma_mcp.md) — как поднять Dev Mode MCP + curl-обход, get_design_context/screenshot, node-id формат
-- [SSH: редактирование файлов на сервере](feedback_ssh_file_edit.md) — серверный код правится локально в `backend/` и деплоится через `./deploy-backend.ps1`, никакой прямой правки на сервере
-- [Figma TapaDS — источник правды](feedback_figma_source_of_truth.md) — иконки/цвета/компоненты/отступы только из Figma TapaDS, не придумывать самостоятельно
-- [Дизайн-система: компоненты и цвета](feedback_design_system_usage.md) — никогда не хардкодить цвета, использовать colors.ts и components/; таблица замен нативных примитивов
-- [Иконки: fill=currentColor](feedback_icons_currentcolor.md) — менять fill на currentColor в SVG можно без спроса; fill="none" на <svg> не трогать
-- [Стек проекта](project_stack.md) — Expo SDK 55, Express 5, postgres tag, PM2, grammy, BASE_URL, JWT TTL
-- [Окружение разработки](project_dev_env.md) — IP компьютера/телефона, запуск dev-сервера, Android APK-сборка
-- [База данных](project_database.md) — схема всех таблиц: users, groups, habits, habit_members, habit_logs, refresh_tokens
-- [Деплой бэкенда](project_backend_deploy.md) — backend/ в репо, ручной деплой через `./deploy-backend.ps1` (нет автодеплоя)
-- [Git коммиты](feedback_git_commits.md) — коммитить и пушить только по явной просьбе, не автоматически
-- [Память перед коммитом](feedback_memory_before_commit.md) — перед коммитом проверять и обновлять устаревшие файлы памяти
-- [Naming: Haba→Тапа](project_naming_haba_tapa.md) — в UI «Тапа», системные идентификаторы (scheme/package/SecureStore keys) остаются haba
-- [Health Sync WorkManager](project_health_sync_plan.md) — ✅ реализовано: Expo Module health-sync, CoroutineWorker, refreshToken в SharedPreferences, scheduleSync/cancelSync
-- [Pending Features](project_pending_features.md) — отложенная фича: expo-clipboard (нужен prebuild); баги: карточки «Шаги» показывают стрик; Fab-меню уезжает за экран вне угловой обёртки (measureInWindow даёт неверные координаты)
-- [Push-уведомления](project_push_notifications.md) — ✅ реализовано: FCM HTTP v1 напрямую (без Expo), глобальный тоггл в настройках + per-habit тоггл, 3 типа пушей
-- [Цель «Подтягивания»](project_pullups_goal_plan.md) — ✅ реализовано: новые колонки в habits + сохранённый план, формула прогрессии, Multiselect, свайп календаря вперёд по плану, solo-only

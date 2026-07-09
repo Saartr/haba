@@ -1,5 +1,5 @@
 ---
-name: project-naming-haba-tapa
+name: rules-naming
 description: Приложение называется «Тапа» в UI, но системные идентификаторы (scheme, package, SecureStore keys) остаются haba
 metadata:
   type: project

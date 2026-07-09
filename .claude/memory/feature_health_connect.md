@@ -1,5 +1,5 @@
 ---
-name: project-health-connect
+name: feature-health-connect
 description: Health Connect (Android step tracker) — статус интеграции и известные ограничения
 metadata:
   type: project

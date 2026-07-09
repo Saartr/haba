@@ -1,5 +1,5 @@
 ---
-name: project-telegram-oidc
+name: feature-telegram-login
 description: "Переход Telegram-авторизации на новый OIDC / Native Login (legacy widget сломан — редиректит на MAX)"
 metadata:
   type: project
@@ -71,4 +71,4 @@ Telegram Native Login = нативная Kotlin-библиотека `org.telegr
 - App Link верифицирован: `adb shell pm get-app-links pro.mihmih.haba` → `app4160742593-login.tg.dev: verified` (SHA-256 совпал). Манифест чистый.
 - ⚠️ **OPPO/ColorOS глушит логи сторонних приложений в logcat** — ни JS (`console.log`), ни нативные `Log.d` не видны через `adb logcat`. Дебажить через Metro-терминал, не logcat.
 
-**How to apply:** Перед release-сборкой добавлять release SHA-256 в BotFather Native Login. При жалобах «не возвращается в приложение» — первым делом проверять, что `oauth.telegram.org` доступен с телефона (VPN без split-tunnel). См. также [[project-android-config-plugins]] (репо/placeholders переживают `prebuild --clean`).
+**How to apply:** Перед release-сборкой добавлять release SHA-256 в BotFather Native Login. При жалобах «не возвращается в приложение» — первым делом проверять, что `oauth.telegram.org` доступен с телефона (VPN без split-tunnel). См. также [[infra-android-native]] (репо/placeholders переживают `prebuild --clean`).

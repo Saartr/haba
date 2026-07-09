@@ -1,5 +1,5 @@
 ---
-name: project-auth-refactor
+name: feature-auth
 description: Два способа авторизации — Telegram (нативный OIDC-логин) и VK ID (нативный SDK)
 metadata:
   type: project
@@ -9,7 +9,7 @@ metadata:
 
 Старый флоу через `oauth.telegram.org` + браузерный deeplink (`Linking.openURL`, `/auth/telegram-callback`, `POST /auth/telegram` с HMAC-верификацией) **удалён в коммите `677dbab`**, т.к. в РФ Telegram стал редиректить этот флоу на VK ID/MAX вместо завершения логина (внешнее изменение Telegram, не баг кода). Маршруты `GET /auth/telegram-callback` и `POST /auth/telegram` физически ещё есть в `backend/src/api/auth.js`, но это мёртвый код, помеченный в коде как неиспользуемый.
 
-Актуальный флоу — нативный модуль + `POST /auth/telegram-native` (JWT id_token, верификация через JWKS). Полное описание — [[project-telegram-oidc]].
+Актуальный флоу — нативный модуль + `POST /auth/telegram-native` (JWT id_token, верификация через JWKS). Полное описание — [[feature-telegram-login]].
 
 **Данные в users (актуально):** `tg_id`, `username`, `first_name`, `last_name`, `avatar_url`, `phone` (через scope=phone)
 
@@ -59,3 +59,13 @@ metadata:
 - В payload refresh-токена добавлен случайный `jti: crypto.randomUUID()` — исключает совпадение строк даже при честном одновременном рефреше с разных устройств.
 
 **How to apply:** Если в логах снова появится `refresh_tokens_token_key` — проверить, не регрессировал ли клиент к раздельным SELECT/DELETE, и не добавился ли где-то ещё путь генерации refresh-токена без `jti`.
+
+---
+
+## Имя и аватар: приоритеты и подтягивание (2026-07-09)
+
+**Имя не затирается при повторном логине.** Раньше в `POST /auth/vk` и `POST /auth/telegram-native` upsert делал `COALESCE(EXCLUDED.first_name, users.first_name)` — свежее имя от провайдера побеждало сохранённое, и имя, изменённое вручную через `PATCH /auth/me`, стиралось при следующем входе. Теперь `username`/`first_name`/`last_name` приоритизируют существующее значение в БД (`COALESCE(users.x, EXCLUDED.x)`) — как всегда было в `/auth/link/*`. Провайдер только заполняет пустое.
+
+**Аватар — `ensureAvatar(bot, user, freshPhotoUrl)`** (общая для `/vk`, `/telegram-native`, `/link/telegram`, `/link/vk`): если `avatar_url` пуст, пробует по очереди ОБА привязанных провайдера, не только текущий: Telegram Bot API (`getUserProfilePhotos`, `tg_id` передаётся числом — строкой не работало) → VK `users.get` с сервисным токеном (`photo_max_orig`/`photo_200`/`photo_100` — `photo_200` не отдаётся, если исходник < 200×200; сервисный токен не привязан к IP, в отличие от пользовательского) → «свежий» URL с клиента (photo200/claims.picture). Побочное изменение: Telegram-логин больше НЕ перекачивает аватар при каждом входе — только если его ещё нет.
+
+**`POST /auth/refresh-avatar`** — принудительно перекачивает фото с привязанных провайдеров, игнорируя текущий `avatar_url`. Кнопка «Обновить аватар» в `profile-settings.tsx` (⚠️ после редизайна главного экрана profile-settings недостижим из UI — см. [[feature-main-screen]]).

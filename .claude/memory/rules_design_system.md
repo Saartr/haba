@@ -1,5 +1,5 @@
 ---
-name: feedback-design-system-usage
+name: rules-design-system
 description: Правила использования компонентов и цветов дизайн-системы — никогда не хардкодить, всегда брать из lib/colors.ts и components/
 metadata:
   type: feedback
@@ -12,7 +12,7 @@ metadata:
 - Использовать только `colors.*` из `lib/colors.ts` или семантические токены через `useColors()` из того же файла
 - Никогда не хардкодить hex (`'#121212'`), rgb/rgba (`'rgba(0,0,0,0.5)'`) в стилях
 - Исключение — `android_ripple` (`rgba(0,0,0,0.06/0.08)`): это системные Material-значения, в TapaDS их нет
-- `shadowColor` — всегда `colors.neutral[950]`
+- Тени: **карточки и подложки — плоские, без теней** в обеих темах (2026-07-09, `useCardShadow` удалён; не добавлять тени `Card`/`Lists`/листам-«простыням»). Тени остаются только у плавающих элементов (Fab, Toolbar, Snackbar, DropdownMenu, бегунок SegmentedControl); `shadowColor` у них — всегда `colors.neutral[950]`
 - Оверлеи/backdrop — `colors.blackTransparent[24]` (светлая тема), `colors.blackTransparent[80]` (тёмная)
 - Если нужного оттенка нет в `lib/colors.ts` — сначала добавить его туда из Figma TapaDS, потом использовать
 

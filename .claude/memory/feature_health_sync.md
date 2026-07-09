@@ -1,5 +1,5 @@
 ---
-name: project-health-sync-plan
+name: feature-health-sync
 description: "✅ Реализовано: фоновый синк шагов через WorkManager (health-sync Expo Module)"
 metadata:
   type: project

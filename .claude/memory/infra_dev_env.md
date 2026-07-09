@@ -1,5 +1,5 @@
 ---
-name: project-dev-env
+name: infra-dev-env
 description: "Окружение разработки — устройства, IP, запуск dev-сервера, Android-сборка"
 metadata: 
   node_type: memory
