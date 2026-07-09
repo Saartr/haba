@@ -135,7 +135,11 @@ export default function PresetHabitsScreen() {
         } : {}),
       });
 
-      router.replace(`/(tabs)/habit/${habit.id}` as any);
+      // dismissAll разворачивает стек создания (create-habit) обратно к главному экрану,
+      // затем push кладёт экран цели поверх него — назад с только что созданной цели
+      // ведёт на главный экран, а не на промежуточный экран выбора способа создания.
+      router.dismissAll();
+      router.push(`/(tabs)/habit/${habit.id}` as any);
       showSnackbar('Цель создана', 'success');
 
       if (Platform.OS === 'android' && habit.category === 'steps') {
