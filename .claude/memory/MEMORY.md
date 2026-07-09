@@ -5,7 +5,7 @@
 - [Telegram OIDC / Native Login](project_telegram_oidc.md) — ✅ работает + телефон (scope=phone). SDK = браузерный OIDC через oauth.telegram.org. 🔴 требует VPN без split-tunnel; ⚠️ release-сборка требует release SHA-256 в BotFather
 - [Android config-плагины](project_android_config_plugins.md) — нативные SDK (VK/TG): maven-репо + manifest-placeholders через config-плагины, т.к. `prebuild --clean` стирает `android/`. Секреты в `~/.gradle/gradle.properties`
 - [Health Connect](project_health_connect.md) — ✅ работает на debug; причина бывшего пустого requestPermission — отсутствие Android-14 rationale activity-alias в манифесте, НЕ верификация
-- [Главный экран](project_main_screen.md) — реализован: шторка, аватар, имя с truncation, empty state, без таб-бара
+- [Главный экран](project_main_screen.md) — 🚧 идёт редизайн (маскот+прогресс-бар+Toolbar вместо шторки, карточки без иллюстраций), не закоммичен, продолжение завтра
 - [UI: модалки и меню](project_ui_modals.md) — BottomSheet, ConfirmModal/useConfirm, DropdownPopover; единая анимация, elevation:0 на Android
 - [Figma MCP](reference_figma_mcp.md) — как поднять Dev Mode MCP + curl-обход, get_design_context/screenshot, node-id формат
 - [SSH: редактирование файлов на сервере](feedback_ssh_file_edit.md) — серверный код правится локально в `backend/` и деплоится через `./deploy-backend.ps1`, никакой прямой правки на сервере
@@ -20,6 +20,6 @@
 - [Память перед коммитом](feedback_memory_before_commit.md) — перед коммитом проверять и обновлять устаревшие файлы памяти
 - [Naming: Haba→Тапа](project_naming_haba_tapa.md) — в UI «Тапа», системные идентификаторы (scheme/package/SecureStore keys) остаются haba
 - [Health Sync WorkManager](project_health_sync_plan.md) — ✅ реализовано: Expo Module health-sync, CoroutineWorker, refreshToken в SharedPreferences, scheduleSync/cancelSync
-- [Pending Features](project_pending_features.md) — отложенная фича: expo-clipboard (нужен prebuild)
+- [Pending Features](project_pending_features.md) — отложенная фича: expo-clipboard (нужен prebuild); баги: карточки «Шаги» показывают стрик; Fab-меню уезжает за экран вне угловой обёртки (measureInWindow даёт неверные координаты)
 - [Push-уведомления](project_push_notifications.md) — ✅ реализовано: FCM HTTP v1 напрямую (без Expo), глобальный тоггл в настройках + per-habit тоггл, 3 типа пушей
 - [Цель «Подтягивания»](project_pullups_goal_plan.md) — ✅ реализовано: новые колонки в habits + сохранённый план, формула прогрессии, Multiselect, свайп календаря вперёд по плану, solo-only

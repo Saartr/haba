@@ -1,5 +1,4 @@
 import { View, Pressable, Animated, BackHandler } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useRef, useEffect } from 'react';
 import { useSettings } from '@/lib/settings-context';
 import { useColors, colors } from '@/lib/colors';
@@ -14,15 +13,25 @@ const SHADOW = {
   elevation: 4,
 } as const;
 
-type Props = {
-  items: DropdownMenuItem[];
+type Size = 'M' | 'S';
+
+const SIZE_CONFIG: Record<Size, { button: number; radius: number }> = {
+  M: { button: 56, radius: 24 },
+  S: { button: 48, radius: 20 },
 };
 
-export default function Fab({ items }: Props) {
+const MENU_GAP = 8;
+
+type Props = {
+  items: DropdownMenuItem[];
+  size?: Size;
+};
+
+export default function Fab({ items, size = 'M' }: Props) {
   const c = useColors();
+  const { button: buttonSize, radius } = SIZE_CONFIG[size];
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const insets = useSafeAreaInsets();
   const { colorScheme } = useSettings();
   const overlayColor = colorScheme === 'dark' ? colors.blackTransparent[80] : colors.blackTransparent[24];
   const anim = useRef(new Animated.Value(0)).current;
@@ -92,7 +101,7 @@ export default function Fab({ items }: Props) {
           style={{
             position: 'absolute',
             right: 0,
-            bottom: 56 + 16,
+            bottom: buttonSize + MENU_GAP,
             opacity: anim,
             transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
           }}
@@ -105,11 +114,11 @@ export default function Fab({ items }: Props) {
       )}
 
       {/* Single FAB button instance */}
-      <Pressable onPress={() => setOpen(o => !o)} style={{ height: 56 }}>
+      <Pressable onPress={() => setOpen(o => !o)} style={{ height: buttonSize }}>
         <View style={{
-          width: 56,
-          height: 56,
-          borderRadius: 24,
+          width: buttonSize,
+          height: buttonSize,
+          borderRadius: radius,
           backgroundColor: c.brand.primary,
           alignItems: 'center',
           justifyContent: 'center',

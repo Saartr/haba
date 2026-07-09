@@ -4,48 +4,29 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useRef, useState } from 'react';
 import Text from '@/components/Text';
-import Card, { useCardShadow } from '@/components/Card';
+import { useCardShadow } from '@/components/Card';
 import HabitTag from '@/components/HabitTag';
-import Fab from '@/components/Fab';
+import ProgressBar from '@/components/ProgressBar';
+import Toolbar from '@/components/Toolbar';
 import BottomSheet from '@/components/BottomSheet';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
 import MascotSvg from '@/assets/images/chill.svg';
-import CelebAvatar from '@/assets/images/celeb_avatar.svg';
-import AngryAvatar from '@/assets/images/angry_avatar.svg';
+import GroupIcon from '@/assets/icons/Group.svg';
+import PersonIcon from '@/assets/icons/Person.svg';
 import UserIcon from '@/assets/icons/User.svg';
+import SettingsIcon from '@/assets/icons/Settings.svg';
 import GroupPlusIcon from '@/assets/icons/GroupPlus.svg';
 import PlusIcon from '@/assets/icons/Plus.svg';
 import CheckIcon from '@/assets/icons/Check.svg';
-import TelegramIcon from '@/assets/icons/Telegram.svg';
-import VKIcon from '@/assets/icons/VK.svg';
-import { useColors, colors } from '@/lib/colors';
+import { useColors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import { useAuth } from '@/lib/auth-context';
 import { useSnackbar } from '@/lib/snackbar-context';
 import { getHabits, getHabit, joinHabit, Habit } from '@/lib/api';
 import { genitiveUnit } from '@/lib/units';
 
-function Avatar({ firstName, avatarUrl }: { firstName: string | null; avatarUrl: string | null }) {
-  const initial = firstName ? firstName[0].toUpperCase() : '?';
-  if (avatarUrl) {
-    return (
-      <Image source={{ uri: avatarUrl }}
-        style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: colors.neutral[500] }} />
-    );
-  }
-  return (
-    <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 2,
-      borderColor: colors.neutral[500], backgroundColor: colors.neutral[50],
-      alignItems: 'center', justifyContent: 'center' }}>
-      <Text weight="bold" style={{ fontSize: 20, color: colors.neutral[500], lineHeight: 30 }}>
-        {initial}
-      </Text>
-    </View>
-  );
-}
-
-type HabitExtra = { streak: number; today_value: number };
+type HabitExtra = { streak: number; streakMax: number; today_value: number };
 
 // Пользователь может вставить полную ссылку (https://.../join/<code>, haba://join/<code>)
 // или просто код — берём последний сегмент пути без query/hash.
@@ -87,21 +68,26 @@ function pullupsTodayLabel(habit: Habit): string {
     + `по ${session.reps} ${pluralWord(session.reps, 'повторение', 'повторения', 'повторений')}`;
 }
 
-function HabitCard({ habit, extra, onPress }: {
-  habit: Habit;
-  extra: HabitExtra | null;
-  onPress: () => void;
-}) {
-  const c = useColors();
+type HabitStatus = {
+  subtitle: string;
+  value: string;
+  done: boolean;
+  status: 'done' | 'failed' | 'skip';
+  showStreakRow: boolean;
+};
 
+// Общая логика статуса цели на сегодня — используется и карточкой в списке,
+// и агрегатом «X/Y целей выполнено» в шапке экрана.
+function computeHabitStatus(habit: Habit, extra: HabitExtra | null): HabitStatus {
   const isCount = habit.checkin_type === 'count';
   const isBoolean = habit.checkin_type === 'boolean';
   const isProgression = habit.checkin_type === 'progression';
+  const isPullups = habit.category === 'pullups';
   const todayVal = extra?.today_value ?? 0;
   const streak = extra?.streak ?? 0;
 
   const subtitle = habit.category === 'smoking' ? 'Без сигарет'
-    : habit.category === 'pullups' ? 'Цель на сегодня'
+    : isPullups ? 'Цель на сегодня'
     : isBoolean ? 'Текущий стрик'
     : isProgression ? 'Текущий результат'
     : isCount ? `${genitiveUnit(habit.goal_unit) || 'Количество'} сегодня`
@@ -109,7 +95,7 @@ function HabitCard({ habit, extra, onPress }: {
 
   const value = habit.category === 'smoking'
     ? pluralDays(streak)
-    : habit.category === 'pullups'
+    : isPullups
     ? pullupsTodayLabel(habit)
     : isBoolean
     ? String(streak)
@@ -119,50 +105,71 @@ function HabitCard({ habit, extra, onPress }: {
       ? `${todayVal}${habit.goal_value ? ` / ${habit.goal_value}` : ''}`
       : `${todayVal}/${habit.goal_value ?? 0}`;
 
+  const isRestDay = isPullups && !isTodayTrainingDay(habit.training_days);
+
   const done = habit.category === 'smoking'
     ? streak > 0
-    : habit.category === 'pullups'
-    ? !isTodayTrainingDay(habit.training_days) || todayVal >= 1
+    : isPullups
+    ? isRestDay || todayVal >= 1
     : isBoolean
     ? todayVal >= 1
     : isProgression
     ? habit.goal_value != null && todayVal >= habit.goal_value
-    // count без цели (безлимитная групповая) — всегда довольный Тапа, даже при 0 за день
+    // count без цели (безлимитная групповая) — всегда выполнено, даже при 0 за день
     : isCount && habit.goal_value == null
     ? true
     : todayVal >= (habit.goal_value ?? 1) && (habit.goal_value ?? 0) > 0;
 
+  const status: 'done' | 'failed' | 'skip' = isRestDay ? 'skip' : done ? 'done' : 'failed';
+
+  // Стрик не показываем для «Прогрессии» (одна разовая цель, не повторяющаяся ежедневная
+  // активность — метрика не имеет смысла) и «Подтягиваний» (свой план тренировок/дней отдыха).
+  const showStreakRow = !isProgression && !isPullups;
+
+  return { subtitle, value, done, status, showStreakRow };
+}
+
+function HabitCard({ habit, extra, onPress }: {
+  habit: Habit;
+  extra: HabitExtra | null;
+  onPress: () => void;
+}) {
+  const c = useColors();
+  const streakMax = extra?.streakMax ?? 0;
+  const { subtitle, value, status, showStreakRow } = computeHabitStatus(habit, extra);
+  const TypeIcon = habit.type === 'group' ? GroupIcon : PersonIcon;
+
   return (
     <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
-      <Card>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16 }}>
-          <View style={{
-            width: 64, height: 64, borderRadius: 32, overflow: 'hidden',
-            backgroundColor: done ? colors.purple[100] : colors.red[200],
-          }}>
-            {done
-              ? <CelebAvatar width={133} height={100} style={{ position: 'absolute', left: -35, top: -6 }} />
-              : <AngryAvatar width={131} height={97} style={{ position: 'absolute', left: -33, top: 0 }} />
-            }
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, flex: 1 }}>
-            <View style={{ gap: 4, flex: 1 }}>
-              <Text weight="bold" numberOfLines={1} style={{ fontSize: 16, lineHeight: 16 * 1.6, color: c.text.primary, letterSpacing: 0.2 }}>
-                {habit.name}
-              </Text>
-              <View>
-                <Text weight="medium" style={{ fontSize: 12, lineHeight: 12 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
-                  {subtitle}
-                </Text>
-                <Text weight="bold" style={{ fontSize: 20, lineHeight: 20 * 1.5, color: c.text.primary, letterSpacing: 0.2 }}>
-                  {value}
-                </Text>
-              </View>
-            </View>
-            {habit.type === 'group' && <HabitTag type={habit.type} />}
-          </View>
+      <View style={{ backgroundColor: c.surface.bg, borderRadius: 24, padding: 16, gap: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TypeIcon width={20} height={20} color={c.text.secondary} />
+          <Text weight="bold" numberOfLines={1} style={{ flex: 1, fontSize: 14, lineHeight: 14 * 1.4, color: c.text.primary, letterSpacing: 0.2 }}>
+            {habit.name}
+          </Text>
+          <HabitTag type={status} />
         </View>
-      </Card>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text weight="medium" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
+            {subtitle}
+          </Text>
+          <Text weight="bold" style={{ fontSize: 16, lineHeight: 16 * 1.5, color: c.text.primary, letterSpacing: 0.2 }}>
+            {value}
+          </Text>
+        </View>
+
+        {showStreakRow && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text weight="medium" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
+              Максимальный стрик
+            </Text>
+            <Text weight="bold" style={{ fontSize: 16, lineHeight: 16 * 1.5, color: c.text.primary, letterSpacing: 0.2 }}>
+              {pluralDays(streakMax)}
+            </Text>
+          </View>
+        )}
+      </View>
     </Pressable>
   );
 }
@@ -171,7 +178,7 @@ export default function HabitsScreen() {
   const c = useColors();
   const router = useRouter();
   const { user } = useAuth();
-  const { colorScheme: scheme } = useSettings();
+  const { colorScheme } = useSettings();
   const insets = useSafeAreaInsets();
   const showSnackbar = useSnackbar();
 
@@ -205,16 +212,6 @@ export default function HabitsScreen() {
 
   const rawName = user?.first_name ?? user?.username ?? null;
   const displayName = rawName && rawName.length > 12 ? rawName.slice(0, 12) + '…' : rawName;
-  // Иконка сервиса авторизации — способ, которым реально залогинились в последний раз
-  // (last_login_provider), а не просто наличие tg_id/vk_id — при слитых аккаунтах
-  // оба ID присутствуют одновременно. Фоллбэк на старую логику для сессий до миграции,
-  // у которых last_login_provider ещё не заполнен. Цвет — neutral[400] из макета TapaDS.
-  const ServiceIcon = user?.last_login_provider === 'telegram' ? TelegramIcon
-    : user?.last_login_provider === 'vk' ? VKIcon
-    : user?.tg_id ? TelegramIcon : user?.vk_id ? VKIcon : null;
-  const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
-  const statusBarStyle = scheme === 'dark' ? 'light-content' : 'dark-content';
-  const panelShadow = useCardShadow();
 
   const load = useCallback(async () => {
     try {
@@ -233,6 +230,7 @@ export default function HabitsScreen() {
             : undefined;
           map[data[i].id] = {
             streak: detail.streak.current,
+            streakMax: detail.streak.max,
             today_value: todayLog?.value ?? 0,
           };
         }
@@ -261,102 +259,123 @@ export default function HabitsScreen() {
     router.push(`/(tabs)/habit/${id}`);
   }
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }} edges={['bottom']}>
-      <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
+  // Только активные (не истёкшие по периоду) цели — та же фильтрация, что и в списке ниже.
+  const visibleHabits = habits.filter(h => {
+    if (h.duration_type === 'period' && h.period_end && h.period_end < new Date().toISOString().slice(0, 10)) return false;
+    return true;
+  });
+  const total = visibleHabits.length;
+  const doneCount = visibleHabits.filter(h => computeHabitStatus(h, extras[h.id] ?? null).done).length;
+  const allDone = total > 0 && doneCount === total;
+  const statusText = allDone ? 'Все цели выполнены' : `${doneCount}/${total} целей выполнено`;
 
-      {/* Top panel */}
-      <View style={{ backgroundColor: panelColor, borderBottomLeftRadius: 32, borderBottomRightRadius: 32,
-        paddingTop: insets.top + 16, paddingBottom: 24, paddingHorizontal: 24, ...panelShadow }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 4, flex: 1, marginRight: 12 }}>
-            <Text weight="bold" style={{ fontSize: 20, color: c.text.secondary, lineHeight: 20 * 1.5, letterSpacing: 0.2 }}>
-              Привет,
+  const sheetShadow = useCardShadow();
+  const isEmpty = !loading && habits.length === 0;
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }}>
+      <StatusBar backgroundColor={c.surface.bg} barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
+
+      {isEmpty ? (
+        <>
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+            <MascotSvg width={345} height={293} />
+            <Text weight="semibold" style={{ fontSize: 16, color: c.text.secondary, textAlign: 'center', letterSpacing: 0.2 }}>
+              Нет активных целей
             </Text>
-            {displayName && (
-              <Text weight="bold" style={{ fontSize: 20, color: c.text.primary, lineHeight: 20 * 1.5, letterSpacing: 0.2 }}>
-                {displayName}
-              </Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 24, paddingBottom: insets.bottom + 24 }}>
+            <View style={{ flex: 1 }}>
+              <Button
+                label="Добавить"
+                icon={<PlusIcon />}
+                onPress={() => router.push('/(tabs)/create-habit')}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button
+                label="Вступить"
+                icon={<GroupPlusIcon />}
+                onPress={() => { setJoinError(null); setJoinModal(true); }}
+              />
+            </View>
+          </View>
+        </>
+      ) : (
+        <>
+          {/* Header — маскот слева, приветствие+статус и прогресс-бар справа. Лежит на фоне
+              страницы (surface.bg); список карточек ниже — на отдельной светлой «простыне». */}
+          {!loading && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, paddingTop: insets.top + 16, paddingHorizontal: 24 }}>
+              <Image
+                source={allDone ? require('@/assets/images/tapa_happy.png') : require('@/assets/images/tapa_sad.png')}
+                style={{ width: 140, height: 113 }}
+                resizeMode="contain"
+              />
+              <View style={{ flex: 1, gap: 8 }}>
+                <View style={{ gap: 2 }}>
+                  <Text weight="bold" numberOfLines={1} style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.primary, letterSpacing: 0.2 }}>
+                    {displayName ? `Привет, ${displayName}` : 'Привет'}
+                  </Text>
+                  <Text weight="semibold" numberOfLines={1} style={{ fontSize: 12, lineHeight: 12 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
+                    {statusText}
+                  </Text>
+                </View>
+                <ProgressBar total={total} value={doneCount} />
+              </View>
+            </View>
+          )}
+
+          {/* Простыня со скруглением сверху — фон surface.input, под ней список карточек */}
+          <View style={{
+            flex: 1,
+            backgroundColor: c.surface.input,
+            borderTopLeftRadius: 32,
+            borderTopRightRadius: 32,
+            ...sheetShadow,
+          }}>
+            {loading ? (
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <ActivityIndicator color={c.brand.primary} />
+              </View>
+            ) : (
+              <FlatList
+                data={visibleHabits}
+                keyExtractor={h => String(h.id)}
+                contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 96, gap: 16 }}
+                renderItem={({ item }) => (
+                  <HabitCard
+                    habit={item}
+                    extra={extras[item.id] ?? null}
+                    onPress={() => openHabit(item.id)}
+                  />
+                )}
+              />
             )}
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            {ServiceIcon && <ServiceIcon width={24} height={24} color={colors.neutral[400]} />}
-            <Pressable onPress={() => router.push('/(tabs)/profile')}
-              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })} hitSlop={8}>
-              <Avatar firstName={user?.first_name ?? null} avatarUrl={user?.avatar_url ?? null} />
-            </Pressable>
-          </View>
-        </View>
-      </View>
 
-      {/* Content */}
-      {loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={c.brand.primary} />
-        </View>
-      ) : habits.length === 0 ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-          <MascotSvg width={345} height={293} />
-          <Text weight="semibold" style={{ fontSize: 16, color: c.text.secondary, textAlign: 'center', letterSpacing: 0.2 }}>
-            Нет активных целей
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={habits.filter(h => {
-            if (h.duration_type === 'period' && h.period_end && h.period_end < new Date().toISOString().slice(0, 10)) return false;
-            return true;
-          })}
-          keyExtractor={h => String(h.id)}
-          contentContainerStyle={{ padding: 24, gap: 16 }}
-          renderItem={({ item }) => (
-            <HabitCard
-              habit={item}
-              extra={extras[item.id] ?? null}
-              onPress={() => openHabit(item.id)}
-            />
+          {/* Toolbar — по центру внизу */}
+          {!loading && (
+            <View style={{ position: 'absolute', bottom: insets.bottom + 24, left: 0, right: 0, alignItems: 'center' }}>
+              <Toolbar
+                icon={<SettingsIcon />}
+                onIconPress={() => router.push('/(tabs)/app-settings')}
+                fabItems={[
+                  {
+                    label: 'Создать цель',
+                    icon: () => <UserIcon width={24} height={24} color={c.text.secondary} />,
+                    onPress: () => router.push('/(tabs)/create-habit'),
+                  },
+                  {
+                    label: 'Вступить в группу',
+                    icon: () => <GroupPlusIcon width={24} height={24} color={c.text.secondary} />,
+                    onPress: () => { setJoinError(null); setJoinModal(true); },
+                  },
+                ]}
+              />
+            </View>
           )}
-        />
-      )}
-
-      {/* Кнопки снизу — только в empty state */}
-      {!loading && habits.length === 0 && (
-        <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 24, paddingBottom: 24 }}>
-          <View style={{ flex: 1 }}>
-            <Button
-              label="Добавить"
-              icon={<PlusIcon />}
-              onPress={() => router.push('/(tabs)/create-habit')}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Button
-              label="Вступить"
-              icon={<GroupPlusIcon />}
-              onPress={() => { setJoinError(null); setJoinModal(true); }}
-            />
-          </View>
-        </View>
-      )}
-
-      {/* FAB — только когда есть цели */}
-      {!loading && habits.length > 0 && (
-        <View style={{ position: 'absolute', right: 24, bottom: insets.bottom + 24 }}>
-          <Fab
-            items={[
-              {
-                label: 'Создать цель',
-                icon: () => <UserIcon width={24} height={24} color={c.text.secondary} />,
-                onPress: () => router.push('/(tabs)/create-habit'),
-              },
-              {
-                label: 'Вступить в группу',
-                icon: () => <GroupPlusIcon width={24} height={24} color={c.text.secondary} />,
-                onPress: () => { setJoinError(null); setJoinModal(true); },
-              },
-            ]}
-          />
-        </View>
+        </>
       )}
 
       {/* Вступление в группу по коду/ссылке */}

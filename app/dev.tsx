@@ -11,6 +11,9 @@ import Lists from '@/components/Lists';
 import CalendarWeek from '@/components/CalendarWeek';
 import CalendarMonthly from '@/components/CalendarMonthly';
 import DatePicker from '@/components/DatePicker';
+import ProgressBar from '@/components/ProgressBar';
+import IconButton from '@/components/IconButton';
+import Toolbar from '@/components/Toolbar';
 import NavigationBar from '@/components/NavigationBar';
 import Card from '@/components/Card';
 import HabitTag from '@/components/HabitTag';
@@ -150,6 +153,32 @@ function CalendarMonthlyPeriodDemo() {
       selectedDate={selected}
       onDateSelect={setSelected}
     />
+  );
+}
+
+function ProgressBarDemo() {
+  const [value, setValue] = useState(4);
+  const total = 10;
+  return (
+    <View style={{ gap: 12 }}>
+      <ProgressBar total={total} value={value} />
+      <Text weight="semibold" style={{ fontSize: 14 }}>{value} / {total}</Text>
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Button
+            variant="secondary"
+            label="-1"
+            onPress={() => setValue(v => Math.max(0, v - 1))}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button
+            label="+1"
+            onPress={() => setValue(v => Math.min(total, v + 1))}
+          />
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -460,6 +489,21 @@ export default function DevScreen() {
           <DatePickerDemoSection />
         </Section>
 
+        {/* PROGRESS BAR */}
+        <Section title="ProgressBar">
+          <Label text="Empty (0/12)" />
+          <ProgressBar total={12} value={0} />
+
+          <Label text="Progress (5/12)" />
+          <ProgressBar total={12} value={5} />
+
+          <Label text="Success (12/12)" />
+          <ProgressBar total={12} value={12} />
+
+          <Label text="Интерактивный (анимация)" />
+          <ProgressBarDemo />
+        </Section>
+
         {/* NAVIGATION BAR */}
         <Section title="Navigation Bar">
           <Label text="Только заголовок" />
@@ -483,6 +527,38 @@ export default function DevScreen() {
 
           <Label text="Одиночная (yellow)" />
           <HabitTag type="solo" />
+
+          <Label text="Пропуск (grey)" />
+          <HabitTag type="skip" />
+
+          <Label text="Не выполнено (red)" />
+          <HabitTag type="failed" />
+
+          <Label text="Выполнено (green)" />
+          <HabitTag type="done" />
+        </Section>
+
+        {/* ICON BUTTON */}
+        <Section title="IconButton">
+          <Label text="Default / Pressed (зажми) / Disabled" />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <IconButton icon={<SettingsIcon />} onPress={() => {}} />
+            <IconButton icon={<SettingsIcon />} onPress={() => {}} />
+            <IconButton icon={<SettingsIcon />} onPress={() => {}} disabled />
+          </View>
+        </Section>
+
+        {/* TOOLBAR */}
+        <Section title="Toolbar">
+          <Label text="IconButton + FAB S, тень адаптируется по теме" />
+          <Toolbar
+            icon={<SettingsIcon />}
+            onIconPress={() => {}}
+            fabItems={[
+              { label: 'Создать цель', icon: () => <UserIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+              { label: 'Вступить в группу по коду', icon: () => <ShareIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+            ]}
+          />
         </Section>
 
         {/* CHIPS */}
@@ -503,9 +579,21 @@ export default function DevScreen() {
 
         {/* FAB */}
         <Section title="FAB">
-          <Label text="Нажми — раскроется меню с затемнением" />
+          <Label text="Размер M (по умолчанию) — нажми, раскроется меню" />
           <View style={{ alignItems: 'flex-end' }}>
             <Fab
+              items={[
+                { label: 'Создать цель', icon: () => <UserIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+                { label: 'Создать групповую цель', icon: () => <GroupPlusIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+                { label: 'Вступить в группу по коду', icon: () => <ShareIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
+              ]}
+            />
+          </View>
+
+          <Label text="Размер S" />
+          <View style={{ alignItems: 'flex-end' }}>
+            <Fab
+              size="S"
               items={[
                 { label: 'Создать цель', icon: () => <UserIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
                 { label: 'Создать групповую цель', icon: () => <GroupPlusIcon width={24} height={24} color={c.text.secondary} />, onPress: () => {} },
