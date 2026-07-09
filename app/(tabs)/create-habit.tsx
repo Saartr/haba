@@ -6,7 +6,6 @@ import NavigationBar from '@/components/NavigationBar';
 import ChevronRightIcon from '@/assets/icons/ChevronRight.svg';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
-import { useCardShadow } from '@/components/Card';
 
 type ChoiceCardProps = {
   title: string;
@@ -16,7 +15,6 @@ type ChoiceCardProps = {
 
 function ChoiceCard({ title, subtitle, onPress }: ChoiceCardProps) {
   const c = useColors();
-  const shadow = useCardShadow();
   return (
     <Pressable
       onPress={onPress}
@@ -31,7 +29,6 @@ function ChoiceCard({ title, subtitle, onPress }: ChoiceCardProps) {
           alignItems: 'center',
           gap: 16,
           opacity: pressed ? 0.7 : 1,
-          ...shadow,
         }}>
           <View style={{ flex: 1, gap: 6 }}>
             <Text weight="bold" style={{ fontSize: 18, color: c.text.primary, letterSpacing: 0.2 }}>

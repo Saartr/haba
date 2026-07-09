@@ -1214,11 +1214,9 @@ export default function HabitScreen() {
     ? weekValueFor(me?.id ?? -1)
     : (myTodayLog?.value ?? 0);
 
-  // Карточки в модалке детализации: в тёмной теме фон cardGrey (иначе сливаются со шторкой)
-  // и без тени; в светлой — дефолтный фон и тень Card
   // Карточки в модалке детализации: фон cardGrey (светлая → neutral[100], тёмная → neutral[700]),
-  // тень выключена в обеих темах.
-  const detailCardStyle = { gap: 4, backgroundColor: c.surface.cardGrey, shadowOpacity: 0, elevation: 0 };
+  // иначе сливаются со шторкой.
+  const detailCardStyle = { gap: 4, backgroundColor: c.surface.cardGrey };
 
   async function handleCloseGroup() {
     setMenuVisible(false);
