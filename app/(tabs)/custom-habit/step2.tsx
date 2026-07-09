@@ -12,6 +12,7 @@ import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import { useConfirm } from '@/components/ConfirmModal';
 import { useCustomHabit } from './_layout';
+import { useKeyboardPadding } from '@/lib/use-keyboard-height';
 import { useState } from 'react';
 
 const UNIT_PRESETS = [
@@ -45,6 +46,7 @@ export default function Step2Screen() {
   const [goalError, setGoalError] = useState('');
   const [unitLabelError, setUnitLabelError] = useState('');
   const [startError, setStartError] = useState('');
+  const kbPadding = useKeyboardPadding();
 
   const panelColor = colorScheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = colorScheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
@@ -118,7 +120,7 @@ export default function Step2Screen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default, paddingBottom: kbPadding }} edges={['bottom']}>
       <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
 
       <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>
@@ -129,7 +131,9 @@ export default function Step2Screen() {
         />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 24, gap: 20 }} style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
+      {/* Кнопка «парит» над контентом: ScrollView заезжает под футер (высота кнопки 56 +
+          отступ 24), а paddingBottom контента позволяет доскроллить последнее поле выше кнопки. */}
+      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 104, gap: 20 }} style={{ flex: 1, marginBottom: -80 }} keyboardShouldPersistTaps="handled">
         <Text weight="bold" style={{ fontSize: 20, color: c.text.primary, letterSpacing: 0.2, lineHeight: 30 }}>
           Шаг 2 из 3
         </Text>
@@ -237,7 +241,7 @@ export default function Step2Screen() {
         )}
       </ScrollView>
 
-      <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+      <View pointerEvents="box-none" style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
         <Button label="Далее" onPress={handleNext} />
       </View>
     </SafeAreaView>

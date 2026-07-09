@@ -10,6 +10,7 @@ import NavigationBar from '@/components/NavigationBar';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import { useCustomHabit } from './_layout';
+import { useKeyboardPadding } from '@/lib/use-keyboard-height';
 import { useState } from 'react';
 
 const TYPE_OPTIONS = [
@@ -25,6 +26,7 @@ export default function Step1Screen() {
   const { state, set, reset } = useCustomHabit();
 
   const [nameError, setNameError] = useState('');
+  const kbPadding = useKeyboardPadding();
 
   const panelColor = colorScheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = colorScheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
@@ -43,14 +45,14 @@ export default function Step1Screen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default, paddingBottom: kbPadding }} edges={['bottom']}>
       <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
 
       <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>
         <NavigationBar title="Создание цели" onBack={handleBack} />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 24, gap: 20 }} style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 104, gap: 20 }} style={{ flex: 1, marginBottom: -80 }} keyboardShouldPersistTaps="handled">
         <Text weight="bold" style={{ fontSize: 20, color: c.text.primary, letterSpacing: 0.2, lineHeight: 30 }}>
           Шаг 1 из 3
         </Text>
@@ -83,7 +85,7 @@ export default function Step1Screen() {
         />
       </ScrollView>
 
-      <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+      <View pointerEvents="box-none" style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
         <Button label="Далее" onPress={handleNext} />
       </View>
     </SafeAreaView>

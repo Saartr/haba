@@ -13,6 +13,7 @@ import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import { getHabit, updateHabit } from '@/lib/api';
 import { useSnackbar } from '@/lib/snackbar-context';
+import { useKeyboardPadding } from '@/lib/use-keyboard-height';
 
 const GROUP_GOAL_OPTIONS = [
   { label: '5 000', value: '5000' },
@@ -67,6 +68,7 @@ export default function EditHabitScreen() {
   const [unitLabelError, setUnitLabelError] = useState('');
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const kbPadding = useKeyboardPadding();
 
   const panelColor = colorScheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = colorScheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
@@ -128,14 +130,14 @@ export default function EditHabitScreen() {
   if (!ready) return null;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default, paddingBottom: kbPadding }} edges={['bottom']}>
       <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
 
       <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>
         <NavigationBar title="Редактирование цели" onBack={() => router.back()} />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 24, gap: 16 }} style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 104, gap: 16 }} style={{ flex: 1, marginBottom: -80 }}>
         <Input
           label="Название"
           value={name}
@@ -191,7 +193,7 @@ export default function EditHabitScreen() {
         />
       </ScrollView>
 
-      <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+      <View pointerEvents="box-none" style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
         <Button
           label="Сохранить"
           onPress={handleSave}

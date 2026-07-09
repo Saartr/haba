@@ -16,6 +16,7 @@ import { useSnackbar } from '@/lib/snackbar-context';
 import { scheduleSync } from '@/modules/health-sync';
 import { hasStepsPermission } from '@/lib/health';
 import { BASE_URL } from '@/lib/config';
+import { useKeyboardPadding } from '@/lib/use-keyboard-height';
 import { useState } from 'react';
 
 const TYPE_OPTIONS = [
@@ -88,6 +89,7 @@ export default function PresetHabitsScreen() {
   const [targetReps, setTargetReps] = useState('');
   const [intensity, setIntensity] = useState<'low' | 'medium' | 'high'>('medium');
   const [trainingDays, setTrainingDays] = useState<string[]>([]);
+  const kbPadding = useKeyboardPadding();
 
   function handleCategoryChange(v: string) {
     setCategory(v);
@@ -156,14 +158,14 @@ export default function PresetHabitsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default, paddingBottom: kbPadding }} edges={['bottom']}>
       <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
 
       <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>
         <NavigationBar title="Готовые цели" onBack={() => router.back()} />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 24, gap: 16 }} style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 104, gap: 16 }} style={{ flex: 1, marginBottom: -80 }}>
         <Select
           label="Категория"
           placeholder="Выберите категорию"
@@ -260,7 +262,7 @@ export default function PresetHabitsScreen() {
         )}
       </ScrollView>
 
-      <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+      <View pointerEvents="box-none" style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
         <Button
           label="Создать"
           onPress={handleCreate}
