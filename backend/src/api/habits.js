@@ -127,7 +127,9 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET /api/v1/habits — мои привычки
+// GET /api/v1/habits — мои привычки + агрегаты для главного экрана (streak, today_value).
+// Агрегаты здесь, а не через GET /habits/:id на каждую цель — иначе главный экран делал
+// N тяжёлых запросов (по ~7 SQL каждый) только ради трёх чисел на карточку.
 router.get('/', async (req, res) => {
   try {
     const habits = await sql`
@@ -137,7 +139,30 @@ router.get('/', async (req, res) => {
       WHERE hm.user_id = ${req.userId} AND h.closed_at IS NULL
       ORDER BY h.created_at DESC
     `;
-    res.json(habits);
+
+    // Один запрос всех логов пользователя по его целям; стрики — тем же calcStreaks,
+    // что и в GET /habits/:id (та же фильтрация value >= goal_value ?? 1 — цифры не разойдутся).
+    const logsByHabit = new Map();
+    if (habits.length) {
+      const logs = await sql`
+        SELECT habit_id, date, value FROM habit_logs
+        WHERE user_id = ${req.userId} AND habit_id IN ${sql(habits.map(h => h.id))}
+        ORDER BY date DESC
+      `;
+      for (const l of logs) {
+        if (!logsByHabit.has(l.habit_id)) logsByHabit.set(l.habit_id, []);
+        logsByHabit.get(l.habit_id).push(l);
+      }
+    }
+
+    const today = toDateStr(new Date());
+    res.json(habits.map(h => {
+      const logs = logsByHabit.get(h.id) ?? [];
+      const minValue = h.goal_value ?? 1;
+      const streak = calcStreaks(logs.filter(l => l.value >= minValue));
+      const todayLog = logs.find(l => toDateStr(new Date(l.date)) === today);
+      return { ...h, streak, today_value: todayLog?.value ?? 0 };
+    }));
   } catch (e) {
     console.error('list habits error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
@@ -392,7 +417,8 @@ router.post('/:id/logs', async (req, res) => {
     }).catch(e => console.error('notify goal error:', e.message));
 
     // Групповая count-цель — уведомляем об отметке независимо от goal_value (его может не быть).
-    if (habit.type === 'group' && habit.checkin_type === 'count') {
+    // Только при росте значения: правка вниз/то же число (режим «Заменить») — не «добавил отметку».
+    if (habit.type === 'group' && habit.checkin_type === 'count' && Number(log.value) > Number(prev?.value ?? 0)) {
       sql`SELECT COALESCE(SUM(value), 0) AS total FROM habit_logs WHERE habit_id = ${habitId} AND user_id = ${req.userId}`
         .then(([{ total }]) => notifyEntryAdded(habit, req.userId, Number(total)))
         .catch(e => console.error('notify entry error:', e.message));
