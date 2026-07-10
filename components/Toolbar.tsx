@@ -5,17 +5,51 @@ import IconButton from '@/components/IconButton';
 import Fab from '@/components/Fab';
 import { DropdownMenuItem } from '@/components/DropdownMenu';
 
-// Тень в Figma отличается по теме сильнее, чем у карточек: в тёмной теме не отключается
-// (как у Card), а становится заметно контрастнее — opacity 0.08 → 0.48. Цвет/офсет/радиус те же.
-function useToolbarShadow() {
+// Тень простыни под списком целей (index.tsx). В светлой теме — та же тень, что у самого
+// Toolbar (neutral[300], offset{0,4}, opacity 0.17, radius 10, elevation 10), в тёмной — 0.7
+// с neutral[950] (подложка всё равно контрастирует с фоном, тень не отключаем как у Toolbar).
+export function useToolbarShadow() {
   const { colorScheme } = useSettings();
   const isDark = colorScheme === 'dark';
+  if (isDark) {
+    return {
+      shadowColor: colors.neutral[950],
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.7,
+      shadowRadius: 10,
+      elevation: 10,
+    } as const;
+  }
   return {
-    shadowColor: colors.neutral[950],
-    shadowOffset: { width: 1, height: 2 },
-    shadowOpacity: isDark ? 0.48 : 0.08,
-    shadowRadius: 12,
-    elevation: isDark ? 8 : 4,
+    shadowColor: colors.neutral[300],
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.17,
+    shadowRadius: 10,
+    elevation: 10,
+  } as const;
+}
+
+// Тень самого Toolbar. В светлой теме — точно та же тень, что раньше была у карточек
+// (Card.tsx до удаления теней): neutral[300], offset{0,4}, opacity 0.2, radius 10, elevation 10.
+// В тёмной — отключена (elevation:0) по требованию: Toolbar маленький, на тёмном фоне не нужна.
+function useToolbarOwnShadow() {
+  const { colorScheme } = useSettings();
+  const isDark = colorScheme === 'dark';
+  if (isDark) {
+    return {
+      shadowColor: colors.neutral[950],
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0,
+      shadowRadius: 10,
+      elevation: 0,
+    } as const;
+  }
+  return {
+    shadowColor: colors.neutral[400],
+    shadowOffset: { width: -10, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 10,
   } as const;
 }
 
@@ -28,7 +62,9 @@ type Props = {
 
 export default function Toolbar({ icon, onIconPress, iconDisabled, fabItems }: Props) {
   const c = useColors();
-  const shadow = useToolbarShadow();
+  const { colorScheme } = useSettings();
+  const shadow = useToolbarOwnShadow();
+  const backgroundColor = colorScheme === 'dark' ? colors.neutral[800] : c.surface.default;
 
   return (
     <View style={{
@@ -39,11 +75,11 @@ export default function Toolbar({ icon, onIconPress, iconDisabled, fabItems }: P
       paddingHorizontal: 8,
       paddingVertical: 12,
       borderRadius: 24,
-      backgroundColor: c.surface.default,
+      backgroundColor,
       ...shadow,
     }}>
       <IconButton icon={icon} onPress={onIconPress} disabled={iconDisabled} />
-      <Fab size="S" items={fabItems} />
+      <Fab size="S" items={fabItems} shadow={false} />
     </View>
   );
 }

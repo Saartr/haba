@@ -1,4 +1,4 @@
-import { View, Pressable, Image, FlatList, StatusBar, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Pressable, Image, ScrollView, StatusBar, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -6,7 +6,7 @@ import { useCallback, useRef, useState } from 'react';
 import Text from '@/components/Text';
 import HabitTag from '@/components/HabitTag';
 import ProgressBar from '@/components/ProgressBar';
-import Toolbar from '@/components/Toolbar';
+import Toolbar, { useToolbarShadow } from '@/components/Toolbar';
 import BottomSheet from '@/components/BottomSheet';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
@@ -14,7 +14,6 @@ import MascotSvg from '@/assets/images/chill.svg';
 import GroupIcon from '@/assets/icons/Group.svg';
 import PersonIcon from '@/assets/icons/Person.svg';
 import UserIcon from '@/assets/icons/User.svg';
-import SettingsIcon from '@/assets/icons/Settings.svg';
 import GroupPlusIcon from '@/assets/icons/GroupPlus.svg';
 import PlusIcon from '@/assets/icons/Plus.svg';
 import CheckIcon from '@/assets/icons/Check.svg';
@@ -180,7 +179,12 @@ export default function HabitsScreen() {
   const { colorScheme } = useSettings();
   const insets = useSafeAreaInsets();
   const showSnackbar = useSnackbar();
+  const sheetShadow = useToolbarShadow();
 
+  // Полная высота шапки на экране. Для paddingTop скролла нужно вычитать insets.top:
+  // ScrollView (обычный поток) уже стоит ниже верхнего инсета SafeAreaView, а абсолютно
+  // спозиционированная шапка (top:0) — нет, поэтому их точки отсчёта отличаются на insets.top.
+  const headerHeight = insets.top + 16 + 130;
   const [habits, setHabits] = useState<Habit[]>([]);
   const [extras, setExtras] = useState<Record<number, HabitExtra>>({});
   const [loading, setLoading] = useState(true);
@@ -279,7 +283,7 @@ export default function HabitsScreen() {
   const isEmpty = !loading && habits.length === 0;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }} edges={['top']}>
       <StatusBar backgroundColor={c.surface.bg} barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
 
       {isEmpty ? (
@@ -309,45 +313,42 @@ export default function HabitsScreen() {
         </>
       ) : (
         <>
-          {/* Header — маскот слева, приветствие+статус и прогресс-бар справа. Лежит на фоне
-              страницы (surface.bg); список карточек ниже — на отдельной светлой «простыне». */}
-          {!loading && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, paddingTop: insets.top + 16, paddingHorizontal: 24 }}>
-              <Image
-                source={allDone ? require('@/assets/images/tapa_happy.png') : require('@/assets/images/tapa_sad.png')}
-                style={{ width: 140, height: 113 }}
-                resizeMode="contain"
-              />
-              <View style={{ flex: 1, gap: 8 }}>
-                <View style={{ gap: 2 }}>
-                  <Text weight="bold" numberOfLines={1} style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.primary, letterSpacing: 0.2 }}>
-                    {displayName ? `Привет, ${displayName}` : 'Привет'}
-                  </Text>
-                  <Text weight="semibold" numberOfLines={1} style={{ fontSize: 12, lineHeight: 12 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
-                    {statusText}
-                  </Text>
-                </View>
-                <ProgressBar total={total} value={doneCount} />
-              </View>
+          {loading ? (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <ActivityIndicator color={c.brand.primary} />
             </View>
-          )}
-
-          {/* Простыня со скруглением сверху — фон surface.input, под ней список карточек */}
-          <View style={{
-            flex: 1,
-            backgroundColor: c.surface.input,
-            borderTopLeftRadius: 32,
-            borderTopRightRadius: 32,
-          }}>
-            {loading ? (
-              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                <ActivityIndicator color={c.brand.primary} />
+          ) : (
+            <>
+              {/* Header — маскот слева, приветствие+статус и прогресс-бар справа. Фиксирован
+                  (не скроллится); простыня со списком скроллится поверх него. Высота шапки
+                  считается напрямую (paddingTop + высота маскота), не через onLayout — так
+                  paddingTop скролла гарантированно совпадает с реальной высотой без гонки. */}
+              <View
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', gap: 16, paddingTop: insets.top + 16, paddingHorizontal: 24 }}
+              >
+                <Image
+                  source={allDone ? require('@/assets/images/tapa_happy.png') : require('@/assets/images/tapa_sad.png')}
+                  style={{ width: 161, height: 130 }}
+                  resizeMode="contain"
+                />
+                <View style={{ flex: 1, gap: 8 }}>
+                  <View style={{ gap: 2 }}>
+                    <Text weight="bold" numberOfLines={1} style={{ fontSize: 16, lineHeight: 16 * 1.4, color: c.text.primary, letterSpacing: 0.2 }}>
+                      {displayName ? `Привет, ${displayName}` : 'Привет'}
+                    </Text>
+                    <Text weight="semibold" numberOfLines={1} style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
+                      {statusText}
+                    </Text>
+                  </View>
+                  <ProgressBar total={total} value={doneCount} />
+                </View>
               </View>
-            ) : (
-              <FlatList
-                data={visibleHabits}
-                keyExtractor={h => String(h.id)}
-                contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 96, gap: 16 }}
+
+              {/* Простыня — над шапкой в z-порядке (рендерится позже), пустая зона сверху
+                  контента (paddingTop = высота шапки) даёт шапке быть видимой в начале скролла. */}
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingTop: headerHeight - insets.top, flexGrow: 1 }}
                 refreshControl={
                   <RefreshControl
                     refreshing={refreshing}
@@ -355,26 +356,39 @@ export default function HabitsScreen() {
                     colors={[c.brand.primary]}
                     tintColor={c.brand.primary}
                     progressBackgroundColor={c.surface.input}
-                    progressViewOffset={56}
+                    progressViewOffset={56 + headerHeight - insets.top}
                   />
                 }
-                renderItem={({ item }) => (
-                  <HabitCard
-                    habit={item}
-                    extra={extras[item.id] ?? null}
-                    onPress={() => openHabit(item.id)}
-                  />
-                )}
-              />
-            )}
-          </View>
+              >
+                <View style={{
+                  flexGrow: 1,
+                  backgroundColor: c.surface.input,
+                  borderTopLeftRadius: 32,
+                  borderTopRightRadius: 32,
+                  padding: 16,
+                  paddingBottom: insets.bottom + 96,
+                  gap: 16,
+                  ...sheetShadow,
+                }}>
+                  {visibleHabits.map(item => (
+                    <HabitCard
+                      key={item.id}
+                      habit={item}
+                      extra={extras[item.id] ?? null}
+                      onPress={() => openHabit(item.id)}
+                    />
+                  ))}
+                </View>
+              </ScrollView>
+            </>
+          )}
 
           {/* Toolbar — по центру внизу */}
           {!loading && (
             <View style={{ position: 'absolute', bottom: insets.bottom + 24, left: 0, right: 0, alignItems: 'center' }}>
               <Toolbar
-                icon={<SettingsIcon />}
-                onIconPress={() => router.push('/(tabs)/app-settings')}
+                icon={<UserIcon />}
+                onIconPress={() => router.push('/(tabs)/profile')}
                 fabItems={[
                   {
                     label: 'Создать цель',

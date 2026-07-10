@@ -25,9 +25,10 @@ const MENU_GAP = 8;
 type Props = {
   items: DropdownMenuItem[];
   size?: Size;
+  shadow?: boolean;
 };
 
-export default function Fab({ items, size = 'M' }: Props) {
+export default function Fab({ items, size = 'M', shadow = true }: Props) {
   const c = useColors();
   const { button: buttonSize, radius } = SIZE_CONFIG[size];
   const [open, setOpen] = useState(false);
@@ -95,13 +96,20 @@ export default function Fab({ items, size = 'M' }: Props) {
         </Animated.View>
       )}
 
-      {/* Dropdown menu */}
+      {/* Dropdown menu. left/right: -1000 — трюк вместо measureInWindow (в этом Dev Client
+          окружении он возвращал координаты, не совпадающие с реальной позицией элемента):
+          при заданных и left, и right ширина обёртки считается от родителя (parentWidth+2000),
+          т.е. получается растянутая на весь экран область, симметричная относительно самой
+          кнопки Fab — alignItems:'center' центрирует меню ровно под кнопкой независимо от того,
+          насколько узкий/смещённый реальный родитель (например, пилюля Toolbar). */}
       {mounted && (
         <Animated.View
           style={{
             position: 'absolute',
-            right: 0,
-            bottom: buttonSize + MENU_GAP,
+            left: -1000,
+            right: -1000,
+            bottom: buttonSize + MENU_GAP + 16,
+            alignItems: 'center',
             opacity: anim,
             transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
           }}
@@ -122,7 +130,7 @@ export default function Fab({ items, size = 'M' }: Props) {
           backgroundColor: c.brand.primary,
           alignItems: 'center',
           justifyContent: 'center',
-          ...SHADOW,
+          ...(shadow ? SHADOW : null),
         }}>
           <Animated.View style={{ transform: [{ rotate }] }}>
             <PlusIcon width={24} height={24} color={colors.neutral[0]} />
