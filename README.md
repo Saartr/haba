@@ -1,132 +1,40 @@
 # Тапа — трекер привычек
 
-Мобильное приложение (Android) для отслеживания привычек с групповым соревнованием через Telegram.
+Мобильное приложение (Android) для отслеживания привычек — соло и в группе с друзьями, с пушами, календарями прогресса и импортом шагов из Health Connect.
 
-> **Имя приложения:** Тапа. В коде и системных идентификаторах — `haba` / `tapa` (scheme, package, SecureStore keys остаются `haba` для обратной совместимости).
+> **Имя приложения:** Тапа. В коде и системных идентификаторах — `haba` / `tapa` (scheme `haba://`, package `pro.mihmih.haba`, SecureStore keys остаются `haba` для обратной совместимости).
 
 ## Стек
 
-- React Native + Expo SDK 55, Expo Router, TypeScript
-- NativeWind v4, дизайн-система TapaDS
-- Бэкенд: Node.js v22, Express 5, PostgreSQL, PM2 (`bot.mihmih.pro`)
-- Telegram Bot: `@Step_Challenges_Bot` (grammy v1)
+- **Фронтенд:** React Native + Expo SDK 55, Expo Router, TypeScript, NativeWind v4, дизайн-система TapaDS (Figma — источник правды)
+- **Бэкенд** (`backend/` в этом репо): Node.js v22, Express 5, PostgreSQL (`postgres` tag-библиотека), PM2 — сервер `bot.mihmih.pro`
+- **Пуши:** FCM HTTP v1 напрямую (без Expo Push Service)
+- **Telegram Bot:** `@Step_Challenges_Bot` (grammy v1)
+- **Нативные модули** (Expo Modules API, `modules/`): `vk-id` (VK ID SDK 2.7.1), `telegram-login` (Telegram Login SDK), `health-sync` (WorkManager-синк шагов)
 
-## Архитектурная проверка (2026-06-03)
+## Что умеет
 
-Полная проверка целостности фронтенд↔бэкенд контракта. Найдено и исправлено:
+**Типы целей:**
+- **Готовые:** Шаги (групповая, автоимпорт из Health Connect), Подтягивания (прогрессивный план тренировок с автопересчётом при пропуске), Отказ от курения
+- **Кастомные** (мастер из 3 шагов): да/нет, количество (с единицами измерения), прогрессия до цели; периодичность — каждый день / дни недели / N раз в неделю или месяц / без ограничений; срок — бессрочно / период / до цели
+- **Групповые:** инвайт-ссылки (`https://bot.mihmih.pro/join/<код>`), передача прав, исключение участников, статистика по каждому; count-цели могут быть безлимитными (без дневного порога)
 
-### Критические фиксы
-| Проблема | Файл | Исправление |
-|---|---|---|
-| `PATCH /auth/me` не возвращал `tg_id`/`vk_id` | `backend/src/api/auth.js` | Добавлены в RETURNING и ответ |
-| `DELETE /habits/:id` = hard DELETE (уничтожал данные) | `backend/src/api/habits.js` | Soft-close: `SET closed_at = now()` |
-| `AVATARS_DIR` = `/var/www/step-bot/...` (legacy path) | `auth.js`, `index.js` | Исправлен на `/var/www/haba/backend/public/avatars` |
+**Пуши (5 типов):** напоминание в 19:00, напоминания по кастомному времени цели, вступление в группу, достижение дневной цели, запись в групповой count-цели. Глобальный тоггл + тоггл на цель.
 
-### Предупреждения
-| Проблема | Файл | Исправление |
-|---|---|---|
-| `POST /habits`, `POST /habits/join` не возвращали `is_creator` | `habits.js` | Добавлен `{ ...habit, is_creator }` |
-| `verifyVkToken` URL через string interpolation | `auth.js` | `URLSearchParams` для безопасного кодирования |
-| `updateProfile` тип: `first_name?` вместо `first_name` | `lib/api.ts` | Сделан обязательным |
-| `HabitLog` тип без `id`, `habit_id`, `source` | `lib/api.ts` | Поля добавлены |
+**Авторизация:** Telegram (нативный OIDC) и VK ID (нативный SDK), привязка второго способа со слиянием аккаунтов, аватар подтягивается с любого привязанного провайдера.
 
-### Переименование Haba → Тапа
-- `app.json`: `name` → `"Tapa"`, `slug` → `"tapa"`
-- `package.json`: `name` → `"tapa"`
-- Юридические тексты: «приложения Haba» → «приложения Тапа»
-- Scheme `haba://`, package `pro.mihmih.haba`, SecureStore keys — **не меняются** (системные идентификаторы)
+## Структура проекта
 
-## UI-компоненты
-
-Переиспользуемые модалки и меню (верстка по Figma TapaDS, единая анимация):
-
-- **`BottomSheet`** — базовая шторка снизу. Заголовок опционален (без него — только контент). Анимация: overlay fade-in + карточка slide (`translateY` 32→0). На ней построены «Пригласить в группу», «Внести шаги», выбор языка (`Select`).
-- **`ConfirmModal` + `useConfirm()`** — императивный диалог да/нет поверх `BottomSheet`. `const ok = await confirm({ title, description, confirmLabel, destructive })`. Заменяет `Alert.alert`. `ConfirmProvider` в `app/_layout.tsx`.
-- **`DropdownPopover`** — меню по «трём точкам» (правый верхний угол). Анимация overlay fade + меню slide сверху вниз.
-
-> На Android `DropdownMenu` внутри анимируемого контейнера передаётся со `style={{ elevation: 0 }}` — иначе тень рисуется мгновенно и даёт тёмную рамку при появлении.
-
-## Авторизация
-
-Два способа входа: Telegram и VK ID.
-
-### Telegram
-
-Нативный Telegram Login SDK (OIDC):
-
-1. `TelegramLoginModule.signIn()` → нативный SDK открывает Telegram для подтверждения
-2. SDK возвращает `id_token` (OIDC JWT, RS256, подпись верифицируется через JWKS)
-3. `POST /auth/telegram-native` → верификация JWT → upsert user → JWT
-
-**Важно:** Release-сборка требует SHA-256 fingerprint ключа подписи в BotFather → Native Login → Android.
-
-Сохраняет: `tg_id`, `username`, `first_name`, `last_name`, `phone` (при scope=phone), `avatar_url`. Аватар обновляется при каждом логине через Bot API.
-
-### VK ID
-
-Нативный VK ID SDK 2.6.0 через Expo Module (совместим с New Architecture):
-
-1. `signInWithVK()` → нативный диалог VK One Tap
-2. SDK возвращает `AccessToken` с профилем пользователя
-3. `POST /auth/vk` → верификация через `secure.checkToken` (сервисный ключ) → JWT
-
-Сохраняет: `vk_id`, `first_name`, `last_name`, `email`, `phone`, `avatar_url`.
-
-> `phone` возвращается VK только для приложений с бизнес-аккаунтом VK ID Console — разблокируется после регистрации в RuStore.
-
-Схема `haba://` настроена в `app.json` (нативная папка `android/` генерируется через `prebuild`).
-
-## Трекер шагов (Health Connect)
-
-Интеграция с Google Health Connect для автоматического импорта шагов.
-
-**Текущий статус:** ✅ работает на debug APK.
-
-**Что реализовано:**
-- Ручной ввод шагов (кнопка «Внести шаги» → «Записать»)
-- Автосинк шагов в фоне при наличии разрешения (через `useFocusEffect` в экране привычки)
-- Кнопка «Подключить трекер» в модалке «Внести шаги»
-
-**Важно — Android 14+:** Health Connect требует `<activity-alias>` с `android.intent.action.VIEW_PERMISSION_USAGE` в манифесте. Без него `requestPermission()` молча возвращает `[]` без показа диалога. Alias добавляется через `plugins/with-health-permissions.js` (функция `ensureRationaleAlias`) — попадает в манифест автоматически при `prebuild`.
-
-**Ручной патч после `npm install`:** в `node_modules/react-native-health-connect/.../HealthConnectPermissionDelegate.kt` нужно удалить вызов `coroutineContext.cancel()` — иначе запрос разрешений сломается после первого вызова. patch-package не настроен, патч теряется при переустановке зависимостей.
-
-**Для публикации в Google Play** (не для разработки) потребуется Google Play Developer Account ($25 разово).
-
-## Сборка APK (debug)
-
-Папка `android/` в `.gitignore` — генерируется локально через prebuild.
-
-```powershell
-# Первый раз — генерация нативной папки:
-npx expo prebuild --platform android --clean
-
-# Сборка и установка:
-cd C:\haba\android
-$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
-$env:ANDROID_HOME="C:\Users\Saartr\AppData\Local\Android\Sdk"
-.\gradlew assembleDebug
-adb install app\build\outputs\apk\debug\app-debug.apk
 ```
-
-> ⚠️ После каждого `npm install` нужно вручную переналожить патч на `react-native-health-connect` (удаление `coroutineContext.cancel()` в `HealthConnectPermissionDelegate.kt`) — patch-package не настроен. Без патча запрос разрешений HC ломается после первого вызова.
-
-### 🚨 Release-сборка и Telegram Native Login
-
-Telegram Native Login проверяет подпись приложения по **SHA-256 fingerprint** ключа. В BotFather (Native Login → Android) зарегистрирован **debug**-ключ:
+app/                  — экраны (Expo Router): главный, цель, мастера создания, настройки
+components/           — дизайн-система (Button, Card, BottomSheet, календари, ...)
+components/habit-screens/ — 4 варианта экрана цели (Solo/Progression/Pullups/Group)
+lib/                  — API-клиент, цвета, статусы целей, контексты, хуки
+modules/              — нативные Expo-модули (vk-id, telegram-login, health-sync)
+plugins/              — config-плагины (переживают prebuild --clean)
+backend/              — Express-сервер: api/, db/ (миграции), push/, jobs/ (cron)
+.claude/memory/       — база знаний проекта (правила, инфра, фичи) — актуальнее README
 ```
-FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C
-```
-Он работает **только для debug-сборок**. При сборке **release** APK/AAB:
-
-1. У release-ключа **другой** SHA-256 → вычислить:
-   ```powershell
-   keytool -list -v -keystore <release.keystore> -alias <alias>   # строка SHA256:
-   ```
-2. Добавить этот SHA-256 в **BotFather → Web Login → Native Login → Android** (можно несколько fingerprint'ов одновременно — debug + release).
-3. Если публикуешь через **Google Play** — у Google свой ключ подписи (App Signing). Его SHA-256 взять в **Play Console → App Integrity → App signing key** и тоже добавить в BotFather.
-
-Без этого Telegram-логин в release-сборке **не заработает** (Telegram отклонит native-callback). Подробнее: `.claude/memory/project_telegram_oidc.md`.
 
 ## Запуск dev-сервера
 
@@ -135,10 +43,38 @@ $env:REACT_NATIVE_PACKAGER_HOSTNAME="192.168.1.143"; npx expo start
 # затем 'a' для Android
 ```
 
+## Сборка APK
+
+Папка `android/` в `.gitignore` — генерируется локально через prebuild. Перед первой сборкой нужны секреты в `%USERPROFILE%\.gradle\gradle.properties`: `gpr.user`/`gpr.key` (GitHub PAT `read:packages` — для Telegram SDK), `VKIDClientSecret`, и для release — `TAPA_STORE_FILE`/`TAPA_STORE_PASSWORD`/`TAPA_KEY_ALIAS`/`TAPA_KEY_PASSWORD`.
+
+```powershell
+# Первый раз — генерация нативной папки:
+npx expo prebuild --platform android --clean
+
+# Сборка:
+cd C:\haba\android
+$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
+$env:ANDROID_HOME="C:\Users\Saartr\AppData\Local\Android\Sdk"
+.\gradlew assembleDebug    # или assembleRelease (fat-APK, подпись tapa-release.jks)
+adb install app\build\outputs\apk\debug\app-debug.apk
+```
+
+> ⚠️ После каждого `npm install` нужно вручную переналожить патч на `react-native-health-connect`: удалить вызов `coroutineContext.cancel()` в `HealthConnectPermissionDelegate.kt` (patch-package не настроен). Без патча запрос разрешений Health Connect ломается после первого вызова.
+
+### Telegram Native Login и подпись
+
+Telegram проверяет SHA-256 fingerprint подписи приложения. В BotFather (Web Login → Native Login → Android) зарегистрированы **оба** ключа — debug и release (`tapa-release.jks`). Если ключ меняется (например, Google Play App Signing) — добавить его SHA-256 в BotFather, иначе Telegram-логин не заработает.
+
+> 🔴 `oauth.telegram.org` блокируется в РФ — для входа через Telegram нужен VPN **без** split-tunneling (иначе вечный лоадер и невозврат в приложение).
+
 ## Деплой бэкенда
 
 ```powershell
 ./deploy-backend.ps1
 ```
 
-Бэкенд живёт в `backend/` в этом репо. Все правки — локально, затем деплой через скрипт. Никакой прямой правки на сервере.
+Скрипт: `ssh Haba` → `git pull` → `npm install` → `pm2 restart step-bot`. Все правки бэкенда — только локально в `backend/`, никакой прямой правки на сервере. `.env` и аватары живут только на сервере (`/var/www/haba/backend/`). Миграции БД идемпотентны и применяются при старте сервера.
+
+## Документация
+
+Актуальная база знаний проекта — в [`.claude/memory/`](.claude/memory/MEMORY.md): правила работы (`rules_*`), инфраструктура (`infra_*`), устройство фич (`feature_*`), UI-паттерны (`ui_*`), известные баги (`backlog`).
