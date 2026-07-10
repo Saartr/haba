@@ -139,6 +139,9 @@ export type Habit = {
   duration_type: 'unlimited' | 'period' | 'until_goal';
   period_start: string | null;
   period_end: string | null;
+  // Агрегаты для главного экрана — отдаёт только GET /habits (списочный эндпоинт)
+  streak?: Streak;
+  today_value?: number;
 };
 
 export type HabitMember = {
