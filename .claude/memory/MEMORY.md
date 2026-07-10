@@ -25,7 +25,7 @@
 - [Health Connect](feature_health_connect.md) — ✅ работает на debug; причина бывшего пустого requestPermission — отсутствие Android-14 rationale activity-alias в манифесте, НЕ верификация
 - [Health Sync WorkManager](feature_health_sync.md) — ✅ реализовано: Expo Module health-sync, CoroutineWorker, refreshToken в SharedPreferences, scheduleSync/cancelSync
 - [Push-уведомления](feature_push.md) — ✅ реализовано: FCM HTTP v1 напрямую (без Expo), глобальный + per-habit тогглы, 5 типов пушей
-- [Главный экран](feature_main_screen.md) — редизайн влит в main: маскот+прогресс-бар+Toolbar вместо шторки, плоские карточки со статус-тегом, pull-to-refresh; ⚠️ регрессия: профиль недостижим из UI
+- [Главный экран](feature_main_screen.md) — редизайн влит в main: фиксированная шапка (маскот+прогресс-бар), простыня скроллится поверх, Toolbar (User→профиль, +→создание), плоские карточки со статус-тегом, pull-to-refresh
 - [Цель «Подтягивания»](feature_pullups.md) — ✅ реализовано: колонки в habits + сохранённый план, формула прогрессии, Multiselect, календарь Неделя/Месяц, тап по дате → модалка плана, solo-only
 - [Групповая count-цель](feature_group_count_goal.md) — безлимитная (goal_value NULL), пуш на каждую запись, entry_totals/«Общая статистика», кнопка +1, календарь без красного
 
@@ -36,7 +36,7 @@
 
 ## Бэклог
 
-- [Отложенное и известные баги](backlog.md) — expo-clipboard (нужен prebuild); профиль недостижим после редизайна; карточки «Шаги» показывают стрик; Fab-меню уезжает за экран вне угловой обёртки
+- [Отложенное и известные баги](backlog.md) — expo-clipboard (нужен prebuild); карточки «Шаги» показывают стрик
 
 ## Справочники
 
