@@ -1,8 +1,7 @@
-import { View } from 'react-native';
+import { View, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Text from '@/components/Text';
 import Button from '@/components/Button';
-import TapaFace from '@/assets/images/tapa_face.svg';
 import { useColors } from '@/lib/colors';
 
 type Action = {
@@ -23,7 +22,7 @@ export default function ErrorScreen({ message, actions }: Props) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 32 }}>
-        <TapaFace width={179} height={170} />
+        <Image source={require('@/assets/images/tapa_face.png')} style={{ width: 197, height: 159 }} resizeMode="contain" />
         <Text weight="semibold" style={{ fontSize: 16, lineHeight: 16 * 1.6, color: c.text.secondary, textAlign: 'center', letterSpacing: 0.2 }}>
           {message}
         </Text>

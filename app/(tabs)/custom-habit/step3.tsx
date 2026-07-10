@@ -131,8 +131,8 @@ export default function Step3Screen() {
     });
     if (ok) {
       reset();
-      router.dismissAll();
-      router.replace('/(tabs)/' as any);
+      // dismissTo вместо dismissAll+replace — см. комментарий в handleCreate ниже.
+      router.dismissTo('/(tabs)/' as any);
     }
   }
 
@@ -216,10 +216,11 @@ export default function Step3Screen() {
       });
 
       reset();
-      // dismissAll разворачивает весь стек мастера (step1-3 + create-habit) обратно
-      // к главному экрану, затем push кладёт экран цели поверх него — назад с только
-      // что созданной цели ведёт на главный экран, а не на промежуточный шаг создания.
-      router.dismissAll();
+      // dismissAll разворачивает только вложенный стек мастера (custom-habit/_layout
+      // держит свой Stack) и оставляет step1 текущим экраном под create-habit — назад
+      // с созданной цели вело обратно в мастер, а не на главный экран. dismissTo
+      // пересекает вложенные навигаторы, затем push кладёт экран цели поверх него.
+      router.dismissTo('/(tabs)/' as any);
       router.push(`/(tabs)/habit/${habit.id}` as any);
       showSnackbar('Цель создана', 'success');
     } catch (e: any) {

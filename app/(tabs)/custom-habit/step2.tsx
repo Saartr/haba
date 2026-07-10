@@ -64,8 +64,11 @@ export default function Step2Screen() {
     });
     if (ok) {
       reset();
-      router.dismissAll();
-      router.replace('/(tabs)/' as any);
+      // dismissAll разворачивает только вложенный стек мастера (custom-habit/_layout
+      // держит свой Stack) и оставляет step1 текущим экраном под create-habit — назад
+      // вело бы обратно в мастер. dismissTo пересекает вложенные навигаторы и реально
+      // доходит до главного экрана.
+      router.dismissTo('/(tabs)/' as any);
     }
   }
 

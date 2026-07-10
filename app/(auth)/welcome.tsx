@@ -1,10 +1,9 @@
-import { View, useWindowDimensions, Platform } from 'react-native';
+import { View, Image, useWindowDimensions, Platform } from 'react-native';
 import { useState } from 'react';
 import Text from '@/components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TelegramIcon from '@/assets/icons/Telegram.svg';
 import VKIcon from '@/assets/icons/VK.svg';
-import TapaWelcome from '@/assets/images/tapa_welcome.svg';
 import Button from '@/components/Button';
 import { useColors, colors } from '@/lib/colors';
 import { vkAuth, telegramNativeAuth } from '@/lib/api';
@@ -60,9 +59,19 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }}>
-      <TapaWelcome width={width} height={Math.round(width * 332 / 393)} />
+      {/* Иллюстрация шире экрана (bleed за края) — как в макете (441 на кадр 393 шириной,
+          примерно поровну слева/справа), поэтому alignSelf:'center' без горизонтального
+          паддинга родителя. marginTop — в макете иллюстрация начинается не сразу под
+          статус-баром, а с отступом (~100px при ширине кадра 393). */}
+      <Image
+        source={require('@/assets/images/tapa_welcome.png')}
+        style={{ width: width * (441 / 393), height: width * (372 / 393), alignSelf: 'center', marginTop: width * (100 / 393) }}
+        resizeMode="contain"
+      />
 
-      <View className="px-6 mt-4">
+      {/* Текст начинается практически вплотную к иллюстрации (в макете зазора нет) —
+          без отступа сверху, в отличие от старой векторной иллюстрации. */}
+      <View className="px-6">
         <Text weight="bold" className="text-h2 mb-2" style={{ color: c.text.primary }}>
           О, привет!
         </Text>

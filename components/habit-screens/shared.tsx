@@ -3,7 +3,6 @@ import Text from '@/components/Text';
 import Button from '@/components/Button';
 import BottomSheet from '@/components/BottomSheet';
 import BlockIcon from '@/assets/icons/Block.svg';
-import CelebAvatarSvg from '@/assets/images/celeb_avatar.svg';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import { HabitMember } from '@/lib/api';
@@ -72,7 +71,7 @@ export function SuccessModal({ visible, onClose, onNewGoal }: { visible: boolean
     <BottomSheet title="Успех!" visible={visible} onClose={onClose}>
       <View style={{ gap: 16 }}>
         <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-          <CelebAvatarSvg width={200} height={150} />
+          <Image source={require('@/assets/images/tapa_success.png')} style={{ width: 223, height: 263 }} resizeMode="contain" />
         </View>
         <Text weight="bold" style={{ fontSize: 16, color: c.text.secondary, letterSpacing: 0.2, lineHeight: 16 * 1.6 }}>
           Поздравляем! Ты достиг поставленной цели, так держать, не останавливайся на достигнутом.
