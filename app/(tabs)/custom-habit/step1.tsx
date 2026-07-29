@@ -72,7 +72,7 @@ export default function Step1Screen() {
           value={state.name}
           onChangeText={(t) => { set({ name: t }); if (nameError) setNameError(''); }}
           placeholder="Как назовёшь, так и поплывет"
-          maxLength={40}
+          maxLength={64}
           error={nameError}
         />
 

@@ -143,7 +143,7 @@ export default function EditHabitScreen() {
           value={name}
           onChangeText={(t) => { setName(t); if (nameError) setNameError(''); }}
           placeholder="Как назовёшь, так и поплывет"
-          maxLength={24}
+          maxLength={64}
           error={nameError}
         />
 
