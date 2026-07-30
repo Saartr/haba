@@ -325,10 +325,8 @@ export default function Step3Screen() {
               options={WEEKDAY_OPTIONS}
               value={state.weekdays.map(String)}
               onChange={(vals) => { set({ weekdays: vals.map(Number) }); setWeekdaysError(''); }}
+              error={weekdaysError}
             />
-            {weekdaysError ? (
-              <Text weight="medium" style={{ fontSize: 13, color: c.semantic.error }}>{weekdaysError}</Text>
-            ) : null}
           </>
         )}
 
@@ -398,10 +396,8 @@ export default function Step3Screen() {
                       options={DAY_OPTIONS}
                       value={customMonthDays}
                       onChange={(vals) => { setCustomMonthDays(vals); setTimesPerMonthError(''); }}
+                      error={timesPerMonthError}
                     />
-                    {timesPerMonthError ? (
-                      <Text weight="medium" style={{ fontSize: 13, color: c.semantic.error }}>{timesPerMonthError}</Text>
-                    ) : null}
                   </>
                 )}
               </>

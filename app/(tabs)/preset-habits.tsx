@@ -86,9 +86,12 @@ export default function PresetHabitsScreen() {
   const [loading, setLoading] = useState(false);
 
   const [currentForm, setCurrentForm] = useState('');
+  const [currentFormError, setCurrentFormError] = useState('');
   const [targetReps, setTargetReps] = useState('');
+  const [targetRepsError, setTargetRepsError] = useState('');
   const [intensity, setIntensity] = useState<'low' | 'medium' | 'high'>('medium');
   const [trainingDays, setTrainingDays] = useState<string[]>([]);
+  const [trainingDaysError, setTrainingDaysError] = useState('');
   const kbPadding = useKeyboardPadding();
 
   function handleCategoryChange(v: string) {
@@ -102,6 +105,11 @@ export default function PresetHabitsScreen() {
     if (trainingDays.length !== SESSIONS_PER_WEEK[next]) setTrainingDays([]);
   }
 
+  function handleTrainingDaysChange(v: string[]) {
+    setTrainingDays(v);
+    if (trainingDaysError) setTrainingDaysError('');
+  }
+
   const panelColor = colorScheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = colorScheme === 'dark' ? 'light-content' : 'dark-content';
 
@@ -112,9 +120,12 @@ export default function PresetHabitsScreen() {
     }
 
     const isPullups = category === 'pullups';
-    if (isPullups && (!currentForm || !targetReps || trainingDays.length !== SESSIONS_PER_WEEK[intensity])) {
-      Alert.alert('Ошибка', 'Заполните текущую форму, конечную цель и дни недели');
-      return;
+    if (isPullups) {
+      let valid = true;
+      if (!currentForm) { setCurrentFormError('Обязательное поле'); valid = false; }
+      if (!targetReps) { setTargetRepsError('Обязательное поле'); valid = false; }
+      if (trainingDays.length !== SESSIONS_PER_WEEK[intensity]) { setTrainingDaysError('Обязательное поле'); valid = false; }
+      if (!valid) return;
     }
 
     setLoading(true);
@@ -205,14 +216,16 @@ export default function PresetHabitsScreen() {
               placeholder="Повторений в подходе сейчас"
               options={NUMBER_OPTIONS}
               value={currentForm}
-              onChange={setCurrentForm}
+              onChange={(v) => { setCurrentForm(v); if (currentFormError) setCurrentFormError(''); }}
+              error={currentFormError}
             />
             <Select
               label="Конечная цель"
               placeholder="Повторений в подходе в финале"
               options={NUMBER_OPTIONS}
               value={targetReps}
-              onChange={setTargetReps}
+              onChange={(v) => { setTargetReps(v); if (targetRepsError) setTargetRepsError(''); }}
+              error={targetRepsError}
             />
             <Select
               label="Интенсивность"
@@ -225,8 +238,9 @@ export default function PresetHabitsScreen() {
               placeholder="Выберите дни тренировок"
               options={WEEKDAY_OPTIONS}
               value={trainingDays}
-              onChange={setTrainingDays}
+              onChange={handleTrainingDaysChange}
               exactCount={SESSIONS_PER_WEEK[intensity]}
+              error={trainingDaysError}
             />
             <SegmentedControl
               label="Уведомления"
