@@ -37,6 +37,7 @@ export default function PullupsHabitScreen({
   const { colorScheme: scheme } = useSettings();
   const [menuVisible, setMenuVisible] = useState(false);
   const [allLogs, setAllLogs] = useState<HabitLog[]>([]);
+  const [editingBoolean, setEditingBoolean] = useState(false);
   const today = dateToLocalISO(new Date());
   const [dayDetailDate, setDayDetailDate] = useState<string | null>(null);
   // Держит последнюю выбранную дату, пока модалка не закрылась полностью — иначе
@@ -61,6 +62,14 @@ export default function PullupsHabitScreen({
       .then(setAllLogs)
       .catch(() => {});
   }, [reloadTrigger]);
+
+  const todayLog = allLogs.find(l => l.date.slice(0, 10) === today);
+
+  // Сбросить режим редактирования когда за сегодня появилась/обновилась запись —
+  // тот же паттерн, что и в SoloHabitScreen для boolean-чекина.
+  useEffect(() => {
+    if (todayLog != null) setEditingBoolean(false);
+  }, [todayLog?.id, todayLog?.value]);
 
   // Точка в календаре — только за реально выполненные тренировки (value >= 1),
   // "Не выполнил" тоже создаёт запись (value=0), но не должен выглядеть как отметка о выполнении.
@@ -291,7 +300,15 @@ export default function PullupsHabitScreen({
       {/* Спейсер — отжимает кнопки/CTA вниз */}
       <View style={{ flex: 1 }} />
 
-      {isTrainingDay ? (
+      {isTrainingDay && todayLog != null && !editingBoolean ? (
+        <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+          <Button
+            label="Редактировать запись"
+            variant="secondary"
+            onPress={() => setEditingBoolean(true)}
+          />
+        </View>
+      ) : isTrainingDay ? (
         <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 24, paddingBottom: 24 }}>
           <View style={{ flex: 1 }}>
             <Button
