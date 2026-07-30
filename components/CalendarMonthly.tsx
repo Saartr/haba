@@ -11,6 +11,14 @@ import ChevronRightIcon from '@/assets/icons/ChevronRight.svg';
 // только для этого компонента, не трогая глобальный token text.secondary.
 const OTHER_MONTH_COLOR_DARK = colors.neutral[500];
 
+// Заливка «сегодня» — из Figma purple/50 (обычная) и purple/100 (Selected), только светлая
+// тема. Тёмная тема в этом узле Figma не описана — по аналогии с HabitTag (насыщенный
+// тёмный фон [900]/[800] вместо светлого [50]/[100]) взяты те же ступени палитры purple.
+const TODAY_BG_LIGHT = colors.purple[50];
+const TODAY_BG_LIGHT_SELECTED = colors.purple[100];
+const TODAY_BG_DARK = colors.purple[900];
+const TODAY_BG_DARK_SELECTED = colors.purple[800];
+
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 const MONTHS_RU = [
@@ -18,13 +26,13 @@ const MONTHS_RU = [
   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
 ];
 
-// Состояния ячейки (из Figma TapaDS node 344:151 — Grid calendar item, все варианты Type × Selected).
-// Цвет текста определяется только Type (other-month/today/обычный), фон cardGrey — только Selected,
-// зелёная точка — только наличием записи. Эти три флага независимы и комбинируются свободно
-// (в отличие от прежней версии, где типы вроде 'today-selected-record' были захардкожены как единый enum).
-// hasMissed (красная точка) и hasPlanned (серая точка) в самой Figma не описаны — состояния
-// добавлены по прямому запросу пользователя для экрана подтягиваний: красная — пропущенная/
-// непройденная тренировка, серая — тренировка по плану впереди (ещё не наступила).
+// Состояния ячейки (из Figma TapaDS node 344:151 — Grid calendar item, обновлено 2026-07,
+// все варианты Type × Selected × Mark). Type=Default/Today/Not-in-range, Mark=Empty/Checked/
+// Missed/No record (→ hasRecord/hasMissed/hasPlanned). Фон-«пилюля» на всю ячейку (не только
+// вокруг цифры) — залита у Default+Selected (surface.cardGrey) и у любого Today (пурпурный
+// тон + 2px обводка brand.primary, регистр Selected меняет только насыщенность заливки).
+// Цвет текста — Type=Default → text.primary, Type=Today → brand.primary (в обоих Selected),
+// Type=Not-in-range → text.secondary. Точка — по Mark, только когда Type ≠ Not-in-range.
 type DayState = {
   isOtherMonth: boolean;
   isToday: boolean;
@@ -52,6 +60,10 @@ export type CalendarMonthlyProps = {
    * чтобы посмотреть план тренировок вперёд. По умолчанию будущие дни не тапаются
    * (используется там, где тап = логирование значения, а будущее логировать нельзя). */
   allowFutureSelect?: boolean;
+  /** Месяц/год, на который открывается календарь при монтировании (ISO 'YYYY-MM-DD').
+   * По умолчанию — текущий месяц. Например, DatePicker открывает календарь на месяце
+   * уже выбранной даты, а не всегда на «сегодня». */
+  initialDate?: string;
 };
 
 function toISO(d: Date): string {
@@ -138,25 +150,37 @@ function DayCell({
 }) {
   const c = useColors();
   const { colorScheme } = useSettings();
+  const isDark = colorScheme === 'dark';
   const { isOtherMonth, isToday, isSelected, hasRecord, hasMissed, hasPlanned } = state;
-  const dotColor = hasRecord ? colors.green[500] : hasMissed ? colors.red[500] : hasPlanned ? colors.neutral[400] : null;
+  const dotColor = hasRecord ? colors.green[500] : hasMissed ? colors.red[500] : hasPlanned ? colors.neutral[600] : null;
 
   const disabled = isOtherMonth || (!allowFutureSelect && isFutureDate(date));
-  const otherMonthColor = colorScheme === 'dark' ? OTHER_MONTH_COLOR_DARK : c.text.secondary;
+  const otherMonthColor = isDark ? OTHER_MONTH_COLOR_DARK : c.text.secondary;
   const textColor = isOtherMonth ? otherMonthColor : isToday ? c.brand.primary : c.text.primary;
+
+  // Пилюля на всю ячейку: у Today — заливка + 2px обводка brand.primary (насыщеннее, если
+  // ячейка ещё и Selected); у обычного Selected — просто заливка cardGrey, без обводки.
+  const chipBg = isToday
+    ? (isSelected
+      ? (isDark ? TODAY_BG_DARK_SELECTED : TODAY_BG_LIGHT_SELECTED)
+      : (isDark ? TODAY_BG_DARK : TODAY_BG_LIGHT))
+    : isSelected
+    ? c.surface.cardGrey
+    : 'transparent';
 
   return (
     <Pressable
       onPress={disabled ? undefined : onPress}
       android_ripple={disabled ? undefined : { color: 'rgba(0,0,0,0.06)', borderless: true, radius: 20 }}
-      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: 48 }}
+      style={{ flex: 1, height: 48 }}
     >
       <View style={{
-        width: 40,
-        height: 40,
-        borderRadius: 8,
-        overflow: 'hidden',
-        backgroundColor: isSelected ? c.surface.cardGrey : 'transparent',
+        flex: 1,
+        margin: 2,
+        borderRadius: 16,
+        borderWidth: isToday ? 2 : 0,
+        borderColor: isToday ? c.brand.primary : 'transparent',
+        backgroundColor: chipBg,
         alignItems: 'center',
         justifyContent: 'center',
       }}>
@@ -210,11 +234,16 @@ export default function CalendarMonthly({
   selectedDate,
   onDateSelect,
   allowFutureSelect,
+  initialDate,
 }: CalendarMonthlyProps) {
   const c = useColors();
   const now = new Date();
-  const [viewYear, setViewYear] = useState(now.getFullYear());
-  const [viewMonth, setViewMonth] = useState(now.getMonth());
+  const [viewYear, setViewYear] = useState(
+    initialDate ? parseInt(initialDate.slice(0, 4), 10) : now.getFullYear(),
+  );
+  const [viewMonth, setViewMonth] = useState(
+    initialDate ? parseInt(initialDate.slice(5, 7), 10) - 1 : now.getMonth(),
+  );
 
   const translateX = useRef(new Animated.Value(0)).current;
   // Блокирует начало нового жеста/повторный тап по стрелке, пока текущая анимация
