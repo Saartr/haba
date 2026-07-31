@@ -10,6 +10,7 @@ export type CustomHabitState = {
   checkinType: 'boolean' | 'count' | 'progression';
   unitPreset: string;
   unitLabel: string;
+  hasGoal: boolean; // count: «С целью» (true) / «Без цели» (false); goal_value = null при false
   goalValue: string;
   progressionStart: string;
   // Шаг 3
@@ -39,6 +40,7 @@ function makeDefaultState(): CustomHabitState {
     checkinType: 'boolean',
     unitPreset: 'custom',
     unitLabel: '',
+    hasGoal: true,
     goalValue: '',
     progressionStart: '',
     periodicity: 'daily',

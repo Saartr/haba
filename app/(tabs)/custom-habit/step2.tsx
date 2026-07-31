@@ -5,6 +5,7 @@ import Text from '@/components/Text';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
 import Select from '@/components/Select';
+import SegmentedControl from '@/components/SegmentedControl';
 import NavigationBar from '@/components/NavigationBar';
 import Chip from '@/components/Chip';
 import CloseIcon from '@/assets/icons/Close.svg';
@@ -80,14 +81,9 @@ export default function Step2Screen() {
         setUnitLabelError('Обязательное поле');
         valid = false;
       }
-      // Для групповой count-цели «Цель» необязательна — пусто = без ограничения.
-      // Для соло — обязательна, как раньше.
-      if (state.habitType === 'group') {
-        if (state.goalValue && (isNaN(Number(state.goalValue)) || Number(state.goalValue) <= 0)) {
-          setGoalError('Цель должна быть больше 0');
-          valid = false;
-        }
-      } else if (!state.goalValue || isNaN(Number(state.goalValue)) || Number(state.goalValue) <= 0) {
+      // «С целью» — числовое значение обязательно (и для соло, и для группы).
+      // «Без цели» — поля «Цель» нет, goal_value = null.
+      if (state.hasGoal && (!state.goalValue || isNaN(Number(state.goalValue)) || Number(state.goalValue) <= 0)) {
         setGoalError('Укажите цель больше 0');
         valid = false;
       }
@@ -191,14 +187,38 @@ export default function Step2Screen() {
                 error={unitLabelError}
               />
             )}
-            <Input
-              label={state.habitType === 'group' ? 'Цель (опционально)' : 'Цель'}
-              value={state.goalValue}
-              onChangeText={(t) => { set({ goalValue: t }); setGoalError(''); }}
-              placeholder={state.habitType === 'group' ? 'Оставь пустым — без ограничения' : 'Сколько нужно сделать'}
-              keyboardType="numeric"
-              error={goalError}
-            />
+
+            {/* С целью / Без цели. «Без цели» = простой подсчёт без отметки о выполнении. */}
+            <View style={{ gap: 8 }}>
+              <SegmentedControl
+                options={[
+                  { label: 'С целью', value: 'goal' },
+                  { label: 'Без цели', value: 'nogoal' },
+                ]}
+                value={state.hasGoal ? 'goal' : 'nogoal'}
+                onChange={(v) => {
+                  const hasGoal = v === 'goal';
+                  set({ hasGoal, ...(hasGoal ? {} : { goalValue: '' }) });
+                  setGoalError('');
+                }}
+              />
+              <Text weight="medium" style={{ fontSize: 13, color: c.text.secondary, lineHeight: 18, letterSpacing: 0.1, marginTop: 4 }}>
+                {state.hasGoal
+                  ? 'Отметка о выполнении высчитывается по заданному значению. Например: 5 / 4 километров пройдено — отметка «ВЫПОЛНЕНО».'
+                  : 'Простой подсчёт количества, у такого типа нет отметки о выполнении или невыполнении. Например: кто сколько раз убрал за котом за день.'}
+              </Text>
+            </View>
+
+            {state.hasGoal && (
+              <Input
+                label="Цель"
+                value={state.goalValue}
+                onChangeText={(t) => { set({ goalValue: t }); setGoalError(''); }}
+                placeholder="Сколько нужно сделать"
+                keyboardType="numeric"
+                error={goalError}
+              />
+            )}
           </>
         )}
 

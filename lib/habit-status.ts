@@ -1,5 +1,5 @@
 import { Habit } from '@/lib/api';
-import { genitiveUnit } from '@/lib/units';
+import { genitiveUnit, formatUnit } from '@/lib/units';
 
 // Общая логика «статус цели на сегодня» и русская плюрализация — единственный источник
 // для карточек главного экрана (index.tsx) и экрана цели (habit/[id].tsx). Раньше эти
@@ -13,6 +13,7 @@ export type HabitStatus = {
   done: boolean;
   status: 'done' | 'failed' | 'skip';
   showStreakRow: boolean;
+  showTag: boolean; // count без цели — без тега статуса (нет состояния выполнено/не выполнено)
 };
 
 export function pluralDays(n: number): string {
@@ -57,11 +58,13 @@ export function computeHabitStatus(habit: Habit, extra: HabitExtra | null): Habi
   const isBoolean = habit.checkin_type === 'boolean';
   const isProgression = habit.checkin_type === 'progression';
   const isPullups = habit.category === 'pullups';
+  const isCountNoGoal = isCount && habit.goal_value == null; // count «без цели»
   const todayVal = extra?.today_value ?? 0;
   const streak = extra?.streak ?? 0;
 
   const subtitle = habit.category === 'smoking' ? 'Без сигарет'
     : isPullups ? 'Цель на сегодня'
+    : isCountNoGoal ? 'Сделано сегодня'
     : isBoolean ? 'Текущий стрик'
     : isProgression ? 'Текущий результат'
     : isCount ? `${genitiveUnit(habit.goal_unit) || 'Количество'} сегодня`
@@ -71,6 +74,8 @@ export function computeHabitStatus(habit: Habit, extra: HabitExtra | null): Habi
     ? pluralDays(streak)
     : isPullups
     ? pullupsTodayLabel(habit)
+    : isCountNoGoal
+    ? formatUnit(todayVal, null) // «N раз» независимо от выбранной единицы (как в макете)
     : isBoolean
     ? String(streak)
     : isProgression
@@ -97,8 +102,13 @@ export function computeHabitStatus(habit: Habit, extra: HabitExtra | null): Habi
   const status: 'done' | 'failed' | 'skip' = isRestDay ? 'skip' : done ? 'done' : 'failed';
 
   // Стрик не показываем для «Прогрессии» (одна разовая цель, не повторяющаяся ежедневная
-  // активность — метрика не имеет смысла) и «Подтягиваний» (свой план тренировок/дней отдыха).
-  const showStreakRow = !isProgression && !isPullups;
+  // активность — метрика не имеет смысла), «Подтягиваний» (свой план тренировок/дней отдыха)
+  // и count «без цели» (нет порога выполнения — стрик не считаем).
+  const showStreakRow = !isProgression && !isPullups && !isCountNoGoal;
 
-  return { subtitle, value, done, status, showStreakRow };
+  // Тег статуса (выполнено/не выполнено) не показываем для count «без цели» — у него нет
+  // состояния выполнения, это просто счётчик.
+  const showTag = !isCountNoGoal;
+
+  return { subtitle, value, done, status, showStreakRow, showTag };
 }

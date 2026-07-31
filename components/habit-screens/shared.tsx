@@ -6,6 +6,7 @@ import BlockIcon from '@/assets/icons/Block.svg';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import { HabitMember } from '@/lib/api';
+import { formatUnit } from '@/lib/units';
 
 // Общие кусочки экранов цели (habit/[id].tsx → components/habit-screens/*):
 // модалка успеха, заголовок раздела, аватар/строка участника, форматирование дат.
@@ -114,11 +115,15 @@ export function MemberAvatar({ member }: { member: HabitMember }) {
 }
 
 export function MemberRow({
-  member, goalValue, value, isCreator, onExclude, onOpen,
+  member, goalValue, value, unit, boolean, isCreator, onExclude, onOpen,
 }: {
   member: HabitMember;
   goalValue: number | null;
   value: number | null;
+  /** Единица измерения — для count «без цели» показываем «N единиц» (например «5 стаканов»). */
+  unit?: string | null;
+  /** Да/Нет-режим — показываем «Выполнил»/«Не выполнил» вместо числа. */
+  boolean?: boolean;
   isCreator: boolean;
   onExclude: (id: number) => void;
   onOpen: (member: HabitMember) => void;
@@ -129,8 +134,12 @@ export function MemberRow({
   const name = member.first_name ?? member.username ?? '?';
   const displayName = member.is_self ? `${name} (Я)` : name;
 
-  const stepsLabel = goalValue != null
+  const stepsLabel = boolean
+    ? ((value ?? 0) >= 1 ? 'Выполнил' : 'Не выполнил')
+    : goalValue != null
     ? `${(value ?? 0).toLocaleString('ru-RU')} / ${goalValue.toLocaleString('ru-RU')}`
+    : unit !== undefined
+    ? formatUnit(value ?? 0, unit)
     : value != null ? String(value) : '—';
 
   return (

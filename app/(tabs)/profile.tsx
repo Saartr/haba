@@ -50,7 +50,7 @@ export default function ProfileScreen() {
   const { colorScheme } = useSettings();
   const insets = useSafeAreaInsets();
 
-  const screenBg = colorScheme === 'dark' ? colors.neutral[950] : colors.neutral[50];
+  const screenBg = colorScheme === 'dark' ? colors.neutral[950] : colors.neutral[75];
   const cardBg = colorScheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
 
   const displayName = user?.first_name ?? user?.username ?? null;

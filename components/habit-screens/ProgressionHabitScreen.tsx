@@ -48,6 +48,7 @@ export default function ProgressionHabitScreen({
 
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
+  const screenBg = scheme === 'dark' ? c.surface.bg : colors.neutral[75];
 
   const unitLabel = habit.goal_unit ?? null;
 
@@ -102,7 +103,7 @@ export default function ProgressionHabitScreen({
     : `Внести за ${formatDateRu(selectedDate, today).toLowerCase()}`;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }} edges={['bottom']}>
       <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
 
       <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>

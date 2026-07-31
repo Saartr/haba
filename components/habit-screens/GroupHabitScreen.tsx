@@ -18,7 +18,6 @@ import { useEffect, useRef, useState } from 'react';
 import CalendarWeek from '@/components/CalendarWeek';
 import CalendarMonthly from '@/components/CalendarMonthly';
 import Card from '@/components/Card';
-import Chip from '@/components/Chip';
 import DropdownPopover from '@/components/DropdownPopover';
 import NavigationBar from '@/components/NavigationBar';
 import BottomSheet from '@/components/BottomSheet';
@@ -30,6 +29,7 @@ import { useConfirm } from '@/components/ConfirmModal';
 import { useSnackbar } from '@/lib/snackbar-context';
 import EditIcon from '@/assets/icons/Edit.svg';
 import CheckIcon from '@/assets/icons/Check.svg';
+import CloseIcon from '@/assets/icons/Close.svg';
 import MoreVerticalIcon from '@/assets/icons/MoreVertical.svg';
 import ShareIcon from '@/assets/icons/Share.svg';
 import LinkIcon from '@/assets/icons/Link.svg';
@@ -61,7 +61,7 @@ import {
   getTodaySteps,
 } from '@/lib/health';
 import { pluralUnit } from '@/lib/units';
-import { SectionTitle, MemberAvatar, MemberRow, formatDateDots, formatSyncedAt } from './shared';
+import { SectionTitle, MemberAvatar, MemberRow, formatDateDots, formatSyncedAt, dateToLocalISO } from './shared';
 
 export default function GroupHabitScreen({
   habit, onReload,
@@ -88,13 +88,13 @@ export default function GroupHabitScreen({
   const [stepsError, setStepsError] = useState<string | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [transferModal, setTransferModal] = useState(false);
-  const [period, setPeriod] = useState<'today' | 'week'>('today');
   const [detailMember, setDetailMember] = useState<HabitMember | null>(null);
   const [groupCountModal, setGroupCountModal] = useState(false);
   const [groupCountMode, setGroupCountMode] = useState<'add' | 'replace'>('add');
   const [groupCountInput, setGroupCountInput] = useState('');
   const [groupCountError, setGroupCountError] = useState<string | null>(null);
   const [calendarView, setCalendarView] = useState<'week' | 'month'>('week');
+  const [editingBoolean, setEditingBoolean] = useState(false);
   const [dayDetailDate, setDayDetailDate] = useState<string | null>(null);
   // Держит последнюю выбранную дату, пока модалка не закрылась полностью — иначе
   // заголовок успевает мигнуть на «Значения за день» ещё во время анимации сворачивания.
@@ -107,35 +107,56 @@ export default function GroupHabitScreen({
 
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
+  const screenBg = scheme === 'dark' ? c.surface.bg : colors.neutral[75];
 
   const me = habit.members.find(m => m.is_self);
   const today = new Date().toISOString().slice(0, 10);
   const myTodayLog = habit.week_logs.find(l => l.user_id === me?.id && l.date.slice(0, 10) === today);
 
+  // count «без цели» — простой счётчик без порога выполнения (goal_value = null):
+  // одна секция «Все участники» (итоги за всё время) + «Я сделал» вместо «Изменить/+1».
+  const isCountNoGoal = habit.checkin_type === 'count' && habit.goal_value == null;
+  // Кастомная групповая Да/Нет (не «Шаги»): Неделя/Месяц, «Выполнил/Не выполнил» у участников,
+  // кнопки «Выполнил/Не выполнил» / «Редактировать запись».
+  const isBoolCustom = habit.checkin_type === 'boolean' && habit.category !== 'steps';
+
+  // Сбросить режим редактирования, когда своя отметка появилась/обновилась.
+  useEffect(() => {
+    if (myTodayLog != null) setEditingBoolean(false);
+  }, [myTodayLog?.id, myTodayLog?.value]);
+
+  // Мой месячный календарь для кастомной Да/Нет: зелёные выполненные + красные пропущенные дни.
+  const [boolMonthLogs, setBoolMonthLogs] = useState<{ date: string; value: number }[]>([]);
+  useEffect(() => {
+    if (!isBoolCustom || calendarView !== 'month') return;
+    const sid = habit.members.find(m => m.is_self)?.id;
+    if (!sid) return;
+    getHabitLogs(habit.id, habit.created_at.slice(0, 10), today, sid)
+      .then(logs => setBoolMonthLogs(logs.map(l => ({ date: l.date.slice(0, 10), value: l.value }))))
+      .catch(() => {});
+  }, [habit, calendarView, isBoolCustom]);
+  const boolCompletedDates = boolMonthLogs.filter(l => l.value >= 1).map(l => l.date);
+  const boolMissedDates = (() => {
+    if (!isBoolCustom) return [];
+    const done = new Set(boolCompletedDates);
+    const result: string[] = [];
+    const cursor = new Date(habit.created_at.slice(0, 10) + 'T00:00:00');
+    const end = new Date(today + 'T00:00:00'); // сегодня не считаем пропущенным
+    while (cursor < end) {
+      const iso = dateToLocalISO(cursor);
+      if (!done.has(iso)) result.push(iso);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return result;
+  })();
+
   function todayValueFor(memberId: number) {
     return habit.week_logs.find(l => l.user_id === memberId && l.date.slice(0, 10) === today)?.value ?? null;
   }
 
-  // Сумма шагов участника за текущую неделю (пн–вс)
-  function weekValueFor(memberId: number) {
-    return habit.week_logs
-      .filter(l => l.user_id === memberId)
-      .reduce((sum, l) => sum + l.value, 0);
-  }
-
-  // Значение участника для выбранного периода: сегодня / накопительно за неделю
-  function memberValueFor(memberId: number): number | null {
-    return period === 'week' ? weekValueFor(memberId) : todayValueFor(memberId);
-  }
-
-  // Знаменатель цели для периода: дневная цель N / N×7 за неделю
-  const periodGoal = habit.goal_value != null
-    ? (period === 'week' ? habit.goal_value * 7 : habit.goal_value)
-    : null;
-  // Персональное число шагов за период
-  const personalSteps = period === 'week'
-    ? weekValueFor(me?.id ?? -1)
-    : (myTodayLog?.value ?? 0);
+  // Значения всегда за сегодня (переключатель Сегодня/Неделя убран).
+  const periodGoal = habit.goal_value;
+  const personalSteps = myTodayLog?.value ?? 0;
 
   // Карточки в модалке детализации: фон cardGrey (светлая → neutral[100], тёмная → neutral[700]),
   // иначе сливаются со шторкой.
@@ -357,7 +378,7 @@ export default function GroupHabitScreen({
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }} edges={['bottom']}>
       <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
 
       {/* Nav bar */}
@@ -453,61 +474,110 @@ export default function GroupHabitScreen({
               </View>
             )}
 
-            {/* Сегодня */}
-            <SectionTitle>Сегодня</SectionTitle>
-            <View style={{ paddingHorizontal: 24 }}>
-              <Card style={{ gap: 16 }}>
-                {habit.members.map(m => (
-                  <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                    <MemberAvatar member={m} />
-                    <View>
-                      <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-                        {m.is_self ? `${m.first_name ?? m.username ?? '?'} (Я)` : (m.first_name ?? m.username ?? '?')}
-                      </Text>
-                      <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-                        {todayValueFor(m.id) ?? 0}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-              </Card>
-            </View>
+            {isCountNoGoal ? (
+              /* Без цели — одна секция «Все участники» с итогами за всё время (entry_totals). */
+              <>
+                <SectionTitle>Все участники</SectionTitle>
+                <View style={{ paddingHorizontal: 24 }}>
+                  <Card style={{ gap: 16 }}>
+                    {habit.members.map(m => (
+                      <MemberRow
+                        key={m.id}
+                        member={m}
+                        goalValue={null}
+                        value={habit.entry_totals?.[m.id] ?? 0}
+                        unit={null}
+                        isCreator={habit.is_creator}
+                        onExclude={handleExclude}
+                        onOpen={setDetailMember}
+                      />
+                    ))}
+                  </Card>
+                </View>
+              </>
+            ) : (
+              <>
+                {/* Сегодня */}
+                <SectionTitle>Сегодня</SectionTitle>
+                <View style={{ paddingHorizontal: 24 }}>
+                  <Card style={{ gap: 16 }}>
+                    {habit.members.map(m => (
+                      <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                        <MemberAvatar member={m} />
+                        <View>
+                          <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                            {m.is_self ? `${m.first_name ?? m.username ?? '?'} (Я)` : (m.first_name ?? m.username ?? '?')}
+                          </Text>
+                          <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+                            {todayValueFor(m.id) ?? 0}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </Card>
+                </View>
 
-            {/* Общая статистика */}
-            <SectionTitle>Общая статистика</SectionTitle>
-            <View style={{ paddingHorizontal: 24 }}>
-              <Card style={{ gap: 16 }}>
-                {habit.members.map(m => (
-                  <MemberRow
-                    key={m.id}
-                    member={m}
-                    goalValue={null}
-                    value={habit.entry_totals?.[m.id] ?? 0}
-                    isCreator={habit.is_creator}
-                    onExclude={handleExclude}
-                    onOpen={setDetailMember}
-                  />
-                ))}
-              </Card>
-            </View>
+                {/* Общая статистика */}
+                <SectionTitle>Общая статистика</SectionTitle>
+                <View style={{ paddingHorizontal: 24 }}>
+                  <Card style={{ gap: 16 }}>
+                    {habit.members.map(m => (
+                      <MemberRow
+                        key={m.id}
+                        member={m}
+                        goalValue={null}
+                        value={habit.entry_totals?.[m.id] ?? 0}
+                        isCreator={habit.is_creator}
+                        onExclude={handleExclude}
+                        onOpen={setDetailMember}
+                      />
+                    ))}
+                  </Card>
+                </View>
+              </>
+            )}
           </>
         ) : (
           <>
-            <CalendarWeek
-              habitId={habit.id}
-              habitCreatedAt={habit.created_at}
-              currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
-              goalValue={habit.goal_value ?? 1}
-            />
+            {isBoolCustom ? (
+              <View style={{ gap: 16 }}>
+                <View style={{ paddingHorizontal: 24 }}>
+                  <SegmentedControl
+                    options={[{ label: 'Неделя', value: 'week' }, { label: 'Месяц', value: 'month' }]}
+                    value={calendarView}
+                    onChange={v => setCalendarView(v as 'week' | 'month')}
+                  />
+                </View>
+                {calendarView === 'week' ? (
+                  <CalendarWeek
+                    habitId={habit.id}
+                    habitCreatedAt={habit.created_at}
+                    currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
+                    goalValue={1}
+                  />
+                ) : (
+                  <View style={{ paddingHorizontal: 24 }}>
+                    <Card style={{ paddingHorizontal: 16, paddingVertical: 16, gap: 0 }}>
+                      <CalendarMonthly
+                        logs={boolCompletedDates}
+                        missedDates={boolMissedDates}
+                        periodStart={habit.created_at.slice(0, 10)}
+                      />
+                    </Card>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <CalendarWeek
+                habitId={habit.id}
+                habitCreatedAt={habit.created_at}
+                currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
+                goalValue={habit.goal_value ?? 1}
+              />
+            )}
 
-            {/* Период */}
-            <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 24 }}>
-              <Chip label="Сегодня" selected={period === 'today'} onPress={() => setPeriod('today')} />
-              <Chip label="Неделя" selected={period === 'week'} onPress={() => setPeriod('week')} />
-            </View>
-
-            {/* Персональный результат */}
-            <SectionTitle>Персональный результат</SectionTitle>
+            {/* Персональный результат — заголовок только для «Шагов» (кастомная Да/Нет без него) */}
+            {!isBoolCustom && <SectionTitle>Персональный результат</SectionTitle>}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -517,7 +587,7 @@ export default function GroupHabitScreen({
               {habit.category === 'steps' && (
                 <Card style={{ gap: 4 }}>
                   <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-                    {period === 'week' ? 'Шагов за неделю' : 'Шагов сегодня'}
+                    Шагов сегодня
                   </Text>
                   <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
                     {personalSteps.toLocaleString('ru-RU')}
@@ -554,7 +624,8 @@ export default function GroupHabitScreen({
                     key={m.id}
                     member={m}
                     goalValue={periodGoal}
-                    value={memberValueFor(m.id)}
+                    value={todayValueFor(m.id)}
+                    boolean={isBoolCustom}
                     isCreator={habit.is_creator}
                     onExclude={handleExclude}
                     onOpen={setDetailMember}
@@ -583,6 +654,38 @@ export default function GroupHabitScreen({
             loading={logLoading}
             icon={<FootprintIcon />}
           />
+        ) : isCountNoGoal ? (
+          <View style={{ flexDirection: 'row', gap: 16 }}>
+            <View style={{ flex: 1 }}>
+              <Button
+                label="Я сделал"
+                onPress={async () => {
+                  setLogLoading(true);
+                  try {
+                    await logHabit(habitId, (myTodayLog?.value ?? 0) + 1);
+                    onReload();
+                  } catch (e: any) {
+                    Alert.alert('Ошибка', e.message);
+                  } finally {
+                    setLogLoading(false);
+                  }
+                }}
+                loading={logLoading}
+              />
+            </View>
+            {(myTodayLog?.value ?? 0) > 0 && (
+              <Button
+                variant="icon"
+                icon={<EditIcon />}
+                onPress={() => {
+                  setGroupCountMode('replace');
+                  setGroupCountInput(String(myTodayLog?.value ?? 0));
+                  setGroupCountError(null);
+                  setGroupCountModal(true);
+                }}
+              />
+            )}
+          </View>
         ) : habit.checkin_type === 'count' ? (
           <View style={{ flexDirection: 'row', gap: 16 }}>
             <View style={{ flex: 1 }}>
@@ -617,19 +720,44 @@ export default function GroupHabitScreen({
             </View>
           </View>
         ) : habit.checkin_type === 'boolean' ? (
-          <Button
-            label={myTodayLog?.value ? 'Выполнено' : 'Отметить выполнение'}
-            onPress={async () => {
-              if (myTodayLog?.value) return;
-              setLogLoading(true);
-              try { await logHabit(habitId, 1); onReload(); }
-              catch (e: any) { Alert.alert('Ошибка', e.message); }
-              finally { setLogLoading(false); }
-            }}
-            loading={logLoading}
-            color={myTodayLog?.value ? colors.green[500] : undefined}
-            icon={<CheckIcon />}
-          />
+          // Кастомная Да/Нет: есть отметка за сегодня → «Редактировать запись»,
+          // иначе две брендовые кнопки «Выполнил»/«Не выполнил».
+          myTodayLog != null && !editingBoolean ? (
+            <Button
+              label="Редактировать запись"
+              variant="secondary"
+              onPress={() => setEditingBoolean(true)}
+            />
+          ) : (
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <View style={{ flex: 1 }}>
+                <Button
+                  label="Выполнил"
+                  icon={<CheckIcon />}
+                  loading={logLoading}
+                  onPress={async () => {
+                    setLogLoading(true);
+                    try { await logHabit(habitId, 1); onReload(); }
+                    catch (e: any) { Alert.alert('Ошибка', e.message); }
+                    finally { setLogLoading(false); }
+                  }}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button
+                  label="Не выполнил"
+                  icon={<CloseIcon />}
+                  loading={logLoading}
+                  onPress={async () => {
+                    setLogLoading(true);
+                    try { await logHabit(habitId, 0); onReload(); }
+                    catch (e: any) { Alert.alert('Ошибка', e.message); }
+                    finally { setLogLoading(false); }
+                  }}
+                />
+              </View>
+            </View>
+          )
         ) : null}
       </View>
 
@@ -908,10 +1036,10 @@ export default function GroupHabitScreen({
                 {habit.category === 'steps' && (
                   <Card style={detailCardStyle}>
                     <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-                      {period === 'week' ? 'Шагов за неделю' : 'Шагов сегодня'}
+                      Шагов сегодня
                     </Text>
                     <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-                      {(memberValueFor(detailMember.id) ?? 0).toLocaleString('ru-RU')}
+                      {(todayValueFor(detailMember.id) ?? 0).toLocaleString('ru-RU')}
                       {periodGoal != null ? ` / ${periodGoal.toLocaleString('ru-RU')}` : ''}
                     </Text>
                   </Card>

@@ -6,7 +6,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useConfirm } from '@/components/ConfirmModal';
 import { useSnackbar } from '@/lib/snackbar-context';
 import DeleteForeverIcon from '@/assets/icons/DeleteForever.svg';
-import { useColors } from '@/lib/colors';
+import { useColors, colors } from '@/lib/colors';
+import { useSettings } from '@/lib/settings-context';
 import { getHabit, logHabit, closeHabit, getStepHabits, syncHabitSteps, HabitDetail } from '@/lib/api';
 import { scheduleSync, cancelSync } from '@/modules/health-sync';
 import { BASE_URL } from '@/lib/config';
@@ -22,6 +23,7 @@ import GroupHabitScreen from '@/components/habit-screens/GroupHabitScreen';
 // специфичные обработчики живут в самих экранах.
 export default function HabitScreen() {
   const c = useColors();
+  const { colorScheme } = useSettings();
   const router = useRouter();
   const confirm = useConfirm();
   const showSnackbar = useSnackbar();
@@ -151,8 +153,9 @@ export default function HabitScreen() {
   }
 
   if (loading || !habit) {
+    const screenBg = colorScheme === 'dark' ? c.surface.bg : colors.neutral[75];
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg, alignItems: 'center', justifyContent: 'center' }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: screenBg, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={c.brand.primary} />
       </SafeAreaView>
     );
