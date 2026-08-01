@@ -51,6 +51,7 @@ export default function Step2Screen() {
 
   const panelColor = colorScheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = colorScheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
+  const screenBg = colorScheme === 'dark' ? c.surface.bg : colors.neutral[75];
 
   // Прогрессия временно скрыта из выбора (функционал не удалён — см. блок ниже
   // по state.checkinType === 'progression' — может вернуться позже).
@@ -119,7 +120,7 @@ export default function Step2Screen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default, paddingBottom: kbPadding }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: screenBg, paddingBottom: kbPadding }} edges={['bottom']}>
       <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
 
       <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>

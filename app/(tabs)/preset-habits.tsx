@@ -104,6 +104,7 @@ export default function PresetHabitsScreen() {
 
   const panelColor = colorScheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = colorScheme === 'dark' ? 'light-content' : 'dark-content';
+  const screenBg = colorScheme === 'dark' ? c.surface.bg : colors.neutral[75];
 
   async function handleCreate() {
     if (!name.trim()) {
@@ -158,7 +159,7 @@ export default function PresetHabitsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default, paddingBottom: kbPadding }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: screenBg, paddingBottom: kbPadding }} edges={['bottom']}>
       <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
 
       <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>
