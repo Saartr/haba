@@ -52,9 +52,9 @@ export default function Step2Screen() {
   const panelColor = colorScheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = colorScheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
 
-  const checkinTypes = state.habitType === 'group'
-    ? [{ key: 'boolean', label: 'Да/Нет' }, { key: 'count', label: 'Количество' }]
-    : [{ key: 'boolean', label: 'Да/Нет' }, { key: 'count', label: 'Количество' }, { key: 'progression', label: 'Прогрессия' }];
+  // Прогрессия временно скрыта из выбора (функционал не удалён — см. блок ниже
+  // по state.checkinType === 'progression' — может вернуться позже).
+  const checkinTypes = [{ key: 'boolean', label: 'Да/Нет' }, { key: 'count', label: 'Количество' }];
 
   async function handleExit() {
     const ok = await confirm({

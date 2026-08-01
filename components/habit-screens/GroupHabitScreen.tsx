@@ -60,7 +60,7 @@ import {
   requestStepsPermission,
   getTodaySteps,
 } from '@/lib/health';
-import { pluralUnit } from '@/lib/units';
+import { pluralUnit, genitiveUnit } from '@/lib/units';
 import { SectionTitle, MemberAvatar, MemberRow, formatDateDots, formatSyncedAt, dateToLocalISO } from './shared';
 
 export default function GroupHabitScreen({
@@ -497,36 +497,52 @@ export default function GroupHabitScreen({
               </>
             ) : (
               <>
-                {/* Сегодня */}
-                <SectionTitle>Сегодня</SectionTitle>
-                <View style={{ paddingHorizontal: 24 }}>
-                  <Card style={{ gap: 16 }}>
-                    {habit.members.map(m => (
-                      <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                        <MemberAvatar member={m} />
-                        <View>
-                          <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-                            {m.is_self ? `${m.first_name ?? m.username ?? '?'} (Я)` : (m.first_name ?? m.username ?? '?')}
-                          </Text>
-                          <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-                            {todayValueFor(m.id) ?? 0}
-                          </Text>
-                        </View>
-                      </View>
-                    ))}
+                {/* Личная статистика: сегодняшнее значение / цель, стрик, лучший стрик */}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={{ marginVertical: -16 }}
+                  contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 16, gap: 16 }}
+                >
+                  <Card style={{ gap: 4 }}>
+                    <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                      {genitiveUnit(habit.goal_unit) || 'Количество'} сегодня
+                    </Text>
+                    <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+                      {personalSteps.toLocaleString('ru-RU')}
+                      {periodGoal != null ? ` / ${periodGoal.toLocaleString('ru-RU')}` : ''}
+                    </Text>
                   </Card>
-                </View>
 
-                {/* Общая статистика */}
-                <SectionTitle>Общая статистика</SectionTitle>
+                  <Card style={{ gap: 4 }}>
+                    <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                      Стрик
+                    </Text>
+                    <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+                      {habit.streak.current}
+                    </Text>
+                  </Card>
+
+                  <Card style={{ gap: 4 }}>
+                    <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                      Лучший стрик
+                    </Text>
+                    <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+                      {habit.streak.max}
+                    </Text>
+                  </Card>
+                </ScrollView>
+
+                {/* Все участники — сегодняшнее значение каждого */}
+                <SectionTitle>Все участники</SectionTitle>
                 <View style={{ paddingHorizontal: 24 }}>
                   <Card style={{ gap: 16 }}>
                     {habit.members.map(m => (
                       <MemberRow
                         key={m.id}
                         member={m}
-                        goalValue={null}
-                        value={habit.entry_totals?.[m.id] ?? 0}
+                        goalValue={habit.goal_value}
+                        value={todayValueFor(m.id)}
                         isCreator={habit.is_creator}
                         onExclude={handleExclude}
                         onOpen={setDetailMember}
@@ -687,38 +703,18 @@ export default function GroupHabitScreen({
             )}
           </View>
         ) : habit.checkin_type === 'count' ? (
-          <View style={{ flexDirection: 'row', gap: 16 }}>
-            <View style={{ flex: 1 }}>
-              <Button
-                label={`Изменить ${pluralUnit(habit.goal_unit ?? '')}`}
-                variant="secondary"
-                onPress={() => {
-                  setGroupCountMode('add');
-                  setGroupCountInput('');
-                  setGroupCountError(null);
-                  setGroupCountModal(true);
-                }}
-                loading={logLoading}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Button
-                label={`+1 ${pluralUnit(habit.goal_unit ?? '')}`}
-                onPress={async () => {
-                  setLogLoading(true);
-                  try {
-                    await logHabit(habitId, (myTodayLog?.value ?? 0) + 1);
-                    onReload();
-                  } catch (e: any) {
-                    Alert.alert('Ошибка', e.message);
-                  } finally {
-                    setLogLoading(false);
-                  }
-                }}
-                loading={logLoading}
-              />
-            </View>
-          </View>
+          <Button
+            label={myTodayLog != null ? 'Редактировать запись' : `Внести ${pluralUnit(habit.goal_unit ?? '')}`}
+            variant={myTodayLog != null ? 'secondary' : 'main'}
+            onPress={() => {
+              const editing = myTodayLog != null;
+              setGroupCountMode(editing ? 'replace' : 'add');
+              setGroupCountInput(editing ? String(myTodayLog?.value ?? 0) : '');
+              setGroupCountError(null);
+              setGroupCountModal(true);
+            }}
+            loading={logLoading}
+          />
         ) : habit.checkin_type === 'boolean' ? (
           // Кастомная Да/Нет: есть отметка за сегодня → «Редактировать запись»,
           // иначе две брендовые кнопки «Выполнил»/«Не выполнил».

@@ -81,7 +81,7 @@ export function computeHabitStatus(habit: Habit, extra: HabitExtra | null): Habi
     : isProgression
     ? `${todayVal}/${habit.goal_value ?? 0}`
     : isCount
-      ? `${todayVal}${habit.goal_value ? ` / ${habit.goal_value}` : ''}`
+      ? `${todayVal.toLocaleString('ru-RU')}${habit.goal_value ? ` / ${habit.goal_value.toLocaleString('ru-RU')}` : ''}`
       : `${todayVal}/${habit.goal_value ?? 0}`;
 
   const isRestDay = isPullups && !isTodayTrainingDay(habit.training_days);
