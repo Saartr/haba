@@ -21,7 +21,7 @@ import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import { getHabitLogs, HabitDetail, HabitLog } from '@/lib/api';
 import { pluralUnit, genitiveUnit, formatUnit } from '@/lib/units';
-import { CHECK_IN_LABELS, SuccessModal, dateToLocalISO } from './shared';
+import { CHECK_IN_LABELS, SuccessModal, dateToLocalISO, formatDateDots, useDayLogs } from './shared';
 
 export default function SoloHabitScreen({
   habit, onLog, logLoading, onDelete, onComplete, onCompleteNewGoal,
@@ -55,6 +55,25 @@ export default function SoloHabitScreen({
   const selfId = habit.members.find(m => m.is_self)?.id;
   const today = new Date().toISOString().slice(0, 10);
   const todayLog = habit.week_logs.find(l => l.user_id === selfId && l.date.slice(0, 10) === today);
+
+  // Дата, выбранная тапом по недельному календарю — null значит «сегодня» (live-данные из
+  // week_logs). Сбрасывается при уходе с экрана (useState) и при переключении Неделя/Месяц.
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const isViewingPast = selectedDate != null;
+  const dayLogs = useDayLogs(habit.id, selectedDate);
+  const dateLabel = isViewingPast ? formatDateDots(selectedDate!) : 'сегодня';
+  const displayValue = isViewingPast ? (dayLogs?.get(selfId ?? -1) ?? 0) : (todayLog?.value ?? 0);
+  function handleDateSelect(iso: string) {
+    setSelectedDate(iso === today ? null : iso);
+  }
+  // CalendarWeek держит подсветку выбранного дня во внутреннем стейте — снаружи её не сбросить
+  // напрямую. При возврате «к текущей дате» инкрементируем key, чтобы React перемонтировал
+  // компонент заново (заодно вернётся и позиция скролла на текущую неделю).
+  const [calendarKey, setCalendarKey] = useState(0);
+  function resetToToday() {
+    setSelectedDate(null);
+    setCalendarKey(k => k + 1);
+  }
 
   const isCount = (habit.checkin_type ?? 'boolean') === 'count';
   // count «без цели» — простой счётчик без порога выполнения (goal_value = null).
@@ -178,16 +197,18 @@ export default function SoloHabitScreen({
             <SegmentedControl
               options={[{ label: 'Неделя', value: 'week' }, { label: 'Месяц', value: 'month' }]}
               value={calendarView}
-              onChange={v => setCalendarView(v as 'week' | 'month')}
+              onChange={v => { setCalendarView(v as 'week' | 'month'); setSelectedDate(null); }}
             />
           </View>
           {calendarView === 'week' ? (
             <CalendarWeek
+              key={calendarKey}
               habitId={habit.id}
               habitCreatedAt={habit.created_at}
               currentWeekLogs={habit.week_logs.filter(l => l.user_id === selfId)}
               goalValue={habit.goal_value ?? 1}
               noMissIndicator={isCountNoGoal}
+              onDateSelect={handleDateSelect}
             />
           ) : (
             <View style={{ paddingHorizontal: 24 }}>
@@ -204,10 +225,12 @@ export default function SoloHabitScreen({
       ) : (
         <View style={{ marginTop: 24 }}>
           <CalendarWeek
+            key={calendarKey}
             habitId={habit.id}
             habitCreatedAt={habit.created_at}
             currentWeekLogs={habit.week_logs.filter(l => l.user_id === selfId)}
             goalValue={habit.goal_value ?? 1}
+            onDateSelect={handleDateSelect}
           />
         </View>
       )}
@@ -215,15 +238,15 @@ export default function SoloHabitScreen({
         <View style={{ paddingHorizontal: 24, paddingTop: 16 }}>
           <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
             <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-              Сделано сегодня
+              {`Сделано ${dateLabel}`}
             </Text>
             <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-              {formatUnit(todayLog?.value ?? 0, null)}
+              {formatUnit(displayValue, null)}
             </Text>
           </Card>
         </View>
       ) : checkinType === 'count' ? (
-        // count «с целью»: карточки всегда про сегодня (чипы Сегодня/Неделя убраны).
+        // count «с целью»: карточки всегда про сегодня/выбранную дату (чипы Сегодня/Неделя убраны).
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -231,10 +254,10 @@ export default function SoloHabitScreen({
         >
           <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
             <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-              {unitLabel ? `${genitiveUnit(unitLabel)} сегодня` : 'Сегодня'}
+              {unitLabel ? `${genitiveUnit(unitLabel)} ${dateLabel}` : (isViewingPast ? dateLabel : 'Сегодня')}
             </Text>
             <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-              {todayLog?.value ?? 0}{habit.goal_value != null ? ` / ${habit.goal_value}` : ''}
+              {displayValue}{habit.goal_value != null ? ` / ${habit.goal_value}` : ''}
             </Text>
           </Card>
           <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
@@ -247,7 +270,7 @@ export default function SoloHabitScreen({
           </Card>
           <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
             <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-              Лучший
+              Лучший стрик
             </Text>
             <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
               {habit.streak?.max ?? 0}
@@ -281,7 +304,14 @@ export default function SoloHabitScreen({
       <View style={{ flex: 1 }} />
 
       {/* Bottom — ветка по checkin_type */}
-      {isCountNoGoal ? (
+      {isViewingPast ? (
+        <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+          <Button
+            label="Вернуться к текущей дате"
+            onPress={resetToToday}
+          />
+        </View>
+      ) : isCountNoGoal ? (
         <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 24, paddingBottom: 24 }}>
           <View style={{ flex: 1 }}>
             <Button

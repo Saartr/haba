@@ -65,7 +65,7 @@ function HabitCard({ habit, extra, onPress }: {
         {showStreakRow && (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Text weight="medium" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
-              Максимальный стрик
+              Лучший стрик
             </Text>
             <Text weight="bold" style={{ fontSize: 16, lineHeight: 16 * 1.5, color: c.text.primary, letterSpacing: 0.2 }}>
               {pluralDays(streakMax)}

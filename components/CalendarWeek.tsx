@@ -46,16 +46,24 @@ function DayIcon({ status, color }: { status: DayStatus; color: string | null })
   return <CircleOutlineIcon width={24} height={24} color={color} />;
 }
 
-function DayCell({ day, weekday, status, isToday, iso, onPress }: CalendarDay & { onPress?: (iso: string) => void }) {
+// Тап и подсветка «active» доступны только дням с реальным статусом (сегодня/выполнено/
+// пропущено) — у будущих и inactive-дней (до создания цели, день отдыха) в Figma нет
+// варианта Selected=on, поэтому они остаются некликабельными.
+function isSelectable(status: DayStatus): boolean {
+  return status === 'current' || status === 'check' || status === 'miss';
+}
+
+function DayCell({ day, weekday, status, iso, selected, onPress }: CalendarDay & { selected: boolean; onPress?: (iso: string) => void }) {
   const { colorScheme } = useSettings();
   const dark = colorScheme === 'dark';
-  const boxBg = isToday ? (dark ? colors.purple[900] : colors.purple[100]) : (dark ? colors.neutral[800] : colors.neutral[100]);
-  const boxBorder = isToday ? (dark ? colors.purple[400] : colors.purple[500]) : 'transparent';
+  const boxBg = selected ? (dark ? colors.purple[900] : colors.purple[100]) : (dark ? colors.neutral[800] : colors.neutral[100]);
+  const boxBorder = selected ? (dark ? colors.purple[400] : colors.purple[500]) : 'transparent';
   const weekdayColor = dark ? colors.neutral[0] : colors.neutral[900];
-  const dayColor = isToday ? (dark ? colors.purple[400] : colors.purple[500]) : colors.neutral[500];
+  const dayColor = selected ? (dark ? colors.purple[400] : colors.purple[500]) : colors.neutral[500];
   const iconColor = (dark ? ICON_DARK : ICON_LIGHT)[status];
 
-  const Box = onPress ? Pressable : View;
+  const canPress = isSelectable(status);
+  const Box = canPress ? Pressable : View;
 
   return (
     <View style={{ flex: 1, gap: 4 }}>
@@ -63,8 +71,8 @@ function DayCell({ day, weekday, status, isToday, iso, onPress }: CalendarDay & 
         {weekday}
       </Text>
       <Box
-        onPress={onPress ? () => onPress(iso) : undefined}
-        android_ripple={onPress ? { color: 'rgba(0,0,0,0.06)', borderless: false } : undefined}
+        onPress={canPress ? () => onPress?.(iso) : undefined}
+        android_ripple={canPress ? { color: 'rgba(0,0,0,0.06)', borderless: false } : undefined}
         style={{
           height: 62,
           borderRadius: 16,
@@ -98,6 +106,12 @@ function getWeekMonday(weekOffset: number): Date {
 
 function toDateStr(d: Date): string {
   return d.toISOString().slice(0, 10);
+}
+
+function todayIso(): string {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  return toDateStr(d);
 }
 
 function buildDays(
@@ -175,10 +189,14 @@ type WeekPageProps = {
   userId?: number;
   horizontalPadding: number;
   noMissIndicator?: boolean;
-  onDateSelect?: (iso: string) => void;
+  // Active-подсветка — общий стейт на уровне всего CalendarWeek (не для каждой недели свой),
+  // иначе при переключении на дату другой недели у текущей недели остаётся своя, независимая
+  // «выбранная» ячейка (по умолчанию — сегодня), и получается два выделенных дня одновременно.
+  selected: string | null;
+  onSelect: (iso: string) => void;
 };
 
-function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, pageWidth, userId, horizontalPadding, noMissIndicator, onDateSelect }: WeekPageProps) {
+function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, pageWidth, userId, horizontalPadding, noMissIndicator, selected, onSelect }: WeekPageProps) {
   const [logs, setLogs] = useState<Map<string, number> | null>(
     weekOffset === 0 ? null : null,
   );
@@ -226,7 +244,14 @@ function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalVa
         />
       ) : (
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          {days.map((d, i) => <DayCell key={i} {...d} onPress={onDateSelect} />)}
+          {days.map((d, i) => (
+            <DayCell
+              key={i}
+              {...d}
+              selected={d.iso === selected}
+              onPress={onSelect}
+            />
+          ))}
         </View>
       )}
     </View>
@@ -274,6 +299,16 @@ export default function CalendarWeek({ habitId, habitCreatedAt, currentWeekLogs,
   const listRef = useRef<FlatList>(null);
   const { width: screenWidth } = Dimensions.get('window');
   const pageWidth = pageWidthProp ?? screenWidth;
+
+  // Active-подсветка (TapaDS Calendar/Item, Selected=on) — единый стейт на весь календарь
+  // (не по одному на страницу-неделю), иначе у каждой недели остаётся своя независимая
+  // подсветка «по умолчанию сегодня», и при переключении на дату другой недели получаются
+  // два выделенных дня одновременно.
+  const [selected, setSelected] = useState<string | null>(todayIso());
+  function handleSelect(iso: string) {
+    setSelected(iso);
+    onDateSelect?.(iso);
+  }
 
   useEffect(() => {
     if (currentIndex <= 0) return;
@@ -324,7 +359,8 @@ export default function CalendarWeek({ habitId, habitCreatedAt, currentWeekLogs,
           userId={userId}
           horizontalPadding={horizontalPadding}
           noMissIndicator={noMissIndicator}
-          onDateSelect={onDateSelect}
+          selected={selected}
+          onSelect={handleSelect}
         />
       )}
     />
