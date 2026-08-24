@@ -53,7 +53,7 @@ export default function SoloHabitScreen({
   const screenBg = scheme === 'dark' ? c.surface.bg : colors.neutral[75];
 
   const selfId = habit.members.find(m => m.is_self)?.id;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = dateToLocalISO(new Date());
   const todayLog = habit.week_logs.find(l => l.user_id === selfId && l.date.slice(0, 10) === today);
 
   // Дата, выбранная тапом по недельному календарю — null значит «сегодня» (live-данные из
@@ -214,9 +214,12 @@ export default function SoloHabitScreen({
             <View style={{ paddingHorizontal: 24 }}>
               <Card style={{ paddingHorizontal: 16, paddingVertical: 16, gap: 0 }}>
                 <CalendarMonthly
+                  key={calendarKey}
                   logs={completedDates}
                   missedDates={missedDates}
                   periodStart={habit.created_at.slice(0, 10)}
+                  selectedDate={selectedDate ?? undefined}
+                  onDateSelect={handleDateSelect}
                 />
               </Card>
             </View>

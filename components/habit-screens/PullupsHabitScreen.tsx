@@ -7,7 +7,6 @@ import CalendarMonthly from '@/components/CalendarMonthly';
 import Card from '@/components/Card';
 import DropdownPopover from '@/components/DropdownPopover';
 import NavigationBar from '@/components/NavigationBar';
-import BottomSheet from '@/components/BottomSheet';
 import SegmentedControl from '@/components/SegmentedControl';
 import Text from '@/components/Text';
 import Button from '@/components/Button';
@@ -39,13 +38,19 @@ export default function PullupsHabitScreen({
   const [allLogs, setAllLogs] = useState<HabitLog[]>([]);
   const [editingBoolean, setEditingBoolean] = useState(false);
   const today = dateToLocalISO(new Date());
-  const [dayDetailDate, setDayDetailDate] = useState<string | null>(null);
-  // Держит последнюю выбранную дату, пока модалка не закрылась полностью — иначе
-  // dayDetailDate обнуляется сразу при тапе на крестик, и заголовок/текст успевают
-  // мигнуть на дефолтные значения ещё во время анимации сворачивания BottomSheet.
-  const lastDayDetailDateRef = useRef<string | null>(null);
-  if (dayDetailDate != null) lastDayDetailDateRef.current = dayDetailDate;
-  const dayDetailDisplayDate = dayDetailDate ?? lastDayDetailDateRef.current;
+  // Дата, выбранная тапом по календарю — null значит «сегодня». План на эту дату
+  // показывается карточкой в контенте (как в SoloHabitScreen), без шторки.
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  function handleDateSelect(iso: string) {
+    setSelectedDate(iso === today ? null : iso);
+  }
+  // Возврат к сегодня: снимаем выбор и перемонтируем недельный календарь (key), чтобы
+  // он заодно прокрутился обратно на текущую неделю — как в Solo/Group.
+  const [calendarKey, setCalendarKey] = useState(0);
+  function resetToToday() {
+    setSelectedDate(null);
+    setCalendarKey(k => k + 1);
+  }
   const [calendarView, setCalendarView] = useState<'week' | 'month'>('week');
   // Приветственная wiggle-анимация недельного календаря — только при самом первом появлении
   // экрана, не при каждом возврате на "Неделя" через переключатель.
@@ -64,7 +69,11 @@ export default function PullupsHabitScreen({
       .catch(() => {});
   }, [reloadTrigger]);
 
-  const todayLog = allLogs.find(l => l.date.slice(0, 10) === today);
+  // Запись за сегодня берём из habit.week_logs, а не из allLogs: week_logs приходит вместе
+  // с самой целью и доступен уже на первом рендере, тогда как allLogs догружается запросом.
+  // Иначе кнопки внизу успевают мигнуть «Выполнил/Не выполнил» до ответа сервера.
+  const selfId = habit.members.find(m => m.is_self)?.id;
+  const todayLog = habit.week_logs.find(l => l.user_id === selfId && l.date.slice(0, 10) === today);
 
   // Сбросить режим редактирования когда за сегодня появилась/обновилась запись —
   // тот же паттерн, что и в SoloHabitScreen для boolean-чекина.
@@ -100,11 +109,14 @@ export default function PullupsHabitScreen({
     return index;
   }
 
-  const dayDetailIsTrainingDay = dayDetailDisplayDate != null && isTrainingDayDate(dayDetailDisplayDate, habit.training_days);
-  const dayDetailSessionIndex = dayDetailDisplayDate != null && dayDetailIsTrainingDay ? sessionIndexForDate(dayDetailDisplayDate) : -1;
-  const dayDetailSession = dayDetailSessionIndex >= 0 && dayDetailSessionIndex < plan.length
-    ? plan[dayDetailSessionIndex]
+  // План на выбранную дату. Без выбора — сегодняшняя сессия (session выше), с выбором —
+  // считаем номер тренировки для этой даты и берём её из плана; не тренировочный день → null.
+  const selectedIsTrainingDay = selectedDate != null && isTrainingDayDate(selectedDate, habit.training_days);
+  const selectedSessionIndex = selectedDate != null && selectedIsTrainingDay ? sessionIndexForDate(selectedDate) : -1;
+  const selectedSession = selectedSessionIndex >= 0 && selectedSessionIndex < plan.length
+    ? plan[selectedSessionIndex]
     : null;
+  const displaySession = selectedDate != null ? selectedSession : (isTrainingDay ? session : null);
 
   // Красная точка — тренировочный день без выполненной отметки: явное "Не выполнил" (value=0)
   // в любой момент, или прошедший (до сегодня) тренировочный день, по которому вообще нет записи.
@@ -236,35 +248,37 @@ export default function PullupsHabitScreen({
               { label: 'Месяц', value: 'month' },
             ]}
             value={calendarView}
-            onChange={v => setCalendarView(v as 'week' | 'month')}
+            onChange={v => { setCalendarView(v as 'week' | 'month'); setSelectedDate(null); }}
           />
         </View>
         {calendarView === 'week' ? (
           // Без paddingHorizontal-обёртки — CalendarWeek сам управляет шириной FlatList
           // (пейджинг по полной ширине экрана) и применяет отступ 24 внутри каждой страницы.
           <CalendarWeek
+            key={calendarKey}
             habitId={habit.id}
             habitCreatedAt={habit.created_at}
-            currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
+            currentWeekLogs={habit.week_logs.filter(l => l.user_id === selfId)}
             goalValue={1}
             trainingDays={habit.training_days}
             totalWeeks={totalWeeks}
             welcomeAnimation={!weekAnimShownRef.current}
-            onDateSelect={setDayDetailDate}
+            onDateSelect={handleDateSelect}
             allowAnySelect
-            selectedDate={dayDetailDate}
+            selectedDate={selectedDate}
           />
         ) : (
           <View style={{ paddingHorizontal: 24 }}>
             <Card style={{ paddingHorizontal: 16, paddingVertical: 16, gap: 0 }}>
               <CalendarMonthly
+                key={calendarKey}
                 logs={completedDates}
                 missedDates={missedDates}
                 plannedDates={plannedDates}
                 periodStart={habit.created_at.slice(0, 10)}
                 periodEnd={planEndDate}
-                selectedDate={dayDetailDate ?? undefined}
-                onDateSelect={setDayDetailDate}
+                selectedDate={selectedDate ?? undefined}
+                onDateSelect={handleDateSelect}
                 allowFutureSelect
               />
             </Card>
@@ -276,34 +290,28 @@ export default function PullupsHabitScreen({
         <View style={{ padding: 24, gap: 16 }}>
           <Card style={{ gap: 4 }}>
             <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
-              Цель на сегодня
+              {selectedDate != null ? `План на ${formatDateRu(selectedDate, today).toLowerCase()}` : 'Цель на сегодня'}
             </Text>
             <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
-              {isTrainingDay && session
-                ? `${session.sets} ${pluralWord(session.sets, 'подход', 'подхода', 'подходов')} по ${session.reps} ${pluralWord(session.reps, 'повторение', 'повторения', 'повторений')}`
+              {displaySession
+                ? `${displaySession.sets} ${pluralWord(displaySession.sets, 'подход', 'подхода', 'подходов')} по ${displaySession.reps} ${pluralWord(displaySession.reps, 'повторение', 'повторения', 'повторений')}`
                 : 'Отдых'}
             </Text>
           </Card>
         </View>
       )}
 
-      {/* Модалка с планом на выбранную в календаре дату (тап по дню в месячном виде) */}
-      <BottomSheet
-        title={dayDetailDisplayDate ? formatDateRu(dayDetailDisplayDate, today) : 'План на день'}
-        visible={dayDetailDate != null}
-        onClose={() => setDayDetailDate(null)}
-      >
-        <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
-          {dayDetailSession
-            ? `${dayDetailSession.sets} ${pluralWord(dayDetailSession.sets, 'подход', 'подхода', 'подходов')} по ${dayDetailSession.reps} ${pluralWord(dayDetailSession.reps, 'повторение', 'повторения', 'повторений')}`
-            : 'Отдых'}
-        </Text>
-      </BottomSheet>
-
       {/* Спейсер — отжимает кнопки/CTA вниз */}
       <View style={{ flex: 1 }} />
 
-      {isTrainingDay && todayLog != null && !editingBoolean ? (
+      {selectedDate != null ? (
+        <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+          <Button
+            label="Вернуться к текущей дате"
+            onPress={resetToToday}
+          />
+        </View>
+      ) : isTrainingDay && todayLog != null && !editingBoolean ? (
         <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
           <Button
             label="Редактировать запись"

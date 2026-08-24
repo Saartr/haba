@@ -19,7 +19,7 @@ import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import { getHabitLogs, HabitDetail, HabitLog } from '@/lib/api';
 import { pluralUnit } from '@/lib/units';
-import { SuccessModal, isRestDay, formatDateRu, formatDateDots } from './shared';
+import { SuccessModal, isRestDay, formatDateDots, dateToLocalISO } from './shared';
 
 export default function ProgressionHabitScreen({
   habit, onLog, logLoading, onDelete, reloadTrigger, onComplete, onCompleteNewGoal,
@@ -43,8 +43,23 @@ export default function ProgressionHabitScreen({
   const [countError, setCountError] = useState<string | null>(null);
   const [allLogs, setAllLogs] = useState<HabitLog[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
-  const today = new Date().toISOString().slice(0, 10);
-  const [selectedDate, setSelectedDate] = useState(today);
+  const today = dateToLocalISO(new Date());
+  // Дата, выбранная тапом по календарю — null значит «сегодня». Соглашение общее для всех
+  // экранов целей: без выбора сегодняшняя ячейка рисуется обычным стилем «сегодня», а не
+  // как выбранная. effectiveDate — та же дата, но всегда конкретная (для запросов/расчётов).
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const effectiveDate = selectedDate ?? today;
+  function handleDateSelect(iso: string) {
+    setSelectedDate(iso === today ? null : iso);
+  }
+  // Отображаемый месяц живёт во внутреннем стейте CalendarMonthly — снаружи его не сбросить.
+  // Поэтому «Вернуться к текущей дате» меняет key: компонент перемонтируется и открывается
+  // на текущем месяце, иначе снималось бы только выделение, а месяц оставался чужим.
+  const [calendarKey, setCalendarKey] = useState(0);
+  function resetToToday() {
+    setSelectedDate(null);
+    setCalendarKey(k => k + 1);
+  }
 
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
@@ -60,9 +75,9 @@ export default function ProgressionHabitScreen({
       .catch(() => {});
   }, [reloadTrigger]);
 
-  const selectedLog = allLogs.find(l => l.date.slice(0, 10) === selectedDate);
-  const isSelectedFuture = selectedDate > today;
-  const isRest = isRestDay(selectedDate, habit.periodicity, habit.weekdays);
+  const selectedLog = allLogs.find(l => l.date.slice(0, 10) === effectiveDate);
+  const isViewingPast = selectedDate != null;
+  const isRest = isRestDay(effectiveDate, habit.periodicity, habit.weekdays);
   const bestValue = allLogs.length > 0 ? Math.max(...allLogs.map(l => l.value)) : 0;
   const goalReached = habit.goal_value != null && bestValue >= habit.goal_value;
 
@@ -94,13 +109,10 @@ export default function ProgressionHabitScreen({
     const value = countMode === 'add' ? (selectedLog?.value ?? 0) + input : input;
     setCountError(null);
     closeCountModal();
-    onLog(value, selectedDate);
+    onLog(value, effectiveDate);
   }
 
   const logDates = allLogs.map(l => l.date.slice(0, 10));
-  const ctaLabel = selectedDate === today
-    ? 'Внести сегодня'
-    : `Внести за ${formatDateRu(selectedDate, today).toLowerCase()}`;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }} edges={['bottom']}>
@@ -157,10 +169,11 @@ export default function ProgressionHabitScreen({
         <View style={{ paddingHorizontal: 24, paddingTop: 16 }}>
           <Card style={{ paddingHorizontal: 16, paddingVertical: 16, gap: 0 }}>
             <CalendarMonthly
+              key={calendarKey}
               logs={logDates}
               periodStart={habit.created_at.slice(0, 10)}
-              selectedDate={selectedDate}
-              onDateSelect={setSelectedDate}
+              selectedDate={selectedDate ?? undefined}
+              onDateSelect={handleDateSelect}
             />
           </Card>
         </View>
@@ -173,7 +186,7 @@ export default function ProgressionHabitScreen({
         >
           <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
             <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-              {isRest ? 'День отдыха' : (selectedDate === today ? 'Сегодня' : formatDateDots(selectedDate))}
+              {isRest ? 'День отдыха' : (isViewingPast ? formatDateDots(effectiveDate) : 'Сегодня')}
             </Text>
             <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
               {isRest ? '—' : (selectedLog
@@ -194,18 +207,26 @@ export default function ProgressionHabitScreen({
         </ScrollView>
       </ScrollView>
 
-      {/* CTA */}
-      {!goalReached && !isRest && (
+      {/* CTA. Выбрана дата из прошлого — кнопка возвращает к сегодня (как на остальных
+          экранах целей). Вне условия !isRest: иначе с выбранного дня отдыха не было бы
+          кнопки возврата вообще. */}
+      {isViewingPast ? (
         <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
           <Button
-            label={selectedLog ? 'Редактировать запись' : ctaLabel}
+            label="Вернуться к текущей дате"
+            onPress={resetToToday}
+          />
+        </View>
+      ) : !goalReached && !isRest ? (
+        <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+          <Button
+            label={selectedLog ? 'Редактировать запись' : 'Внести сегодня'}
             variant={selectedLog ? 'secondary' : undefined}
             onPress={openCountModal}
             loading={logLoading}
-            disabled={isSelectedFuture}
           />
         </View>
-      )}
+      ) : null}
 
       <SuccessModal
         visible={showSuccess}

@@ -5,7 +5,6 @@ import {
   Image,
   StatusBar,
   Alert,
-  ActivityIndicator,
   Platform,
   Linking,
   Share,
@@ -13,7 +12,7 @@ import {
 import { Clipboard } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import CalendarWeek from '@/components/CalendarWeek';
 import CalendarMonthly from '@/components/CalendarMonthly';
 import Card from '@/components/Card';
@@ -41,7 +40,6 @@ import { useSettings } from '@/lib/settings-context';
 import {
   logHabit,
   getHabitLogs,
-  getHabitDayLogs,
   syncHabitSteps,
   leaveHabit,
   transferHabit,
@@ -59,7 +57,7 @@ import {
   getTodaySteps,
 } from '@/lib/health';
 import { pluralUnit, genitiveUnit } from '@/lib/units';
-import { SectionTitle, MemberAvatar, MemberRow, formatDateDots, formatSyncedAt, dateToLocalISO, useDayLogs } from './shared';
+import { SectionTitle, MemberRow, formatDateDots, formatSyncedAt, dateToLocalISO, useDayLogs } from './shared';
 
 export default function GroupHabitScreen({
   habit, onReload,
@@ -91,10 +89,10 @@ export default function GroupHabitScreen({
   const [groupCountInput, setGroupCountInput] = useState('');
   const [groupCountError, setGroupCountError] = useState<string | null>(null);
   const [calendarView, setCalendarView] = useState<'week' | 'month'>('week');
-  // Дата, выбранная тапом по недельному календарю (см. CalendarWeek onDateSelect) — null значит
+  // Дата, выбранная тапом по календарю — общая для недельного и месячного вида. null значит
   // «сегодня» (живые данные из week_logs). Сбрасывается при уходе с экрана (просто useState,
-  // не персистится) и при переключении Неделя/Месяц, чтобы не путать с отдельной логикой
-  // месячного календаря (dayDetailDate ниже — самостоятельная фича, не трогаем).
+  // не персистится) и при переключении Неделя/Месяц. Значения за выбранный день показываются
+  // прямо в контенте (карточки + список участников), без отдельной шторки.
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   // CalendarWeek держит подсветку выбранного дня во внутреннем стейте — снаружи её не сбросить
   // напрямую. При возврате «к текущей дате» инкрементируем key, чтобы React перемонтировал
@@ -105,14 +103,6 @@ export default function GroupHabitScreen({
     setCalendarKey(k => k + 1);
   }
   const [editingBoolean, setEditingBoolean] = useState(false);
-  const [dayDetailDate, setDayDetailDate] = useState<string | null>(null);
-  // Держит последнюю выбранную дату, пока модалка не закрылась полностью — иначе
-  // заголовок успевает мигнуть на «Значения за день» ещё во время анимации сворачивания.
-  const lastDayDetailDateRef = useRef<string | null>(null);
-  if (dayDetailDate != null) lastDayDetailDateRef.current = dayDetailDate;
-  const dayDetailDisplayDate = dayDetailDate ?? lastDayDetailDateRef.current;
-  const [dayDetailLogs, setDayDetailLogs] = useState<{ user_id: number; value: number }[]>([]);
-  const [dayDetailLoading, setDayDetailLoading] = useState(false);
   const [monthLogDates, setMonthLogDates] = useState<string[]>([]);
 
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
@@ -120,7 +110,7 @@ export default function GroupHabitScreen({
   const screenBg = scheme === 'dark' ? c.surface.bg : colors.neutral[75];
 
   const me = habit.members.find(m => m.is_self);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = dateToLocalISO(new Date());
   const myTodayLog = habit.week_logs.find(l => l.user_id === me?.id && l.date.slice(0, 10) === today);
 
   // count «без цели» — простой счётчик без порога выполнения (goal_value = null):
@@ -337,16 +327,6 @@ export default function GroupHabitScreen({
       .catch(() => {});
   }, [habit, calendarView]);
 
-  // Значения всех участников за выбранный в календаре день.
-  function openDayDetail(iso: string) {
-    setDayDetailDate(iso);
-    setDayDetailLoading(true);
-    getHabitDayLogs(habitId, iso)
-      .then(setDayDetailLogs)
-      .catch(() => setDayDetailLogs([]))
-      .finally(() => setDayDetailLoading(false));
-  }
-
   async function handleStepsSubmit() {
     const input = parseInt(stepsInput);
     if (stepsInput === '' || Number.isNaN(input)) {
@@ -480,27 +460,27 @@ export default function GroupHabitScreen({
                 currentWeekLogs={habit.week_logs.filter(l => l.user_id === habit.members.find(m => m.is_self)?.id)}
                 goalValue={1}
                 noMissIndicator
-                // «Без цели» — «Все участники» показывает итоги за всё время (entry_totals),
-                // не привязано к дате, поэтому переключение даты для него не подключаем.
-                onDateSelect={isCountNoGoal ? undefined : handleDateSelect}
+                onDateSelect={handleDateSelect}
               />
             ) : (
               <View style={{ paddingHorizontal: 24 }}>
                 <Card style={{ paddingHorizontal: 16, paddingVertical: 16, gap: 0 }}>
                   <CalendarMonthly
+                    key={calendarKey}
                     logs={monthLogDates}
                     periodStart={habit.created_at.slice(0, 10)}
-                    selectedDate={dayDetailDate ?? undefined}
-                    onDateSelect={openDayDetail}
+                    selectedDate={selectedDate ?? undefined}
+                    onDateSelect={handleDateSelect}
                   />
                 </Card>
               </View>
             )}
 
             {isCountNoGoal ? (
-              /* Без цели — одна секция «Все участники» с итогами за всё время (entry_totals). */
+              /* Без цели — одна секция «Все участники»: по умолчанию итоги за всё время
+                 (entry_totals), а при выборе даты в календаре — значения за этот день. */
               <>
-                <SectionTitle>Все участники</SectionTitle>
+                <SectionTitle>{isViewingPast ? `Значения за ${dateLabel}` : 'Все участники'}</SectionTitle>
                 <View style={{ paddingHorizontal: 24 }}>
                   <Card style={{ gap: 16 }}>
                     {habit.members.map(m => (
@@ -508,7 +488,7 @@ export default function GroupHabitScreen({
                         key={m.id}
                         member={m}
                         goalValue={null}
-                        value={habit.entry_totals?.[m.id] ?? 0}
+                        value={isViewingPast ? (dayLogs?.get(m.id) ?? 0) : (habit.entry_totals?.[m.id] ?? 0)}
                         unit={null}
                         isCreator={habit.is_creator}
                         onExclude={handleExclude}
@@ -598,9 +578,12 @@ export default function GroupHabitScreen({
                   <View style={{ paddingHorizontal: 24 }}>
                     <Card style={{ paddingHorizontal: 16, paddingVertical: 16, gap: 0 }}>
                       <CalendarMonthly
+                        key={calendarKey}
                         logs={boolCompletedDates}
                         missedDates={boolMissedDates}
                         periodStart={habit.created_at.slice(0, 10)}
+                        selectedDate={selectedDate ?? undefined}
+                        onDateSelect={handleDateSelect}
                       />
                     </Card>
                   </View>
@@ -975,38 +958,6 @@ export default function GroupHabitScreen({
               onPress={handleGroupCountSubmit}
               loading={logLoading}
             />
-          </View>
-        </BottomSheet>
-      )}
-
-      {/* Значения участников за выбранный в календаре день */}
-      {habit.checkin_type === 'count' && (
-        <BottomSheet
-          title={dayDetailDisplayDate ? `Значения за ${formatDateDots(dayDetailDisplayDate)}` : 'Значения за день'}
-          visible={dayDetailDate != null}
-          onClose={() => setDayDetailDate(null)}
-        >
-          <View style={{ gap: 16 }}>
-            {dayDetailLoading ? (
-              <ActivityIndicator color={c.brand.primary} />
-            ) : (
-              habit.members.map(m => {
-                const entry = dayDetailLogs.find(l => l.user_id === m.id);
-                return (
-                  <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                    <MemberAvatar member={m} />
-                    <View>
-                      <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-                        {m.is_self ? `${m.first_name ?? m.username ?? '?'} (Я)` : (m.first_name ?? m.username ?? '?')}
-                      </Text>
-                      <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-                        {entry?.value ?? 0}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })
-            )}
           </View>
         </BottomSheet>
       )}

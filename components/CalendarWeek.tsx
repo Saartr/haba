@@ -109,23 +109,30 @@ function DayCell({ day, weekday, status, iso, isToday, beforeHabit, selected, al
   );
 }
 
+// Все расчёты дат — в локальном времени, как и на экранах целей (dateToLocalISO в shared).
+// В UTC «сегодня» съезжает на вчера у пользователей восточнее Гринвича: в Москве с 00:00
+// до 03:00 toISOString() отдаёт вчерашнюю дату, и календарь подсвечивал не ту ячейку.
+
 // Возвращает пн недели для даты смещённой на weekOffset недель от сегодня
 function getWeekMonday(weekOffset: number): Date {
   const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const dayOfWeek = today.getUTCDay() || 7;
+  today.setHours(0, 0, 0, 0);
+  const dayOfWeek = today.getDay() || 7;
   const mon = new Date(today);
-  mon.setUTCDate(today.getUTCDate() - dayOfWeek + 1 + weekOffset * 7);
+  mon.setDate(today.getDate() - dayOfWeek + 1 + weekOffset * 7);
   return mon;
 }
 
 function toDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function todayIso(): string {
   const d = new Date();
-  d.setUTCHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
   return toDateStr(d);
 }
 
@@ -138,17 +145,17 @@ function buildDays(
   noMissIndicator?: boolean,
 ): CalendarDay[] {
   const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
 
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(mon);
-    d.setUTCDate(mon.getUTCDate() + i);
+    d.setDate(mon.getDate() + i);
     const dateStr = toDateStr(d);
     const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
     const loggedValue = logs.get(dateStr);
     const beforeHabit = d < habitCreatedAt;
     // День отдыха (для pullups) — не входит в training_days, без иконки, как inactive
-    const isoDay = d.getUTCDay() || 7;
+    const isoDay = d.getDay() || 7;
     const isRestDay = trainingDays != null && !trainingDays.includes(isoDay);
 
     let status: DayStatus;
@@ -169,14 +176,14 @@ function buildDays(
     } else {
       status = loggedValue !== undefined && loggedValue >= goalValue ? 'check' : 'miss';
     }
-    return { day: d.getUTCDate(), weekday: WEEKDAYS[i], status, isToday: diff === 0, iso: dateStr, beforeHabit };
+    return { day: d.getDate(), weekday: WEEKDAYS[i], status, isToday: diff === 0, iso: dateStr, beforeHabit };
   });
 }
 
 // Сколько недель назад была создана привычка (округляем вниз)
 function minWeekOffset(habitCreatedAt: Date): number {
   const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
   const diffMs = today.getTime() - habitCreatedAt.getTime();
   if (diffMs <= 0) return 0;
   const diffWeeks = Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000));
@@ -231,7 +238,7 @@ function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalVa
     setLoading(true);
     const mon = getWeekMonday(weekOffset);
     const sun = new Date(mon);
-    sun.setUTCDate(mon.getUTCDate() + 6);
+    sun.setDate(mon.getDate() + 6);
     getHabitLogs(habitId, toDateStr(mon), toDateStr(sun), userId)
       .then(data => {
         if (cancelled) return;
@@ -310,7 +317,10 @@ type Props = {
 
 export default function CalendarWeek({ habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, userId, pageWidth: pageWidthProp, horizontalPadding = 24, totalWeeks, welcomeAnimation = true, noMissIndicator, onDateSelect, allowAnySelect, selectedDate }: Props) {
   const createdAt = new Date(habitCreatedAt);
-  createdAt.setUTCHours(0, 0, 0, 0);
+  // Локальная полночь — обязательно та же система, что и у дат ячеек в buildDays. Если
+  // оставить UTC-полночь, сравнение `d < createdAt` для восточных зон отсекает сам день
+  // создания цели (локальная полночь наступает раньше UTC-полуночи того же числа).
+  createdAt.setHours(0, 0, 0, 0);
 
   const minOffset = minWeekOffset(createdAt);
   const maxOffset = maxWeekOffset(createdAt, totalWeeks);
