@@ -52,3 +52,26 @@ metadata:
 - ~~Позиционирование меню `Fab`~~ — починено 2026-07-10 трюком с растянутым контейнером (см. выше). Попутный вывод: `measureInWindow` в Dev Client возвращает неверные координаты — не использовать.
 - Пропорции шапки (140×113 маскот, отступы) реверс-инжинирены из макета, где сама иллюстрация была забагована (повёрнута на 180°, наезжала на текст) — не 100% точные, возможна донастройка по глазам после визуальной проверки.
 - Правило «Максимальный стрик показывать где валидно» = моё решение (искл. progression и pullups), не сверено построчно с доп. примерами макета сверх исходных 7.
+
+## Доработка 2026-07-31: параллакс шапки, empty state, тени, иллюстрации
+
+**Параллакс шапки при скролле простыни** (`index.tsx`): `Animated.ScrollView` + `scrollY` (native driver). Шапка — `Animated.View`, `translateY` от `scrollY` с коэффициентом `0.5` (едет вдвое медленнее простыни — простыня «нагоняет» и перекрывает её) и `opacity` затухает к 0 к моменту `headerHeight`. Шапка НЕ обёрнута в `overflow:hidden` — оба слоя (и шапка, и простыня) должны обрезаться одной и той же границей safe area, а не по-разному, иначе при параллаксе иллюстрация вылезает на статус-бар, а простыня обрезается раньше (пробовали клипать шапку — не совпадало из-за того что `position:absolute` внутри `SafeAreaView` игнорирует её паддинг, считает от border-box, а не content-box; после того как отказались от клипа и просто дали обоим слоям одинаковую точку отсчёта — совпало).
+
+**Пустой список целей** (`isEmpty` в `index.tsx`): переведён на новый макет — иллюстрация `assets/images/empty_habits.png` (маскот в пледе с кружкой) вместо `chill.svg`, текст «Привет, {имя}» + «У тебя пока нет активных целей», и вместо двух кнопок «Добавить»/«Вступить» — тот же переиспользуемый `Toolbar` (иконка профиля + FAB-меню «Создать цель»/«Вступить в группу»), что и на обычном экране. Вынесен в общую переменную `toolbar` — рендерится в обеих ветках (empty/список).
+
+**Toolbar — иконка и тень:** `SettingsIcon` → `UserIcon` (ведёт на `/(tabs)/profile`, как основной toolbar). Тень `useToolbarOwnShadow()` (не путать с `useToolbarShadow()` для простыни!) донастроена по запросу пользователя итеративно: `shadowColor: colors.neutral[400]`, `shadowOffset: {width:-10, height:-4}`, `elevation: 8` (светлая тема); тёмная — без тени (elevation:0), фон `neutral[800]`.
+
+**Fab получил проп `shadow?: boolean`** (default `true`) — `Toolbar` передаёт `shadow={false}`, чтобы не дублировать тень (у Toolbar своя, на пилюле).
+
+**Иллюстрации маскота заменены на растровые PNG из Figma** (везде: экспорт через Figma REST API `GET /v1/images/{file}?ids=...&format=png&scale=3-4`, `X-Figma-Token`):
+- `tapa_happy.png` — обновлён, node `1627:7240` ("celeb2 2" внутри фрейма 1596-9969)
+- `tapa_welcome.png` — welcome-экран авторизации (`app/(auth)/welcome.tsx`), заменил `tapa_welcome.svg`; шире экрана (bleed за края, `width: screenWidth*441/393`), с отступом сверху
+- `tapa_face.png` — общий для splash-экрана (`app.json` → `expo.splash.image`) И `components/ErrorScreen.tsx` (заменил `tapa_face.svg`) — в Figma оказался одним и тем же imageRef для обоих контекстов
+- `tapa_success.png` — `SuccessModal` в `components/habit-screens/shared.tsx`, заменил `celeb_avatar.svg`, портретная ориентация 223×263 (BottomSheet сам растёт под контент, отдельно высоту modal задавать не пришлось)
+- Все старые SVG-версии (`tapa_welcome.svg`, `tapa_face.svg`, `celeb_avatar.svg`) удалены как неиспользуемые
+
+**Фон страницы/карточек в светлой теме — `colors.neutral[75]`** (новый токен, добавлен в `lib/colors.ts` между 50 и 100 = `#f5f5f5`) вместо `c.surface.bg`/`neutral[50]`. Применено на главном экране (шапка+карточки), ВСЕХ служебных экранах (`profile.tsx`, `app-settings.tsx`, `profile-settings.tsx`, `about-app.tsx`, `legal/[type].tsx`) и экране цели (`habit/[id].tsx` + все 4 варианта в `components/habit-screens/`). Тёмная тема не тронута (`c.surface.bg`/`neutral[950]` как было). Паттерн — локальная `screenBg`/`pageBg`/`cardBg` переменная: `colorScheme === 'dark' ? <старое> : colors.neutral[75]`.
+
+**Gap между карточками на простыне** — `16` → `12`.
+
+**Известный баг с dev-loop (не связан с кодом):** после `git fetch`/долгого простоя иногда `adb reverse` слетает и устройство крутит старый закэшированный бандл Metro, хотя логи Metro показывают, что новый бандл собран и отдан — визуально код не меняется даже после force-stop/relaunch. Диагностика: сверить фактический код в отдаваемом бандле (`curl http://localhost:8081/node_modules/expo-router/entry.bundle?platform=android&dev=true`) с исходником. Лечится повторным `adb reverse tcp:8081 tcp:8081` перед relaunch.

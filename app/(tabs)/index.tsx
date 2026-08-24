@@ -1,4 +1,4 @@
-import { View, Pressable, Image, ScrollView, StatusBar, ActivityIndicator, RefreshControl, Animated } from 'react-native';
+import { View, Pressable, Image, StatusBar, ActivityIndicator, RefreshControl, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -37,7 +37,7 @@ function HabitCard({ habit, extra, onPress }: {
   const c = useColors();
   const { colorScheme } = useSettings();
   const streakMax = extra?.streakMax ?? 0;
-  const { subtitle, value, status, showStreakRow } = computeHabitStatus(habit, extra);
+  const { subtitle, value, status, showStreakRow, showTag } = computeHabitStatus(habit, extra);
   const TypeIcon = habit.type === 'group' ? GroupIcon : PersonIcon;
   // neutral[75] — фон карточки в светлой теме (Figma), в тёмной — как раньше, surface.bg
   const cardBg = colorScheme === 'dark' ? c.surface.bg : colors.neutral[75];
@@ -50,7 +50,7 @@ function HabitCard({ habit, extra, onPress }: {
           <Text weight="bold" numberOfLines={1} style={{ flex: 1, fontSize: 14, lineHeight: 14 * 1.4, color: c.text.primary, letterSpacing: 0.2 }}>
             {habit.name}
           </Text>
-          <HabitTag type={status} />
+          {showTag && <HabitTag type={status} />}
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -65,7 +65,7 @@ function HabitCard({ habit, extra, onPress }: {
         {showStreakRow && (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Text weight="medium" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
-              Максимальный стрик
+              Лучший стрик
             </Text>
             <Text weight="bold" style={{ fontSize: 16, lineHeight: 16 * 1.5, color: c.text.primary, letterSpacing: 0.2 }}>
               {pluralDays(streakMax)}

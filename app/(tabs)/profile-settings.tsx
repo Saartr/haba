@@ -22,7 +22,7 @@ export default function ProfileSettingsScreen() {
   const { colorScheme } = useSettings();
   const c = useColors();
 
-  const screenBg = colorScheme === 'dark' ? colors.neutral[950] : colors.neutral[50];
+  const screenBg = colorScheme === 'dark' ? colors.neutral[950] : colors.neutral[75];
 
   const [name, setName] = useState(user?.first_name ?? '');
   const [saving, setSaving] = useState(false);

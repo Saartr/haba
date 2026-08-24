@@ -21,7 +21,7 @@ export default function LegalScreen() {
   const [langMenu, setLangMenu] = useState(false);
 
   const content = LEGAL_CONTENT[type ?? '']?.[lang];
-  const screenBg = colorScheme === 'dark' ? colors.neutral[950] : colors.neutral[50];
+  const screenBg = colorScheme === 'dark' ? colors.neutral[950] : colors.neutral[75];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }} edges={['top']}>

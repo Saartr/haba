@@ -3,8 +3,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import CalendarWeek from '@/components/CalendarWeek';
+import CalendarMonthly from '@/components/CalendarMonthly';
 import Card from '@/components/Card';
-import Chip from '@/components/Chip';
 import DropdownPopover from '@/components/DropdownPopover';
 import NavigationBar from '@/components/NavigationBar';
 import BottomSheet from '@/components/BottomSheet';
@@ -15,12 +15,13 @@ import Input from '@/components/Input';
 import EditIcon from '@/assets/icons/Edit.svg';
 import DeleteIcon from '@/assets/icons/Delete.svg';
 import CheckIcon from '@/assets/icons/Check.svg';
+import CloseIcon from '@/assets/icons/Close.svg';
 import MoreVerticalIcon from '@/assets/icons/MoreVertical.svg';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
-import { HabitDetail } from '@/lib/api';
-import { pluralUnit, genitiveUnit } from '@/lib/units';
-import { CHECK_IN_LABELS, SuccessModal } from './shared';
+import { getHabitLogs, HabitDetail, HabitLog } from '@/lib/api';
+import { pluralUnit, genitiveUnit, formatUnit } from '@/lib/units';
+import { CHECK_IN_LABELS, SuccessModal, dateToLocalISO, formatDateDots, useDayLogs } from './shared';
 
 export default function SoloHabitScreen({
   habit, onLog, logLoading, onDelete, onComplete, onCompleteNewGoal,
@@ -41,16 +42,68 @@ export default function SoloHabitScreen({
   const [countMode, setCountMode] = useState<'add' | 'replace'>('add');
   const [countInput, setCountInput] = useState('');
   const [countError, setCountError] = useState<string | null>(null);
-  const [period, setPeriod] = useState<'today' | 'week'>('today');
   const [editingBoolean, setEditingBoolean] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [calendarView, setCalendarView] = useState<'week' | 'month'>('week');
+  const [allLogs, setAllLogs] = useState<HabitLog[]>([]);
   const [successLabel, failLabel] = CHECK_IN_LABELS[habit.category ?? ''] ?? ['Выполнил', 'Не выполнил'];
+  const isSmoking = habit.category === 'smoking' || habit.category === 'no-smoking';
   const panelColor = scheme === 'dark' ? colors.neutral[900] : colors.neutral[0];
   const statusBarStyle = scheme === 'dark' ? 'light-content' as const : 'dark-content' as const;
+  const screenBg = scheme === 'dark' ? c.surface.bg : colors.neutral[75];
 
   const selfId = habit.members.find(m => m.is_self)?.id;
   const today = new Date().toISOString().slice(0, 10);
   const todayLog = habit.week_logs.find(l => l.user_id === selfId && l.date.slice(0, 10) === today);
+
+  // Дата, выбранная тапом по недельному календарю — null значит «сегодня» (live-данные из
+  // week_logs). Сбрасывается при уходе с экрана (useState) и при переключении Неделя/Месяц.
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const isViewingPast = selectedDate != null;
+  const dayLogs = useDayLogs(habit.id, selectedDate);
+  const dateLabel = isViewingPast ? formatDateDots(selectedDate!) : 'сегодня';
+  const displayValue = isViewingPast ? (dayLogs?.get(selfId ?? -1) ?? 0) : (todayLog?.value ?? 0);
+  function handleDateSelect(iso: string) {
+    setSelectedDate(iso === today ? null : iso);
+  }
+  // CalendarWeek держит подсветку выбранного дня во внутреннем стейте — снаружи её не сбросить
+  // напрямую. При возврате «к текущей дате» инкрементируем key, чтобы React перемонтировал
+  // компонент заново (заодно вернётся и позиция скролла на текущую неделю).
+  const [calendarKey, setCalendarKey] = useState(0);
+  function resetToToday() {
+    setSelectedDate(null);
+    setCalendarKey(k => k + 1);
+  }
+
+  const isCount = (habit.checkin_type ?? 'boolean') === 'count';
+  // count «без цели» — простой счётчик без порога выполнения (goal_value = null).
+  const isCountNoGoal = isCount && habit.goal_value == null;
+
+  // Для месячного календаря count-целей нужны все логи (week_logs — только текущая неделя).
+  // habit — новый объект после каждого load() в контейнере, поэтому перезапрашиваем при его смене.
+  useEffect(() => {
+    if (!isCount) return;
+    getHabitLogs(habit.id, habit.created_at.slice(0, 10), today, selfId)
+      .then(setAllLogs)
+      .catch(() => {});
+  }, [habit, isCount]);
+  // Порог «выполнено» за день: цель (с целью) или 1 (без цели). Зелёные точки — выполненные дни.
+  const goalThreshold = habit.goal_value ?? 1;
+  const completedDates = allLogs.filter(l => l.value >= goalThreshold).map(l => l.date.slice(0, 10));
+  // Красные точки (только с целью): прошедшие дни (от создания до вчера) без выполнения.
+  const missedDates = (() => {
+    if (isCountNoGoal) return [];
+    const done = new Set(completedDates);
+    const result: string[] = [];
+    const cursor = new Date(habit.created_at.slice(0, 10) + 'T00:00:00');
+    const end = new Date(today + 'T00:00:00'); // сегодня не считаем пропущенным
+    while (cursor < end) {
+      const iso = dateToLocalISO(cursor);
+      if (!done.has(iso)) result.push(iso);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return result;
+  })();
 
   const isPeriodEnded = habit.duration_type === 'period' && habit.period_end !== null && habit.period_end < today;
 
@@ -67,14 +120,6 @@ export default function SoloHabitScreen({
   const checkinType = habit.checkin_type ?? 'boolean';
   const unitLabel = habit.goal_unit && !['boolean', 'count', 'minutes', 'steps'].includes(habit.goal_unit)
     ? habit.goal_unit
-    : null;
-
-  const weekValue = habit.week_logs
-    .filter(l => l.user_id === selfId)
-    .reduce((sum, l) => sum + l.value, 0);
-  const periodValue = period === 'week' ? weekValue : (todayLog?.value ?? 0);
-  const periodGoal = habit.goal_value != null
-    ? (period === 'week' ? habit.goal_value * 7 : habit.goal_value)
     : null;
 
   function closeCountModal() {
@@ -97,7 +142,7 @@ export default function SoloHabitScreen({
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.bg }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: screenBg }} edges={['bottom']}>
       <StatusBar backgroundColor={panelColor} barStyle={statusBarStyle} />
 
       <View style={{ backgroundColor: panelColor, paddingTop: insets.top }}>
@@ -146,56 +191,92 @@ export default function SoloHabitScreen({
         ) : null}
       </View>
 
-      <View style={{ marginTop: 24 }}>
-        <CalendarWeek
-          habitId={habit.id}
-          habitCreatedAt={habit.created_at}
-          currentWeekLogs={habit.week_logs.filter(l => l.user_id === selfId)}
-          goalValue={habit.goal_value ?? 1}
-        />
-      </View>
-      {checkinType === 'count' ? (
-        <>
-          <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 24, paddingTop: 16 }}>
-            <Chip label="Сегодня" selected={period === 'today'} onPress={() => setPeriod('today')} />
-            <Chip label="Неделя" selected={period === 'week'} onPress={() => setPeriod('week')} />
+      {isCount ? (
+        <View style={{ marginTop: 24, gap: 16 }}>
+          <View style={{ paddingHorizontal: 24 }}>
+            <SegmentedControl
+              options={[{ label: 'Неделя', value: 'week' }, { label: 'Месяц', value: 'month' }]}
+              value={calendarView}
+              onChange={v => { setCalendarView(v as 'week' | 'month'); setSelectedDate(null); }}
+            />
           </View>
-          <Text weight="semibold" style={{ fontSize: 16, lineHeight: 26, color: c.text.primary, paddingHorizontal: 24, paddingTop: 16, letterSpacing: 0.2 }}>
-            Персональный результат
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 8, gap: 16 }}
-          >
-            <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
-              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-                {unitLabel
-                  ? (period === 'week' ? `${genitiveUnit(unitLabel)} за неделю` : `${genitiveUnit(unitLabel)} сегодня`)
-                  : (period === 'week' ? 'За неделю' : 'Сегодня')}
-              </Text>
-              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-                {periodValue}{periodGoal != null ? ` / ${periodGoal}` : ''}
-              </Text>
-            </Card>
-            <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
-              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-                Стрик
-              </Text>
-              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-                {habit.streak?.current ?? 0}
-              </Text>
-            </Card>
-            <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
-              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-                Максимальный
-              </Text>
-              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-                {habit.streak?.max ?? 0}
-              </Text>
-            </Card>
-          </ScrollView>
-        </>
+          {calendarView === 'week' ? (
+            <CalendarWeek
+              key={calendarKey}
+              habitId={habit.id}
+              habitCreatedAt={habit.created_at}
+              currentWeekLogs={habit.week_logs.filter(l => l.user_id === selfId)}
+              goalValue={habit.goal_value ?? 1}
+              noMissIndicator={isCountNoGoal}
+              onDateSelect={handleDateSelect}
+            />
+          ) : (
+            <View style={{ paddingHorizontal: 24 }}>
+              <Card style={{ paddingHorizontal: 16, paddingVertical: 16, gap: 0 }}>
+                <CalendarMonthly
+                  logs={completedDates}
+                  missedDates={missedDates}
+                  periodStart={habit.created_at.slice(0, 10)}
+                />
+              </Card>
+            </View>
+          )}
+        </View>
+      ) : (
+        <View style={{ marginTop: 24 }}>
+          <CalendarWeek
+            key={calendarKey}
+            habitId={habit.id}
+            habitCreatedAt={habit.created_at}
+            currentWeekLogs={habit.week_logs.filter(l => l.user_id === selfId)}
+            goalValue={habit.goal_value ?? 1}
+            onDateSelect={handleDateSelect}
+          />
+        </View>
+      )}
+      {isCountNoGoal ? (
+        <View style={{ paddingHorizontal: 24, paddingTop: 16 }}>
+          <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
+            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+              {`Сделано ${dateLabel}`}
+            </Text>
+            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+              {formatUnit(displayValue, null)}
+            </Text>
+          </Card>
+        </View>
+      ) : checkinType === 'count' ? (
+        // count «с целью»: карточки всегда про сегодня/выбранную дату (чипы Сегодня/Неделя убраны).
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8, gap: 16 }}
+        >
+          <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
+            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+              {unitLabel ? `${genitiveUnit(unitLabel)} ${dateLabel}` : (isViewingPast ? dateLabel : 'Сегодня')}
+            </Text>
+            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+              {displayValue}{habit.goal_value != null ? ` / ${habit.goal_value}` : ''}
+            </Text>
+          </Card>
+          <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
+            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+              Стрик
+            </Text>
+            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+              {habit.streak?.current ?? 0}
+            </Text>
+          </Card>
+          <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
+            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+              Лучший стрик
+            </Text>
+            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+              {habit.streak?.max ?? 0}
+            </Text>
+          </Card>
+        </ScrollView>
       ) : (
         <View style={{ padding: 24, gap: 16 }}>
           <View style={{ flexDirection: 'row', gap: 16 }}>
@@ -223,18 +304,61 @@ export default function SoloHabitScreen({
       <View style={{ flex: 1 }} />
 
       {/* Bottom — ветка по checkin_type */}
-      {checkinType === 'count' ? (
+      {isViewingPast ? (
         <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
           <Button
-            label={`Внести ${pluralUnit(unitLabel)}`}
-            onPress={() => {
-              setCountMode('add');
-              setCountInput('');
-              setCountError(null);
-              setCountModal(true);
-            }}
-            loading={logLoading}
+            label="Вернуться к текущей дате"
+            onPress={resetToToday}
           />
+        </View>
+      ) : isCountNoGoal ? (
+        <View style={{ flexDirection: 'row', gap: 16, paddingHorizontal: 24, paddingBottom: 24 }}>
+          <View style={{ flex: 1 }}>
+            <Button
+              label="Я сделал"
+              onPress={() => onLog((todayLog?.value ?? 0) + 1)}
+              loading={logLoading}
+            />
+          </View>
+          {(todayLog?.value ?? 0) > 0 && (
+            <Button
+              variant="icon"
+              icon={<EditIcon />}
+              onPress={() => {
+                setCountMode('replace');
+                setCountInput(String(todayLog?.value ?? 0));
+                setCountError(null);
+                setCountModal(true);
+              }}
+            />
+          )}
+        </View>
+      ) : checkinType === 'count' ? (
+        // Есть запись за сегодня → «Редактировать запись» (правка значения), иначе → «Внести {ед}».
+        <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+          {(todayLog?.value ?? 0) > 0 ? (
+            <Button
+              label="Редактировать запись"
+              variant="secondary"
+              onPress={() => {
+                setCountMode('replace');
+                setCountInput(String(todayLog?.value ?? 0));
+                setCountError(null);
+                setCountModal(true);
+              }}
+            />
+          ) : (
+            <Button
+              label={`Внести ${pluralUnit(unitLabel)}`}
+              onPress={() => {
+                setCountMode('add');
+                setCountInput('');
+                setCountError(null);
+                setCountModal(true);
+              }}
+              loading={logLoading}
+            />
+          )}
         </View>
       ) : todayLog != null && !editingBoolean ? (
         <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
@@ -251,7 +375,10 @@ export default function SoloHabitScreen({
               label={successLabel}
               onPress={() => onLog(1)}
               loading={logLoading}
-              color={colors.green[500]}
+              // Кастомные Да/Нет — обе кнопки брендовые с иконками ✓/✕ (Figma);
+              // готовое «Отказ от курения» остаётся зелёной/красной без иконок.
+              color={isSmoking ? colors.green[500] : undefined}
+              icon={isSmoking ? undefined : <CheckIcon />}
             />
           </View>
           <View style={{ flex: 1 }}>
@@ -259,7 +386,8 @@ export default function SoloHabitScreen({
               label={failLabel}
               onPress={() => onLog(0)}
               loading={logLoading}
-              color={colors.red[500]}
+              color={isSmoking ? colors.red[500] : undefined}
+              icon={isSmoking ? undefined : <CloseIcon />}
             />
           </View>
         </View>

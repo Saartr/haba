@@ -15,6 +15,7 @@ metadata:
 - Тени: **карточки и подложки — плоские, без теней** в обеих темах (2026-07-09, `useCardShadow` удалён; не добавлять тени `Card`/`Lists`/листам-«простыням»). Тени остаются только у плавающих элементов (Fab, Toolbar, Snackbar, DropdownMenu, бегунок SegmentedControl); `shadowColor` у них — всегда `colors.neutral[950]`
 - Оверлеи/backdrop — `colors.blackTransparent[24]` (светлая тема), `colors.blackTransparent[80]` (тёмная)
 - Если нужного оттенка нет в `lib/colors.ts` — сначала добавить его туда из Figma TapaDS, потом использовать
+- `colors.neutral[75]` (`#f5f5f5`, добавлен 2026-07-31) — фон страницы/карточек в СВЕТЛОЙ теме на служебных экранах (настройки, экран цели, главный экран); тёмная тема не меняется, использует `c.surface.bg`/`neutral[950]` как раньше. Паттерн: `colorScheme === 'dark' ? <старое> : colors.neutral[75]`, см. [[feature-main-screen]]
 
 **Why:** Аудит (2026-06-03) выявил 10+ мест с хардкодом. Все цвета уже есть в `lib/colors.ts` (полные палитры: purple, neutral, green, red, yellow, blackTransparent).
 

@@ -6,9 +6,9 @@ import { useColors, colors } from '@/lib/colors';
 type IconProps = { width?: number; height?: number; color?: string };
 
 type Props = {
-  label: string;
+  label?: string;
   onPress: () => void;
-  variant?: 'main' | 'text' | 'secondary';
+  variant?: 'main' | 'text' | 'secondary' | 'icon';
   icon?: React.ReactNode;
   loading?: boolean;
   disabled?: boolean;
@@ -31,6 +31,30 @@ export default function Button({
 }: Props) {
   const c = useColors();
   const isDisabled = disabled || loading;
+
+  // Icon-only (TapaDS node 55-7): квадрат 56×56, рамка 2px, радиус 12, белая заливка.
+  // Иконка/рамка — brand.primary, в pressed — brand.pressed, в disabled — neutral300/neutral600.
+  if (variant === 'icon') {
+    return (
+      <Pressable onPress={onPress} disabled={isDisabled} style={{ width: 56, height: 56 }}>
+        {({ pressed }) => {
+          const accent = disabled ? c.text.secondary : pressed ? c.brand.pressed : c.brand.primary;
+          const border = disabled ? colors.neutral[300] : accent;
+          return (
+            <View style={{
+              flex: 1, alignItems: 'center', justifyContent: 'center',
+              borderRadius: 12, borderWidth: 2, borderColor: border,
+              backgroundColor: c.surface.input,
+              // @ts-ignore
+              borderCurve: 'continuous',
+            }}>
+              {loading ? <ActivityIndicator color={c.brand.primary} /> : iconWithColor(icon, accent)}
+            </View>
+          );
+        }}
+      </Pressable>
+    );
+  }
 
   if (variant === 'secondary') {
     return (

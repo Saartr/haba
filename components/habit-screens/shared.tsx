@@ -1,11 +1,12 @@
 import { View, Image, Pressable } from 'react-native';
+import { useEffect, useState } from 'react';
 import Text from '@/components/Text';
 import Button from '@/components/Button';
 import BottomSheet from '@/components/BottomSheet';
 import BlockIcon from '@/assets/icons/Block.svg';
 import { useColors, colors } from '@/lib/colors';
-import { useSettings } from '@/lib/settings-context';
-import { HabitMember } from '@/lib/api';
+import { HabitMember, getHabitDayLogs } from '@/lib/api';
+import { formatUnit } from '@/lib/units';
 
 // Общие кусочки экранов цели (habit/[id].tsx → components/habit-screens/*):
 // модалка успеха, заголовок раздела, аватар/строка участника, форматирование дат.
@@ -56,6 +57,24 @@ export function isTrainingDayDate(iso: string, trainingDays: number[] | null): b
   const dow = new Date(iso + 'T00:00:00').getDay(); // 0=Вс..6=Сб
   const isoDay = dow === 0 ? 7 : dow; // 1=Пн..7=Вс
   return trainingDays.includes(isoDay);
+}
+
+// Значения всех участников за конкретную (обычно прошлую) дату — для переключения
+// недельного календаря на дату из прошлого (см. CalendarWeek onDateSelect в GroupHabitScreen/
+// SoloHabitScreen). date=null — «сегодня», ничего не запрашиваем (используются live-данные
+// из week_logs). Пока запрос не завершился, возвращает null — вызывающий код сам решает,
+// как это показать (обычно — 0 как заглушка, запрос быстрый и локальный).
+export function useDayLogs(habitId: number, date: string | null): Map<number, number> | null {
+  const [logs, setLogs] = useState<Map<number, number> | null>(null);
+  useEffect(() => {
+    if (date == null) { setLogs(null); return; }
+    let cancelled = false;
+    getHabitDayLogs(habitId, date)
+      .then(data => { if (!cancelled) setLogs(new Map(data.map(l => [l.user_id, l.value]))); })
+      .catch(() => { if (!cancelled) setLogs(new Map()); });
+    return () => { cancelled = true; };
+  }, [habitId, date]);
+  return logs;
 }
 
 export function isRestDay(iso: string, periodicity: string, weekdays: number[] | null): boolean {
@@ -114,53 +133,49 @@ export function MemberAvatar({ member }: { member: HabitMember }) {
 }
 
 export function MemberRow({
-  member, goalValue, value, isCreator, onExclude, onOpen,
+  member, goalValue, value, unit, boolean, isCreator, onExclude,
 }: {
   member: HabitMember;
   goalValue: number | null;
   value: number | null;
+  /** Единица измерения — для count «без цели» показываем «N единиц» (например «5 стаканов»). */
+  unit?: string | null;
+  /** Да/Нет-режим — показываем «Выполнил»/«Не выполнил» вместо числа. */
+  boolean?: boolean;
   isCreator: boolean;
   onExclude: (id: number) => void;
-  onOpen: (member: HabitMember) => void;
 }) {
   const c = useColors();
-  const { colorScheme } = useSettings();
-  const rippleColor = colorScheme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
   const name = member.first_name ?? member.username ?? '?';
   const displayName = member.is_self ? `${name} (Я)` : name;
 
-  const stepsLabel = goalValue != null
+  const stepsLabel = boolean
+    ? ((value ?? 0) >= 1 ? 'Выполнил' : 'Не выполнил')
+    : goalValue != null
     ? `${(value ?? 0).toLocaleString('ru-RU')} / ${goalValue.toLocaleString('ru-RU')}`
+    : unit !== undefined
+    ? formatUnit(value ?? 0, unit)
     : value != null ? String(value) : '—';
 
   return (
-    <Pressable
-      onPress={() => onOpen(member)}
-      style={({ pressed }) => ({
-        paddingVertical: 4,
-        borderRadius: 16,
-        backgroundColor: pressed ? rippleColor : 'transparent',
-      })}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-            <MemberAvatar member={member} />
-            <View>
-              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-                {displayName}
-              </Text>
-              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-                {stepsLabel}
-              </Text>
-            </View>
-          </View>
-          {isCreator && !member.is_self && (
-            <Pressable onPress={() => onExclude(member.id)} hitSlop={8}
-              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-              <BlockIcon width={24} height={24} color={c.text.secondary} />
-            </Pressable>
-          )}
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+        <MemberAvatar member={member} />
+        <View>
+          <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+            {displayName}
+          </Text>
+          <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+            {stepsLabel}
+          </Text>
         </View>
-      </Pressable>
+      </View>
+      {isCreator && !member.is_self && (
+        <Pressable onPress={() => onExclude(member.id)} hitSlop={8}
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+          <BlockIcon width={24} height={24} color={c.text.secondary} />
+        </Pressable>
+      )}
+    </View>
   );
 }
