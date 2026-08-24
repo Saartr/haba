@@ -613,46 +613,71 @@ router.post('/link/vk', requireAuth, async (req, res) => {
 });
 
 // DELETE /api/v1/auth/me — удалить аккаунт
-// Удаляет: токены, логи, членство в привычках, привычки где user — единственный участник,
-// аватар с диска, сам аккаунт.
-// Групповые привычки с несколькими участниками: передаём права следующему по joined_at,
-// либо soft-close если участников > 1 и все остальные — тоже удаляемые (не наш случай).
+// Удаляет: токены, логи, членство в привычках/группах, объекты где user — единственный
+// участник, аватар с диска, сам аккаунт.
+// Привычки и группы с другими участниками: передаём права следующему по joined_at.
+// ВАЖНО: все FK на users — NO ACTION (кроме push_tokens ON DELETE CASCADE), поэтому
+// перед DELETE FROM users нужно снять ВСЕ ссылки, включая legacy-таблицы бота
+// (steps/groups/group_members/auth_codes) и закрытые привычки — иначе 23503.
 router.delete('/me', requireAuth, async (req, res) => {
   const userId = req.userId;
   try {
-    // 1. Получаем путь к аватару до удаления
+    // Путь к аватару — до удаления строки
     const [user] = await sql`SELECT avatar_url FROM users WHERE id = ${userId}`;
 
-    // 2. Привычки, где пользователь — создатель
-    const creatorHabits = await sql`
-      SELECT h.id, h.closed_at FROM habits h
-      WHERE h.creator_id = ${userId} AND h.closed_at IS NULL
-    `;
-
-    for (const habit of creatorHabits) {
-      // Есть ли другие участники?
-      const others = await sql`
-        SELECT user_id FROM habit_members
-        WHERE habit_id = ${habit.id} AND user_id != ${userId}
-        ORDER BY joined_at ASC
-        LIMIT 1
-      `;
-      if (others.length > 0) {
-        // Передаём права следующему участнику
-        await sql`UPDATE habits SET creator_id = ${others[0].user_id} WHERE id = ${habit.id}`;
-      } else {
-        // Единственный участник — soft-close
-        await sql`UPDATE habits SET closed_at = now() WHERE id = ${habit.id}`;
+    // Одной транзакцией: иначе падение на любом шаге оставляет «наполовину удалённый»
+    // аккаунт (логи и членства уже стёрты, а сам user остался).
+    await sql.begin(async sql => {
+      // 1. Привычки, где пользователь — создатель. Закрытые (closed_at IS NOT NULL) тоже:
+      //    ссылка в creator_id блокирует удаление независимо от статуса привычки.
+      const creatorHabits = await sql`SELECT id FROM habits WHERE creator_id = ${userId}`;
+      for (const habit of creatorHabits) {
+        const others = await sql`
+          SELECT user_id FROM habit_members
+          WHERE habit_id = ${habit.id} AND user_id != ${userId}
+          ORDER BY joined_at ASC
+          LIMIT 1
+        `;
+        if (others.length > 0) {
+          // Передаём права следующему участнику
+          await sql`UPDATE habits SET creator_id = ${others[0].user_id} WHERE id = ${habit.id}`;
+        } else {
+          // Единственный участник — привычка без него бессмысленна и никому не видна.
+          // habit_members/habit_logs снимутся каскадом по habit_id.
+          await sql`DELETE FROM habits WHERE id = ${habit.id}`;
+        }
       }
-    }
 
-    // 3. Удаляем все данные пользователя (каскад через FK DELETE CASCADE на habit_members/habit_logs)
-    await sql`DELETE FROM refresh_tokens WHERE user_id = ${userId}`;
-    await sql`DELETE FROM habit_logs WHERE user_id = ${userId}`;
-    await sql`DELETE FROM habit_members WHERE user_id = ${userId}`;
-    await sql`DELETE FROM users WHERE id = ${userId}`;
+      // 2. Legacy-таблицы бота шагов: у groups/goals каскадов нет, чистим снизу вверх.
+      await sql`DELETE FROM steps WHERE user_id = ${userId}`;
+      const creatorGroups = await sql`SELECT id FROM groups WHERE creator_id = ${userId}`;
+      for (const group of creatorGroups) {
+        const others = await sql`
+          SELECT user_id FROM group_members
+          WHERE group_id = ${group.id} AND user_id != ${userId}
+          ORDER BY joined_at ASC
+          LIMIT 1
+        `;
+        if (others.length > 0) {
+          await sql`UPDATE groups SET creator_id = ${others[0].user_id} WHERE id = ${group.id}`;
+        } else {
+          await sql`DELETE FROM steps WHERE goal_id IN (SELECT id FROM goals WHERE group_id = ${group.id})`;
+          await sql`DELETE FROM goals WHERE group_id = ${group.id}`;
+          await sql`DELETE FROM group_members WHERE group_id = ${group.id}`;
+          await sql`DELETE FROM groups WHERE id = ${group.id}`;
+        }
+      }
 
-    // 4. Удаляем аватар с диска (не критично если нет файла)
+      // 3. Остальные ссылки на пользователя
+      await sql`DELETE FROM group_members WHERE user_id = ${userId}`;
+      await sql`DELETE FROM auth_codes WHERE user_id = ${userId}`;
+      await sql`DELETE FROM refresh_tokens WHERE user_id = ${userId}`;
+      await sql`DELETE FROM habit_logs WHERE user_id = ${userId}`;
+      await sql`DELETE FROM habit_members WHERE user_id = ${userId}`;
+      await sql`DELETE FROM users WHERE id = ${userId}`;
+    });
+
+    // Аватар с диска (не критично если файла нет)
     if (user?.avatar_url) {
       const avatarPath = path.join(AVATARS_DIR, `${userId}.jpg`);
       fs.unlink(avatarPath, () => {});
