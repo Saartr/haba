@@ -245,6 +245,12 @@ export default function CalendarMonthly({
     initialDate ? parseInt(initialDate.slice(5, 7), 10) - 1 : now.getMonth(),
   );
 
+  // ВАЖНО: анимации translateX идут БЕЗ useNativeDriver. С нативным драйвером трансформа
+  // применяется только на нативной стороне, а хит-тест в New Architecture считается по
+  // shadow-дереву, которое про этот сдвиг не знает: после первой же смены месяца сетка
+  // визуально стоит на месте, но тапы по дням перестают доходить до ячеек. Сдвиг небольшой
+  // и короткий (180 мс), на JS-потоке идёт плавно. Драйвер должен быть одинаковым во ВСЕХ
+  // анимациях этого значения — Animated.Value нельзя гонять то нативно, то по JS.
   const translateX = useRef(new Animated.Value(0)).current;
   // Блокирует начало нового жеста/повторный тап по стрелке, пока текущая анимация
   // смены месяца не завершилась — без этого быстрый повторный свайп прерывает
@@ -288,7 +294,7 @@ export default function CalendarMonthly({
       } else {
         Animated.spring(translateX, {
           toValue: 0,
-          useNativeDriver: true,
+          useNativeDriver: false,
           tension: 200,
           friction: 20,
         }).start();
@@ -307,7 +313,7 @@ export default function CalendarMonthly({
     if (isAnimatingRef.current) return;
     if ((direction === 'prev' && !canGoPrev) || (direction === 'next' && !canGoNext)) {
       isAnimatingRef.current = true;
-      Animated.spring(translateX, { toValue: 0, useNativeDriver: true, tension: 200, friction: 20 }).start(() => {
+      Animated.spring(translateX, { toValue: 0, useNativeDriver: false, tension: 200, friction: 20 }).start(() => {
         isAnimatingRef.current = false;
       });
       return;
@@ -319,7 +325,7 @@ export default function CalendarMonthly({
       Animated.timing(translateX, {
         toValue: toX,
         duration: 180,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(titleOpacity, { toValue: 0, duration: 140, useNativeDriver: true }),
       Animated.timing(titleTranslateX, { toValue: titleExitX, duration: 140, useNativeDriver: true }),
