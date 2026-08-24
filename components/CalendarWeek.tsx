@@ -16,6 +16,8 @@ export type CalendarDay = {
   status: DayStatus;
   isToday: boolean;
   iso: string;
+  /** День раньше создания цели — не кликабелен даже в режиме allowAnySelect (данных нет). */
+  beforeHabit: boolean;
 };
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -49,20 +51,33 @@ function DayIcon({ status, color }: { status: DayStatus; color: string | null })
 // Тап и подсветка «active» доступны только дням с реальным статусом (сегодня/выполнено/
 // пропущено) — у будущих и inactive-дней (до создания цели, день отдыха) в Figma нет
 // варианта Selected=on, поэтому они остаются некликабельными.
+// Это поведение для экранов, где тап = переключение даты записи (логировать будущее нельзя).
+// На экранах, где тап только ОТКРЫВАЕТ информацию о дне (подтягивания — план на дату),
+// используется allowAnySelect: кликабельно всё, кроме дней до создания цели. Иначе на
+// свежей цели не нажимается вообще ничего — дни отдыха inactive, тренировочные ещё future.
 function isSelectable(status: DayStatus): boolean {
   return status === 'current' || status === 'check' || status === 'miss';
 }
 
-function DayCell({ day, weekday, status, iso, selected, onPress }: CalendarDay & { selected: boolean; onPress?: (iso: string) => void }) {
+function DayCell({ day, weekday, status, iso, isToday, beforeHabit, selected, allowAnySelect, onPress }: CalendarDay & { selected: boolean; allowAnySelect?: boolean; onPress?: (iso: string) => void }) {
   const { colorScheme } = useSettings();
   const dark = colorScheme === 'dark';
-  const boxBg = selected ? (dark ? colors.purple[900] : colors.purple[100]) : (dark ? colors.neutral[800] : colors.neutral[100]);
-  const boxBorder = selected ? (dark ? colors.purple[400] : colors.purple[500]) : 'transparent';
+  // Логика та же, что в CalendarMonthly: «сегодня» подсвечен всегда (фон + 2px рамка
+  // brand и фиолетовое число), а выбранный тапом день — на одну ступень контрастнее
+  // обычной подложки, без рамки. Так подсветка выбора не перебивает метку «сегодня»
+  // и читается как временная (живёт, пока открыта модалка дня).
+  // Направление ступени зависит от темы: в светлой — темнее фона, в тёмной — светлее.
+  const boxBg = isToday
+    ? (dark ? colors.purple[900] : colors.purple[100])
+    : selected
+    ? (dark ? colors.neutral[700] : colors.neutral[200])
+    : (dark ? colors.neutral[800] : colors.neutral[100]);
+  const boxBorder = isToday ? (dark ? colors.purple[400] : colors.purple[500]) : 'transparent';
   const weekdayColor = dark ? colors.neutral[0] : colors.neutral[900];
-  const dayColor = selected ? (dark ? colors.purple[400] : colors.purple[500]) : colors.neutral[500];
+  const dayColor = isToday ? (dark ? colors.purple[400] : colors.purple[500]) : colors.neutral[500];
   const iconColor = (dark ? ICON_DARK : ICON_LIGHT)[status];
 
-  const canPress = isSelectable(status);
+  const canPress = allowAnySelect ? !beforeHabit : isSelectable(status);
   const Box = canPress ? Pressable : View;
 
   return (
@@ -154,7 +169,7 @@ function buildDays(
     } else {
       status = loggedValue !== undefined && loggedValue >= goalValue ? 'check' : 'miss';
     }
-    return { day: d.getUTCDate(), weekday: WEEKDAYS[i], status, isToday: diff === 0, iso: dateStr };
+    return { day: d.getUTCDate(), weekday: WEEKDAYS[i], status, isToday: diff === 0, iso: dateStr, beforeHabit };
   });
 }
 
@@ -193,10 +208,11 @@ type WeekPageProps = {
   // иначе при переключении на дату другой недели у текущей недели остаётся своя, независимая
   // «выбранная» ячейка (по умолчанию — сегодня), и получается два выделенных дня одновременно.
   selected: string | null;
+  allowAnySelect?: boolean;
   onSelect: (iso: string) => void;
 };
 
-function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, pageWidth, userId, horizontalPadding, noMissIndicator, selected, onSelect }: WeekPageProps) {
+function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, pageWidth, userId, horizontalPadding, noMissIndicator, selected, allowAnySelect, onSelect }: WeekPageProps) {
   const [logs, setLogs] = useState<Map<string, number> | null>(
     weekOffset === 0 ? null : null,
   );
@@ -249,6 +265,7 @@ function WeekPage({ weekOffset, habitId, habitCreatedAt, currentWeekLogs, goalVa
               key={i}
               {...d}
               selected={d.iso === selected}
+              allowAnySelect={allowAnySelect}
               onPress={onSelect}
             />
           ))}
@@ -281,9 +298,17 @@ type Props = {
   noMissIndicator?: boolean;
   /** Тап по дню — если передан, ячейки становятся нажимаемыми (для просмотра плана на дату). */
   onDateSelect?: (iso: string) => void;
+  /** Разрешить тап по любому дню с даты создания цели — включая будущие и дни отдыха.
+   * Для экранов, где тап только показывает информацию о дне (план тренировки), а не
+   * переключает дату записи. По умолчанию кликабельны только дни с реальным статусом. */
+  allowAnySelect?: boolean;
+  /** Управляемая подсветка выбранного дня (как selectedDate в CalendarMonthly). Если проп
+   * передан, календарь не хранит выбор сам — экран решает, когда день подсвечен (например,
+   * только пока открыта модалка дня). Не передан — выбор живёт внутри и стартует с сегодня. */
+  selectedDate?: string | null;
 };
 
-export default function CalendarWeek({ habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, userId, pageWidth: pageWidthProp, horizontalPadding = 24, totalWeeks, welcomeAnimation = true, noMissIndicator, onDateSelect }: Props) {
+export default function CalendarWeek({ habitId, habitCreatedAt, currentWeekLogs, goalValue, trainingDays, userId, pageWidth: pageWidthProp, horizontalPadding = 24, totalWeeks, welcomeAnimation = true, noMissIndicator, onDateSelect, allowAnySelect, selectedDate }: Props) {
   const createdAt = new Date(habitCreatedAt);
   createdAt.setUTCHours(0, 0, 0, 0);
 
@@ -304,9 +329,11 @@ export default function CalendarWeek({ habitId, habitCreatedAt, currentWeekLogs,
   // (не по одному на страницу-неделю), иначе у каждой недели остаётся своя независимая
   // подсветка «по умолчанию сегодня», и при переключении на дату другой недели получаются
   // два выделенных дня одновременно.
-  const [selected, setSelected] = useState<string | null>(todayIso());
+  const [internalSelected, setInternalSelected] = useState<string | null>(todayIso());
+  const isControlled = selectedDate !== undefined;
+  const selected = isControlled ? selectedDate ?? null : internalSelected;
   function handleSelect(iso: string) {
-    setSelected(iso);
+    if (!isControlled) setInternalSelected(iso);
     onDateSelect?.(iso);
   }
 
@@ -360,6 +387,7 @@ export default function CalendarWeek({ habitId, habitCreatedAt, currentWeekLogs,
           horizontalPadding={horizontalPadding}
           noMissIndicator={noMissIndicator}
           selected={selected}
+          allowAnySelect={allowAnySelect}
           onSelect={handleSelect}
         />
       )}

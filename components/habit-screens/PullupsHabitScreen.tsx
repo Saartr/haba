@@ -251,6 +251,8 @@ export default function PullupsHabitScreen({
             totalWeeks={totalWeeks}
             welcomeAnimation={!weekAnimShownRef.current}
             onDateSelect={setDayDetailDate}
+            allowAnySelect
+            selectedDate={dayDetailDate}
           />
         ) : (
           <View style={{ paddingHorizontal: 24 }}>
