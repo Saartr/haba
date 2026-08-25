@@ -1,6 +1,6 @@
 ---
 name: feature-auth
-description: Два способа авторизации — Telegram (нативный OIDC-логин) и VK ID (нативный SDK)
+description: Два способа авторизации — Яндекс ID и VK ID (оба нативные SDK); Telegram удалён 2026-08-25
 metadata:
   type: project
 ---
@@ -11,7 +11,7 @@ metadata:
 `/auth/telegram-native` и `/auth/link/telegram`, кнопки на экранах. Причина — 199-ФЗ
 (с 7 июля 2026 авторизация россиян через иностранные сервисы запрещена, штраф до 700 тыс. ₽).
 Актуальный провайдер вместо него — [[feature-yandex-id]] (`/auth/yandex`, `/auth/link/yandex`).
-Колонка `users.tg_id` и скачивание аватара по ней оставлены для старых аккаунтов.
+Следом удалены и `users.tg_id`, и сам бот шагов — см. `migrate_drop_legacy.js`.
 
 Ниже — история того, что было до удаления.
 
@@ -21,7 +21,7 @@ metadata:
 
 Актуальный флоу — нативный модуль + `POST /auth/telegram-native` (JWT id_token, верификация через JWKS). Полное описание — [[feature-telegram-login]].
 
-**Данные в users (актуально):** `tg_id`, `username`, `first_name`, `last_name`, `avatar_url`, `phone` (через scope=phone)
+**Данные в users (на тот момент):** `tg_id`, `username`, `first_name`, `last_name`, `avatar_url`, `phone`. Колонка `tg_id` удалена 2026-08-25.
 
 **Аватар:** всегда обновляется при логине через Bot API (`getUserProfilePhotos`).
 
@@ -76,6 +76,6 @@ metadata:
 
 **Имя не затирается при повторном логине.** Раньше в `POST /auth/vk` и `POST /auth/telegram-native` upsert делал `COALESCE(EXCLUDED.first_name, users.first_name)` — свежее имя от провайдера побеждало сохранённое, и имя, изменённое вручную через `PATCH /auth/me`, стиралось при следующем входе. Теперь `username`/`first_name`/`last_name` приоритизируют существующее значение в БД (`COALESCE(users.x, EXCLUDED.x)`) — как всегда было в `/auth/link/*`. Провайдер только заполняет пустое.
 
-**Аватар — `ensureAvatar(bot, user, freshPhotoUrl)`** (общая для `/vk`, `/telegram-native`, `/link/telegram`, `/link/vk`): если `avatar_url` пуст, пробует по очереди ОБА привязанных провайдера, не только текущий: Telegram Bot API (`getUserProfilePhotos`, `tg_id` передаётся числом — строкой не работало) → VK `users.get` с сервисным токеном (`photo_max_orig`/`photo_200`/`photo_100` — `photo_200` не отдаётся, если исходник < 200×200; сервисный токен не привязан к IP, в отличие от пользовательского) → «свежий» URL с клиента (photo200/claims.picture). Побочное изменение: Telegram-логин больше НЕ перекачивает аватар при каждом входе — только если его ещё нет.
+**Аватар — `ensureAvatar(user, freshPhotoUrl)`** (общая для `/vk`, `/yandex`, `/link/vk`, `/link/yandex`): если `avatar_url` пуст, пробует по очереди ВСЕ привязанные провайдеры, не только текущий: VK `users.get` с сервисным токеном (`photo_max_orig`/`photo_200`/`photo_100` — `photo_200` не отдаётся, если исходник < 200×200; сервисный токен не привязан к IP, в отличие от пользовательского) → сохранённый `yandex_avatar_id` → «свежий» URL с клиента (photo200 у VK, собранный из `default_avatar_id` у Яндекса). Аватар перекачивается только если его ещё нет; принудительно — через `POST /auth/refresh-avatar`.
 
 **`POST /auth/refresh-avatar`** — принудительно перекачивает фото с привязанных провайдеров, игнорируя текущий `avatar_url`. Кнопка «Обновить аватар» в `profile-settings.tsx` (⚠️ после редизайна главного экрана profile-settings недостижим из UI — см. [[feature-main-screen]]).

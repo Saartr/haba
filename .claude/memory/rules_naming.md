@@ -11,7 +11,7 @@ metadata:
 - `app.json` `scheme`: `"haba"` (deeplink `haba://join/...`, `haba://auth/callback`)
 - `app.json` `android.package`: `"pro.mihmih.haba"`
 - `lib/auth.ts` SecureStore keys: `haba_access_token`, `haba_refresh_token`, `haba_pending_invite`
-- Native modules package: `pro.mihmih.haba.vkid`, `pro.mihmih.haba.tglogin`
+- Native modules package: `pro.mihmih.haba.vkid`, `pro.mihmih.haba.yandexid`, `pro.mihmih.haba.healthsync`
 - Backend deeplinks: `haba://join/...`
 
 **Why:** Scheme и package — системные идентификаторы Android. Их смена ломает все deeplinks, App Links и нативные модули.

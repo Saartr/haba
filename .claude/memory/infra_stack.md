@@ -7,14 +7,13 @@ metadata:
   originSessionId: 6f334f79-b33a-4bdb-b852-d3bff627bebf
 ---
 
-Мобильное приложение (iOS + Android) для отслеживания привычек с групповым соревнованием через Telegram.
+Мобильное приложение (iOS + Android) для отслеживания привычек с групповым соревнованием.
 
 **Фронтенд** (`C:\haba`):
 - React Native + Expo SDK 55, Expo Router, TypeScript
 - NativeWind v4 (Tailwind CSS для RN)
 - expo-secure-store (хранение JWT)
 - react-native-svg (SVG-иконки)
-- react-native-webview (Telegram Login Widget)
 - Дизайн-система: TapaDS, цвета через `useColors()` из `lib/colors.ts`
 - Шрифт: Manrope (medium/semibold/bold), обёртка `components/Text.tsx`
 
