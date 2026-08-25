@@ -9,32 +9,27 @@ metadata:
 
 PostgreSQL на сервере `bot.mihmih.pro`. Подключение через `DATABASE_URL` (SSL).
 
-**Оригинальные таблицы (bot-функциональность), `migrate.js` + `migrate_vk.js`:**
+⛔ **Таблицы бота шагов (`groups`, `group_members`, `goals`, `steps`, `auth_codes`) и колонка
+`users.tg_id` УДАЛЕНЫ 2026-08-25** вместе с ботом `@Step_Challenges_Bot` — см. `migrate_drop_legacy.js`
+и [[feature-yandex-id]]. Ниже актуальная схема.
+
+**Таблицы пользователей и сессий (`migrate.js`):**
 ```sql
-users          — id, tg_id BIGINT NULL (был NOT NULL, снят в migrate_vk.js), vk_id TEXT,
+users          — id, vk_id TEXT,
                  username, first_name, last_name,
                  email TEXT, phone TEXT,
                  yandex_id TEXT, yandex_avatar_id TEXT,   -- Яндекс ID (см. feature_yandex_id)
                  avatar_url, health_connected_at TIMESTAMPTZ, created_at,
-                 last_login_provider TEXT NULL ('yandex'|'vk'; 'telegram' — только старые записи)
+                 last_login_provider TEXT NULL ('yandex'|'vk')
                partial UNIQUE INDEX users_vk_id_unique ON (vk_id) WHERE vk_id IS NOT NULL
                partial UNIQUE INDEX users_yandex_id_unique ON (yandex_id) WHERE yandex_id IS NOT NULL
-groups         — id, name, invite_code UNIQUE, creator_id → users, created_at
-group_members  — user_id → users, group_id → groups, joined_at; PK(user_id, group_id)
-goals          — id, group_id → groups, steps_per_day, period_days, starts_at, deadline
-steps          — id, user_id → users, goal_id → goals, count, recorded_at
-               UNIQUE(user_id, goal_id, recorded_at)
-auth_codes     — user_id PK → users, code, expires_at, attempts (legacy, в API не используется)
 refresh_tokens — id, user_id → users, token UNIQUE, expires_at, created_at
 ```
 
-Telegram-пользователи: `tg_id` заполнен, `vk_id` = NULL.
-VK-пользователи: `vk_id` заполнен, `tg_id` = NULL.
-При слиянии аккаунтов (mergeUsers) оба ID могут быть заполнены одновременно — поэтому для
-иконки сервиса на главном экране используется `last_login_provider` (способ последнего входа),
-а не наличие `tg_id`/`vk_id`. Обновляется в `POST /auth/vk` и `POST /auth/telegram-native`
+Аккаунт может иметь и `vk_id`, и `yandex_id` одновременно (привязка второго способа входа).
+Для иконки сервиса на главном экране используется `last_login_provider` (способ последнего входа),
+а не наличие `vk_id`/`yandex_id`. Обновляется в `POST /auth/vk` и `POST /auth/yandex`
 при каждом логине; не трогается при `/auth/link/*` (привязка ≠ вход).
-`groups/group_members/goals/steps` — legacy bot-функциональность шагов; новый функционал привычек живёт в таблицах ниже.
 
 **Таблицы привычек (migrate_habits.js + migrate_pullups.js + migrate_custom.js):**
 ```sql

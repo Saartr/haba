@@ -9,7 +9,6 @@ const sql = require('../db/client');
 const router = Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change_me_in_env';
-const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const ACCESS_TTL = '15m';
 const REFRESH_TTL = '30d';
 const AVATARS_DIR = '/var/www/haba/backend/public/avatars';
@@ -123,24 +122,10 @@ function yandexPhotoUrl(info) {
 }
 
 // Кандидаты URL фото профиля из ЛЮБОГО привязанного провайдера (если привязаны и yandex_id,
-// и vk_id — проверяем оба). Порядок: VK users.get (сервисный токен) → Яндекс (нужен живой
-// токен, поэтому только freshProviderPhotoUrl) → freshProviderPhotoUrl как общий фоллбэк.
-// tg_id остаётся у старых аккаунтов: Telegram-вход убран, но скачать аватар по нему всё ещё
-// можно, пока жив бот.
-async function fetchProviderAvatarCandidates(bot, user, freshProviderPhotoUrl) {
+// и vk_id — проверяем оба). Порядок: VK users.get (сервисный токен) → сохранённый
+// yandex_avatar_id → freshProviderPhotoUrl (фото из свежего ответа провайдера) как фоллбэк.
+async function fetchProviderAvatarCandidates(user, freshProviderPhotoUrl) {
   const candidates = [];
-  if (user.tg_id) {
-    try {
-      const photos = await bot.api.getUserProfilePhotos(Number(user.tg_id), { limit: 1 });
-      if (photos.total_count) {
-        const fileId = photos.photos[0][0].file_id;
-        const file = await bot.api.getFile(fileId);
-        candidates.push(`https://api.telegram.org/file/bot${TELEGRAM_TOKEN}/${file.file_path}`);
-      }
-    } catch (e) {
-      console.error('Avatar: Telegram Bot API lookup failed:', e.message);
-    }
-  }
   if (user.vk_id) {
     try {
       const url = await fetchVkPhotoUrl(user.vk_id);
@@ -175,9 +160,9 @@ async function downloadFirstAvatar(userId, candidates) {
 }
 
 // Пытается подтянуть аватар, если его ещё нет — вызывается при логине/привязке.
-async function ensureAvatar(bot, user, freshProviderPhotoUrl) {
+async function ensureAvatar(user, freshProviderPhotoUrl) {
   if (user.avatar_url) return user.avatar_url;
-  const candidates = await fetchProviderAvatarCandidates(bot, user, freshProviderPhotoUrl);
+  const candidates = await fetchProviderAvatarCandidates(user, freshProviderPhotoUrl);
   return downloadFirstAvatar(user.id, candidates);
 }
 
@@ -232,10 +217,10 @@ router.post('/vk', async (req, res) => {
         email      = COALESCE(EXCLUDED.email,      users.email),
         phone      = COALESCE(EXCLUDED.phone,      users.phone),
         last_login_provider = 'vk'
-      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, yandex_id, last_login_provider
+      RETURNING id, username, first_name, last_name, avatar_url, vk_id, yandex_id, last_login_provider
     `;
 
-    const avatarUrl = await ensureAvatar(req.bot, user, photoUrl);
+    const avatarUrl = await ensureAvatar(user, photoUrl);
 
     const newAccessToken = makeAccessToken(user.id);
     const refreshToken = makeRefreshToken(user.id);
@@ -255,7 +240,6 @@ router.post('/vk', async (req, res) => {
         first_name: user.first_name || null,
         last_name:  user.last_name  || null,
         avatar_url: avatarUrl || null,
-        tg_id:      user.tg_id ? String(user.tg_id) : null,
         vk_id:      user.vk_id || null,
         yandex_id:  user.yandex_id || null,
         last_login_provider: user.last_login_provider || null,
@@ -305,10 +289,10 @@ router.post('/yandex', async (req, res) => {
         phone      = COALESCE(EXCLUDED.phone,      users.phone),
         yandex_avatar_id = COALESCE(EXCLUDED.yandex_avatar_id, users.yandex_avatar_id),
         last_login_provider = 'yandex'
-      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, yandex_id, last_login_provider
+      RETURNING id, username, first_name, last_name, avatar_url, vk_id, yandex_id, last_login_provider
     `;
 
-    const avatarUrl = await ensureAvatar(req.bot, user, photoUrl);
+    const avatarUrl = await ensureAvatar(user, photoUrl);
 
     const accessToken = makeAccessToken(user.id);
     const refreshToken = makeRefreshToken(user.id);
@@ -328,7 +312,6 @@ router.post('/yandex', async (req, res) => {
         first_name: user.first_name || null,
         last_name:  user.last_name  || null,
         avatar_url: avatarUrl || null,
-        tg_id:      user.tg_id ? String(user.tg_id) : null,
         vk_id:      user.vk_id || null,
         yandex_id:  user.yandex_id || null,
         last_login_provider: user.last_login_provider || null,
@@ -392,7 +375,7 @@ router.post('/refresh', async (req, res) => {
 router.get('/me', requireAuth, async (req, res) => {
   try {
     const [user] = await sql`
-      SELECT username, first_name, last_name, avatar_url, tg_id, vk_id, yandex_id, last_login_provider
+      SELECT username, first_name, last_name, avatar_url, vk_id, yandex_id, last_login_provider
       FROM users WHERE id = ${req.userId}
     `;
     if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
@@ -402,7 +385,6 @@ router.get('/me', requireAuth, async (req, res) => {
       first_name: user.first_name || null,
       last_name:  user.last_name  || null,
       avatar_url: user.avatar_url || null,
-      tg_id:      user.tg_id ? String(user.tg_id) : null,
       vk_id:      user.vk_id     || null,
       yandex_id:  user.yandex_id || null,
       last_login_provider: user.last_login_provider || null,
@@ -424,7 +406,7 @@ router.patch('/me', requireAuth, async (req, res) => {
     const [user] = await sql`
       UPDATE users SET first_name = ${first_name.trim()}
       WHERE id = ${req.userId}
-      RETURNING username, first_name, last_name, avatar_url, tg_id, vk_id, yandex_id, last_login_provider
+      RETURNING username, first_name, last_name, avatar_url, vk_id, yandex_id, last_login_provider
     `;
     if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
 
@@ -433,7 +415,6 @@ router.patch('/me', requireAuth, async (req, res) => {
       first_name: user.first_name || null,
       last_name:  user.last_name  || null,
       avatar_url: user.avatar_url || null,
-      tg_id:      user.tg_id ? String(user.tg_id) : null,
       vk_id:      user.vk_id     || null,
       yandex_id:  user.yandex_id || null,
       last_login_provider: user.last_login_provider || null,
@@ -449,20 +430,20 @@ router.patch('/me', requireAuth, async (req, res) => {
 // «Обновить аватар» в настройках профиля.
 router.post('/refresh-avatar', requireAuth, async (req, res) => {
   try {
-    const [user] = await sql`SELECT id, tg_id, vk_id, yandex_id, yandex_avatar_id FROM users WHERE id = ${req.userId}`;
+    const [user] = await sql`SELECT id, vk_id, yandex_id, yandex_avatar_id FROM users WHERE id = ${req.userId}`;
     if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
-    if (!user.tg_id && !user.vk_id && !user.yandex_id) {
-      return res.status(400).json({ message: 'Нет привязанного Telegram или VK' });
+    if (!user.vk_id && !user.yandex_id) {
+      return res.status(400).json({ message: 'Нет привязанного Яндекса или VK' });
     }
 
-    const candidates = await fetchProviderAvatarCandidates(req.bot, user);
+    const candidates = await fetchProviderAvatarCandidates(user);
     const avatarUrl = await downloadFirstAvatar(user.id, candidates);
     if (!avatarUrl) {
       return res.status(422).json({ message: 'Не удалось получить фото профиля' });
     }
 
     const [full] = await sql`
-      SELECT username, first_name, last_name, avatar_url, tg_id, vk_id, yandex_id, last_login_provider
+      SELECT username, first_name, last_name, avatar_url, vk_id, yandex_id, last_login_provider
       FROM users WHERE id = ${req.userId}
     `;
     res.json({
@@ -470,7 +451,6 @@ router.post('/refresh-avatar', requireAuth, async (req, res) => {
       first_name: full.first_name || null,
       last_name:  full.last_name  || null,
       avatar_url: full.avatar_url || null,
-      tg_id:      full.tg_id ? String(full.tg_id) : null,
       vk_id:      full.vk_id     || null,
       yandex_id:  full.yandex_id || null,
       last_login_provider: full.last_login_provider || null,
@@ -482,7 +462,7 @@ router.post('/refresh-avatar', requireAuth, async (req, res) => {
 });
 
 // Объединяет данные двух аккаунтов: переносит всё из deleteId в keepId, удаляет deleteId.
-// Используется при привязке второго способа входа, если tg_id/vk_id уже занят другим аккаунтом.
+// Используется при привязке второго способа входа, если vk_id/yandex_id уже занят другим аккаунтом.
 async function mergeUsers(keepId, deleteId) {
   // Передаём creator_id привычек
   await sql`UPDATE habits SET creator_id = ${keepId} WHERE creator_id = ${deleteId}`;
@@ -579,17 +559,16 @@ router.post('/link/yandex', requireAuth, async (req, res) => {
         phone      = COALESCE(phone,      ${phoneVal}),
         yandex_avatar_id = COALESCE(${yandexAvatarId(info)}, yandex_avatar_id)
       WHERE id = ${req.userId}
-      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, yandex_id, last_login_provider
+      RETURNING id, username, first_name, last_name, avatar_url, vk_id, yandex_id, last_login_provider
     `;
 
-    const avatarUrl = await ensureAvatar(req.bot, user, yandexPhotoUrl(info));
+    const avatarUrl = await ensureAvatar(user, yandexPhotoUrl(info));
 
     res.json({
       username:   user.username   || null,
       first_name: user.first_name || null,
       last_name:  user.last_name  || null,
       avatar_url: avatarUrl       || null,
-      tg_id:      user.tg_id ? String(user.tg_id) : null,
       vk_id:      user.vk_id     || null,
       yandex_id:  user.yandex_id || null,
       last_login_provider: user.last_login_provider || null,
@@ -628,17 +607,16 @@ router.post('/link/vk', requireAuth, async (req, res) => {
         email      = COALESCE(email,      ${email           || null}),
         phone      = COALESCE(phone,      ${phone           || null})
       WHERE id = ${req.userId}
-      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, yandex_id, last_login_provider
+      RETURNING id, username, first_name, last_name, avatar_url, vk_id, yandex_id, last_login_provider
     `;
 
-    const avatarUrl = await ensureAvatar(req.bot, user, photo200 || null);
+    const avatarUrl = await ensureAvatar(user, photo200 || null);
 
     res.json({
       username:   user.username   || null,
       first_name: user.first_name || null,
       last_name:  user.last_name  || null,
       avatar_url: avatarUrl       || null,
-      tg_id:      user.tg_id ? String(user.tg_id) : null,
       vk_id:      user.vk_id     || null,
       yandex_id:  user.yandex_id || null,
       last_login_provider: user.last_login_provider || null,
@@ -685,29 +663,8 @@ router.delete('/me', requireAuth, async (req, res) => {
         }
       }
 
-      // 2. Legacy-таблицы бота шагов: у groups/goals каскадов нет, чистим снизу вверх.
-      await sql`DELETE FROM steps WHERE user_id = ${userId}`;
-      const creatorGroups = await sql`SELECT id FROM groups WHERE creator_id = ${userId}`;
-      for (const group of creatorGroups) {
-        const others = await sql`
-          SELECT user_id FROM group_members
-          WHERE group_id = ${group.id} AND user_id != ${userId}
-          ORDER BY joined_at ASC
-          LIMIT 1
-        `;
-        if (others.length > 0) {
-          await sql`UPDATE groups SET creator_id = ${others[0].user_id} WHERE id = ${group.id}`;
-        } else {
-          await sql`DELETE FROM steps WHERE goal_id IN (SELECT id FROM goals WHERE group_id = ${group.id})`;
-          await sql`DELETE FROM goals WHERE group_id = ${group.id}`;
-          await sql`DELETE FROM group_members WHERE group_id = ${group.id}`;
-          await sql`DELETE FROM groups WHERE id = ${group.id}`;
-        }
-      }
-
-      // 3. Остальные ссылки на пользователя
-      await sql`DELETE FROM group_members WHERE user_id = ${userId}`;
-      await sql`DELETE FROM auth_codes WHERE user_id = ${userId}`;
+      // 2. Остальные ссылки на пользователя. Legacy-таблицы бота шагов
+      //    (steps/groups/group_members/goals/auth_codes) удалены вместе с ботом.
       await sql`DELETE FROM refresh_tokens WHERE user_id = ${userId}`;
       await sql`DELETE FROM habit_logs WHERE user_id = ${userId}`;
       await sql`DELETE FROM habit_members WHERE user_id = ${userId}`;

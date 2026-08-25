@@ -74,11 +74,9 @@ export type UserProfile = {
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
-  tg_id: string | null;
   vk_id: string | null;
   yandex_id: string | null;
-  // 'telegram' встречается только у старых аккаунтов — вход через Telegram убран.
-  last_login_provider: 'telegram' | 'vk' | 'yandex' | null;
+  last_login_provider: 'vk' | 'yandex' | null;
 };
 
 export async function getMe(): Promise<UserProfile> {
@@ -97,7 +95,7 @@ export async function linkVk(data: { accessToken: string; userId: string; firstN
   return request('/auth/link/vk', { method: 'POST', body: JSON.stringify(data) }, true);
 }
 
-/** Принудительно перекачать аватар с привязанного провайдера (Telegram/VK). */
+/** Принудительно перекачать аватар с привязанного провайдера (Яндекс/VK). */
 export async function refreshAvatar(): Promise<UserProfile> {
   return request('/auth/refresh-avatar', { method: 'POST' }, true);
 }

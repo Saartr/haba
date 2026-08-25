@@ -37,7 +37,7 @@ import ArrowBackIcon from '@/assets/icons/ArrowBack.svg';
 import AutorenewIcon from '@/assets/icons/Autorenew.svg';
 import MailIcon from '@/assets/icons/Mail.svg';
 import PinIcon from '@/assets/icons/Pin.svg';
-import TelegramIcon from '@/assets/icons/Telegram.svg';
+import YandexIcon from '@/assets/icons/Yandex.svg';
 import UserIcon from '@/assets/icons/User.svg';
 import SettingsIcon from '@/assets/icons/Settings.svg';
 import InfoCircleIcon from '@/assets/icons/InfoCircle.svg';
@@ -229,9 +229,9 @@ export default function DevScreen() {
 
           <Label text="Default + icon" />
           <Button
-            label="Войти через Telegram"
+            label="Войти через Яндекс"
             onPress={() => {}}
-            icon={<TelegramIcon />}
+            icon={<YandexIcon />}
           />
 
           <Label text="Loading" />
@@ -355,7 +355,7 @@ export default function DevScreen() {
 
           <Label text="Default + иконка" />
           <Input
-            label="Логин Telegram"
+            label="Логин Яндекс"
             value={inputValue}
             onChangeText={setInputValue}
             placeholder="username"
@@ -364,7 +364,7 @@ export default function DevScreen() {
 
           <Label text="Error" />
           <Input
-            label="Логин Telegram"
+            label="Логин Яндекс"
             value="wronguser"
             onChangeText={() => {}}
             icon={<MailIcon width={24} height={24} color={colors.error} />}
@@ -373,7 +373,7 @@ export default function DevScreen() {
 
           <Label text="Disabled" />
           <Input
-            label="Логин Telegram"
+            label="Логин Яндекс"
             value="username"
             onChangeText={() => {}}
             icon={<MailIcon width={24} height={24} color={colors.neutral[500]} />}

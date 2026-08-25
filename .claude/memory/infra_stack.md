@@ -20,14 +20,13 @@ metadata:
 
 **Бэкенд** (`/var/www/haba/backend` на `bot.mihmih.pro`, Ubuntu 24.04.4 LTS, в репо в папке `backend/`):
 - Node.js v22, Express 5
-- grammy v1 (Telegram Bot API) — бот `@Step_Challenges_Bot`
 - PostgreSQL (библиотека `postgres` tag, не pg/knex)
 - PM2 (процесс-менеджер, имя процесса `step-bot`)
-- node-cron (дайджесты в 19:00, 20:00, 21:00 МСК)
+- node-cron (пуш-напоминания по целям; дайджесты бота удалены 2026-08-25)
 
 **BASE_URL API:** `https://bot.mihmih.pro/api/v1`
 
-**Env-переменные сервера:** `TELEGRAM_TOKEN` (только бот шагов), `WEBHOOK_SECRET`, `PORT` (3000), `WEBHOOK_URL`, `DATABASE_URL`, `JWT_SECRET`, `VK_CLIENT_SECRET`, `VK_SERVICE_TOKEN`, `YANDEX_CLIENT_ID`
+**Env-переменные сервера:** `PORT` (3000), `DATABASE_URL`, `JWT_SECRET`, `VK_CLIENT_SECRET`, `VK_SERVICE_TOKEN`, `YANDEX_CLIENT_ID`. Мертвы после удаления бота (2026-08-25), можно убрать: `TELEGRAM_TOKEN`, `WEBHOOK_SECRET`, `WEBHOOK_URL`, `TELEGRAM_CLIENT_ID`, `GOOGLE_CLIENT_ID/SECRET`
 
 **JWT:** accessToken TTL 15 мин, refreshToken TTL 30 дней (ротируется при использовании)
 
