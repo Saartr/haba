@@ -78,7 +78,11 @@ oauth.yandex.ru, платформа Android, package `pro.mihmih.haba`, прав
 
 ## Хвосты
 
-- Иконка `assets/icons/Yandex.svg` нарисована вручную (глиф «Я»), в TapaDS её нет.
-  Брендбук Яндекса требует официальный знак — заменить до релиза.
+- Иконка `assets/icons/Yandex.svg` — официальная, взята из TapaDS (node `508:915`).
+  При переносе `fill="white"` заменён на `currentColor` и убран экспортный мусор Figma
+  (`<g>`, `preserveAspectRatio`, `overflow`, инлайновый `style`); путь и viewBox как есть.
+- Аватар проверен вживую: `default_avatar_id` сохраняется в `yandex_avatar_id`, файл
+  скачивается в `public/avatars/{userId}.jpg`. У аккаунтов без фото (`is_avatar_empty`)
+  остаётся кружок с буквой — это штатно.
 - `users.tg_id`, таблицы бота и сам бот удалены следом (см. `migrate_drop_legacy.js`),
   поэтому в `ensureAvatar` больше нет ветки Telegram — остались VK и Яндекс.
