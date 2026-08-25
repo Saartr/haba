@@ -15,14 +15,9 @@ const REFRESH_TTL = '30d';
 const AVATARS_DIR = '/var/www/haba/backend/public/avatars';
 const AVATARS_URL = 'https://bot.mihmih.pro/avatars';
 
-// Telegram Native Login (нативный SDK) — на сервере только верификация id_token.
-// Браузерный OIDC-флоу (PKCE/обмен code→token) НЕ используется: SDK отдаёт id_token напрямую.
-const jose = require('jose');
-const TG_CLIENT_ID = process.env.TELEGRAM_CLIENT_ID;
-const TG_OIDC_ISSUER = 'https://oauth.telegram.org';
-const TG_JWKS = jose.createRemoteJWKSet(
-  new URL('https://oauth.telegram.org/.well-known/jwks.json'),
-);
+// Яндекс ID. Нативный SDK отдаёт готовый OAuth-токен, поэтому обмена code→token на сервере
+// нет — только проверка токена через login.yandex.ru/info. Секрет приложения не нужен.
+const YANDEX_CLIENT_ID = process.env.YANDEX_CLIENT_ID;
 
 function makeAccessToken(userId) {
   return jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: ACCESS_TTL });
@@ -94,10 +89,44 @@ async function fetchVkPhotoUrl(vkId) {
   return u.photo_max_orig || u.photo_200 || u.photo_100 || null;
 }
 
-// Кандидаты URL фото профиля из ЛЮБОГО привязанного провайдера (если привязаны и tg_id,
-// и vk_id — проверяем оба). Порядок: Telegram Bot API (надёжнее временных URL) → VK
-// users.get (сервисный токен) → freshProviderPhotoUrl (photo_url из виджета/OIDC claims —
-// последний фоллбэк на случай, если оба провайдер-специфичных способа не сработали).
+// Профиль пользователя по OAuth-токену Яндекса. В отличие от VK, токен не привязан к IP,
+// поэтому его можно проверять с сервера напрямую и сервисный ключ не нужен.
+// ВАЖНО: ответ содержит client_id — его обязательно сверять со своим. Иначе токен, выданный
+// постороннему приложению, можно предъявить нашему серверу и войти под чужим аккаунтом.
+async function fetchYandexUserInfo(accessToken) {
+  const res = await fetch('https://login.yandex.ru/info?format=json', {
+    headers: { Authorization: `OAuth ${accessToken}` },
+  });
+  if (!res.ok) throw new Error(`Yandex info HTTP ${res.status}`);
+  const data = await res.json();
+  if (!data.id) throw new Error('Yandex info: пустой id');
+  if (YANDEX_CLIENT_ID && data.client_id !== YANDEX_CLIENT_ID) {
+    throw new Error('Yandex info: токен выдан другому приложению');
+  }
+  return data;
+}
+
+// Аватар Яндекса собирается из default_avatar_id. is_avatar_empty=true — стоит заглушка,
+// её качать не нужно. islands-200 — размер 200×200, как photo_200 у VK.
+function yandexAvatarUrlById(avatarId) {
+  return `https://avatars.yandex.net/get-yapic/${avatarId}/islands-200`;
+}
+
+function yandexAvatarId(info) {
+  if (!info?.default_avatar_id || info.is_avatar_empty) return null;
+  return String(info.default_avatar_id);
+}
+
+function yandexPhotoUrl(info) {
+  const id = yandexAvatarId(info);
+  return id ? yandexAvatarUrlById(id) : null;
+}
+
+// Кандидаты URL фото профиля из ЛЮБОГО привязанного провайдера (если привязаны и yandex_id,
+// и vk_id — проверяем оба). Порядок: VK users.get (сервисный токен) → Яндекс (нужен живой
+// токен, поэтому только freshProviderPhotoUrl) → freshProviderPhotoUrl как общий фоллбэк.
+// tg_id остаётся у старых аккаунтов: Telegram-вход убран, но скачать аватар по нему всё ещё
+// можно, пока жив бот.
 async function fetchProviderAvatarCandidates(bot, user, freshProviderPhotoUrl) {
   const candidates = [];
   if (user.tg_id) {
@@ -119,6 +148,9 @@ async function fetchProviderAvatarCandidates(bot, user, freshProviderPhotoUrl) {
     } catch (e) {
       console.error('Avatar: VK users.get lookup failed:', e.message);
     }
+  }
+  if (user.yandex_avatar_id) {
+    candidates.push(yandexAvatarUrlById(user.yandex_avatar_id));
   }
   if (freshProviderPhotoUrl) candidates.push(freshProviderPhotoUrl);
   return candidates;
@@ -200,7 +232,7 @@ router.post('/vk', async (req, res) => {
         email      = COALESCE(EXCLUDED.email,      users.email),
         phone      = COALESCE(EXCLUDED.phone,      users.phone),
         last_login_provider = 'vk'
-      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
+      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, yandex_id, last_login_provider
     `;
 
     const avatarUrl = await ensureAvatar(req.bot, user, photoUrl);
@@ -225,6 +257,7 @@ router.post('/vk', async (req, res) => {
         avatar_url: avatarUrl || null,
         tg_id:      user.tg_id ? String(user.tg_id) : null,
         vk_id:      user.vk_id || null,
+        yandex_id:  user.yandex_id || null,
         last_login_provider: user.last_login_provider || null,
       },
     });
@@ -234,51 +267,48 @@ router.post('/vk', async (req, res) => {
   }
 });
 
-// POST /api/v1/auth/telegram-native — нативный Telegram SDK отдаёт id_token (OIDC JWT).
-// Верифицируем подпись через JWKS Telegram (RS256), проверяем iss/aud, достаём claims.
-router.post('/telegram-native', async (req, res) => {
-  const { id_token } = req.body;
-  if (!id_token) return res.status(400).json({ message: 'id_token обязателен' });
+// POST /api/v1/auth/yandex — нативный Яндекс ID SDK отдаёт готовый OAuth-токен.
+// Сервер меняет его на профиль через login.yandex.ru/info (там же сверяется client_id).
+router.post('/yandex', async (req, res) => {
+  const { accessToken: yandexToken } = req.body;
+  if (!yandexToken) return res.status(400).json({ message: 'accessToken обязателен' });
 
-  let claims;
+  let info;
   try {
-    const { payload } = await jose.jwtVerify(id_token, TG_JWKS, {
-      issuer: TG_OIDC_ISSUER,
-      audience: TG_CLIENT_ID,
-    });
-    claims = payload;
+    info = await fetchYandexUserInfo(yandexToken);
   } catch (e) {
-    console.error('telegram-native verify failed:', e.message);
-    return res.status(401).json({ message: 'Недействительный id_token' });
+    console.error('yandex verify failed:', e.message);
+    return res.status(401).json({ message: 'Не удалось верифицировать токен Яндекса' });
   }
 
-  // OIDC claims: sub/id = tg user id, name, preferred_username, picture, phone_number
-  const tgId = String(claims.id ?? claims.sub);
-  if (!tgId || tgId === 'undefined') {
-    return res.status(400).json({ message: 'В токене нет идентификатора пользователя' });
-  }
-  const fullName = typeof claims.name === 'string' ? claims.name.trim() : '';
-  const firstName = fullName ? fullName.split(/\s+/)[0] : null;
-  const lastName = fullName && fullName.includes(' ')
-    ? fullName.slice(firstName.length).trim() || null
-    : null;
-  const username = claims.preferred_username || null;
-  const phone = claims.phone_number || null;
+  const yandexId = String(info.id);
+  // real_name/display_name — фоллбэк, если у аккаунта не заполнены отдельные поля имени.
+  const fullName = (info.real_name || info.display_name || '').trim();
+  const firstName = info.first_name || (fullName ? fullName.split(/\s+/)[0] : null);
+  const lastName = info.last_name
+    || (fullName && fullName.includes(' ') ? fullName.slice(fullName.split(/\s+/)[0].length).trim() || null : null);
+  const username = info.login || null;
+  const emailVal = info.default_email || info.emails?.[0] || null;
+  const phoneVal = info.default_phone?.number || null;
+  const avatarId = yandexAvatarId(info);
+  const photoUrl = avatarId ? yandexAvatarUrlById(avatarId) : null;
 
   try {
     const [user] = await sql`
-      INSERT INTO users (tg_id, username, first_name, last_name, phone, last_login_provider)
-      VALUES (${tgId}, ${username}, ${firstName}, ${lastName}, ${phone}, 'telegram')
-      ON CONFLICT (tg_id) DO UPDATE SET
+      INSERT INTO users (yandex_id, username, first_name, last_name, email, phone, yandex_avatar_id, last_login_provider)
+      VALUES (${yandexId}, ${username}, ${firstName}, ${lastName}, ${emailVal}, ${phoneVal}, ${avatarId}, 'yandex')
+      ON CONFLICT (yandex_id) DO UPDATE SET
         username   = COALESCE(users.username,   EXCLUDED.username),
         first_name = COALESCE(users.first_name, EXCLUDED.first_name),
         last_name  = COALESCE(users.last_name,  EXCLUDED.last_name),
+        email      = COALESCE(EXCLUDED.email,      users.email),
         phone      = COALESCE(EXCLUDED.phone,      users.phone),
-        last_login_provider = 'telegram'
-      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
+        yandex_avatar_id = COALESCE(EXCLUDED.yandex_avatar_id, users.yandex_avatar_id),
+        last_login_provider = 'yandex'
+      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, yandex_id, last_login_provider
     `;
 
-    const avatarUrl = await ensureAvatar(req.bot, user, claims.picture || null);
+    const avatarUrl = await ensureAvatar(req.bot, user, photoUrl);
 
     const accessToken = makeAccessToken(user.id);
     const refreshToken = makeRefreshToken(user.id);
@@ -300,11 +330,12 @@ router.post('/telegram-native', async (req, res) => {
         avatar_url: avatarUrl || null,
         tg_id:      user.tg_id ? String(user.tg_id) : null,
         vk_id:      user.vk_id || null,
+        yandex_id:  user.yandex_id || null,
         last_login_provider: user.last_login_provider || null,
       },
     });
   } catch (e) {
-    console.error('telegram-native auth error:', e);
+    console.error('yandex auth error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
@@ -361,7 +392,7 @@ router.post('/refresh', async (req, res) => {
 router.get('/me', requireAuth, async (req, res) => {
   try {
     const [user] = await sql`
-      SELECT username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
+      SELECT username, first_name, last_name, avatar_url, tg_id, vk_id, yandex_id, last_login_provider
       FROM users WHERE id = ${req.userId}
     `;
     if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
@@ -373,6 +404,7 @@ router.get('/me', requireAuth, async (req, res) => {
       avatar_url: user.avatar_url || null,
       tg_id:      user.tg_id ? String(user.tg_id) : null,
       vk_id:      user.vk_id     || null,
+      yandex_id:  user.yandex_id || null,
       last_login_provider: user.last_login_provider || null,
     });
   } catch (e) {
@@ -392,7 +424,7 @@ router.patch('/me', requireAuth, async (req, res) => {
     const [user] = await sql`
       UPDATE users SET first_name = ${first_name.trim()}
       WHERE id = ${req.userId}
-      RETURNING username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
+      RETURNING username, first_name, last_name, avatar_url, tg_id, vk_id, yandex_id, last_login_provider
     `;
     if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
 
@@ -403,6 +435,7 @@ router.patch('/me', requireAuth, async (req, res) => {
       avatar_url: user.avatar_url || null,
       tg_id:      user.tg_id ? String(user.tg_id) : null,
       vk_id:      user.vk_id     || null,
+      yandex_id:  user.yandex_id || null,
       last_login_provider: user.last_login_provider || null,
     });
   } catch (e) {
@@ -416,9 +449,9 @@ router.patch('/me', requireAuth, async (req, res) => {
 // «Обновить аватар» в настройках профиля.
 router.post('/refresh-avatar', requireAuth, async (req, res) => {
   try {
-    const [user] = await sql`SELECT id, tg_id, vk_id FROM users WHERE id = ${req.userId}`;
+    const [user] = await sql`SELECT id, tg_id, vk_id, yandex_id, yandex_avatar_id FROM users WHERE id = ${req.userId}`;
     if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
-    if (!user.tg_id && !user.vk_id) {
+    if (!user.tg_id && !user.vk_id && !user.yandex_id) {
       return res.status(400).json({ message: 'Нет привязанного Telegram или VK' });
     }
 
@@ -429,7 +462,7 @@ router.post('/refresh-avatar', requireAuth, async (req, res) => {
     }
 
     const [full] = await sql`
-      SELECT username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
+      SELECT username, first_name, last_name, avatar_url, tg_id, vk_id, yandex_id, last_login_provider
       FROM users WHERE id = ${req.userId}
     `;
     res.json({
@@ -439,6 +472,7 @@ router.post('/refresh-avatar', requireAuth, async (req, res) => {
       avatar_url: full.avatar_url || null,
       tg_id:      full.tg_id ? String(full.tg_id) : null,
       vk_id:      full.vk_id     || null,
+      yandex_id:  full.yandex_id || null,
       last_login_provider: full.last_login_provider || null,
     });
   } catch (e) {
@@ -506,48 +540,49 @@ async function mergeUsers(keepId, deleteId) {
   await sql`DELETE FROM users WHERE id = ${deleteId}`;
 }
 
-// POST /api/v1/auth/link/telegram — привязать Telegram к текущему аккаунту.
-// Если tg_id уже есть у другого юзера — мерджим его в текущий.
-router.post('/link/telegram', requireAuth, async (req, res) => {
-  const { id_token } = req.body;
-  if (!id_token) return res.status(400).json({ message: 'id_token обязателен' });
+// POST /api/v1/auth/link/yandex — привязать Яндекс к текущему аккаунту.
+// Если yandex_id уже есть у другого юзера — мерджим его в текущий.
+router.post('/link/yandex', requireAuth, async (req, res) => {
+  const { accessToken: yandexToken } = req.body;
+  if (!yandexToken) return res.status(400).json({ message: 'accessToken обязателен' });
 
-  let claims;
+  let info;
   try {
-    const { payload } = await jose.jwtVerify(id_token, TG_JWKS, {
-      issuer: TG_OIDC_ISSUER,
-      audience: TG_CLIENT_ID,
-    });
-    claims = payload;
+    info = await fetchYandexUserInfo(yandexToken);
   } catch (e) {
-    return res.status(401).json({ message: 'Недействительный id_token' });
+    console.error('link/yandex verify failed:', e.message);
+    return res.status(401).json({ message: 'Не удалось верифицировать токен Яндекса' });
   }
 
-  const tgId = String(claims.id ?? claims.sub);
-  const username = claims.preferred_username || null;
-  const fullName = typeof claims.name === 'string' ? claims.name.trim() : '';
-  const firstName = fullName ? fullName.split(/\s+/)[0] : null;
-  const lastName = fullName && fullName.includes(' ') ? fullName.slice(firstName.length).trim() || null : null;
-  const phone = claims.phone_number || null;
+  const yandexId = String(info.id);
+  const fullName = (info.real_name || info.display_name || '').trim();
+  const firstName = info.first_name || (fullName ? fullName.split(/\s+/)[0] : null);
+  const lastName = info.last_name
+    || (fullName && fullName.includes(' ') ? fullName.slice(fullName.split(/\s+/)[0].length).trim() || null : null);
+  const username = info.login || null;
+  const emailVal = info.default_email || info.emails?.[0] || null;
+  const phoneVal = info.default_phone?.number || null;
 
   try {
     const [conflict] = await sql`
-      SELECT id FROM users WHERE tg_id = ${tgId} AND id != ${req.userId}
+      SELECT id FROM users WHERE yandex_id = ${yandexId} AND id != ${req.userId}
     `;
     if (conflict) await mergeUsers(req.userId, conflict.id);
 
     const [user] = await sql`
       UPDATE users SET
-        tg_id      = ${tgId},
+        yandex_id  = ${yandexId},
         username   = COALESCE(username,   ${username}),
         first_name = COALESCE(first_name, ${firstName}),
         last_name  = COALESCE(last_name,  ${lastName}),
-        phone      = COALESCE(phone,      ${phone})
+        email      = COALESCE(email,      ${emailVal}),
+        phone      = COALESCE(phone,      ${phoneVal}),
+        yandex_avatar_id = COALESCE(${yandexAvatarId(info)}, yandex_avatar_id)
       WHERE id = ${req.userId}
-      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
+      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, yandex_id, last_login_provider
     `;
 
-    const avatarUrl = await ensureAvatar(req.bot, user, claims.picture || null);
+    const avatarUrl = await ensureAvatar(req.bot, user, yandexPhotoUrl(info));
 
     res.json({
       username:   user.username   || null,
@@ -556,10 +591,11 @@ router.post('/link/telegram', requireAuth, async (req, res) => {
       avatar_url: avatarUrl       || null,
       tg_id:      user.tg_id ? String(user.tg_id) : null,
       vk_id:      user.vk_id     || null,
+      yandex_id:  user.yandex_id || null,
       last_login_provider: user.last_login_provider || null,
     });
   } catch (e) {
-    console.error('link/telegram error:', e);
+    console.error('link/yandex error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
@@ -592,7 +628,7 @@ router.post('/link/vk', requireAuth, async (req, res) => {
         email      = COALESCE(email,      ${email           || null}),
         phone      = COALESCE(phone,      ${phone           || null})
       WHERE id = ${req.userId}
-      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, last_login_provider
+      RETURNING id, username, first_name, last_name, avatar_url, tg_id, vk_id, yandex_id, last_login_provider
     `;
 
     const avatarUrl = await ensureAvatar(req.bot, user, photo200 || null);
@@ -604,6 +640,7 @@ router.post('/link/vk', requireAuth, async (req, res) => {
       avatar_url: avatarUrl       || null,
       tg_id:      user.tg_id ? String(user.tg_id) : null,
       vk_id:      user.vk_id     || null,
+      yandex_id:  user.yandex_id || null,
       last_login_provider: user.last_login_provider || null,
     });
   } catch (e) {

@@ -14,9 +14,11 @@ PostgreSQL на сервере `bot.mihmih.pro`. Подключение чере
 users          — id, tg_id BIGINT NULL (был NOT NULL, снят в migrate_vk.js), vk_id TEXT,
                  username, first_name, last_name,
                  email TEXT, phone TEXT,
+                 yandex_id TEXT, yandex_avatar_id TEXT,   -- Яндекс ID (см. feature_yandex_id)
                  avatar_url, health_connected_at TIMESTAMPTZ, created_at,
-                 last_login_provider TEXT NULL ('telegram'|'vk')
+                 last_login_provider TEXT NULL ('yandex'|'vk'; 'telegram' — только старые записи)
                partial UNIQUE INDEX users_vk_id_unique ON (vk_id) WHERE vk_id IS NOT NULL
+               partial UNIQUE INDEX users_yandex_id_unique ON (yandex_id) WHERE yandex_id IS NOT NULL
 groups         — id, name, invite_code UNIQUE, creator_id → users, created_at
 group_members  — user_id → users, group_id → groups, joined_at; PK(user_id, group_id)
 goals          — id, group_id → groups, steps_per_day, period_days, starts_at, deadline

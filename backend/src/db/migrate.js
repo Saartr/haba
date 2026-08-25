@@ -82,8 +82,12 @@ async function runMigrations() {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT`;
 
-  // Способ последнего входа ('telegram'|'vk') — для иконки сервиса на главном экране
+  // Способ последнего входа ('yandex'|'vk') — для иконки сервиса на главном экране.
+  // Значение 'telegram' встречается у старых записей: Telegram-вход убран, см. migrate_yandex.
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_provider TEXT`;
+
+  const migrateYandex = require('./migrate_yandex');
+  await migrateYandex();
 
   const migrateHabits = require('./migrate_habits');
   await migrateHabits();

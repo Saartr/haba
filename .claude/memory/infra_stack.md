@@ -27,7 +27,7 @@ metadata:
 
 **BASE_URL API:** `https://bot.mihmih.pro/api/v1`
 
-**Env-переменные сервера:** `TELEGRAM_TOKEN`, `WEBHOOK_SECRET`, `PORT` (3000), `WEBHOOK_URL`, `DATABASE_URL`, `JWT_SECRET`
+**Env-переменные сервера:** `TELEGRAM_TOKEN` (только бот шагов), `WEBHOOK_SECRET`, `PORT` (3000), `WEBHOOK_URL`, `DATABASE_URL`, `JWT_SECRET`, `VK_CLIENT_SECRET`, `VK_SERVICE_TOKEN`, `YANDEX_CLIENT_ID`
 
 **JWT:** accessToken TTL 15 мин, refreshToken TTL 30 дней (ротируется при использовании)
 

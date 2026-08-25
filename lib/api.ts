@@ -53,11 +53,12 @@ export type AuthResult = {
   user: UserProfile;
 };
 
-// Нативный Telegram SDK отдаёт id_token (OIDC JWT) — сервер его верифицирует.
-export async function telegramNativeAuth(idToken: string): Promise<AuthResult> {
-  return request('/auth/telegram-native', {
+// Нативный Яндекс ID SDK отдаёт OAuth-токен — сервер меняет его на профиль
+// через login.yandex.ru/info и там же сверяет client_id.
+export async function yandexAuth(accessToken: string): Promise<AuthResult> {
+  return request('/auth/yandex', {
     method: 'POST',
-    body: JSON.stringify({ id_token: idToken }),
+    body: JSON.stringify({ accessToken }),
   });
 }
 
@@ -75,7 +76,9 @@ export type UserProfile = {
   avatar_url: string | null;
   tg_id: string | null;
   vk_id: string | null;
-  last_login_provider: 'telegram' | 'vk' | null;
+  yandex_id: string | null;
+  // 'telegram' встречается только у старых аккаунтов — вход через Telegram убран.
+  last_login_provider: 'telegram' | 'vk' | 'yandex' | null;
 };
 
 export async function getMe(): Promise<UserProfile> {
@@ -86,8 +89,8 @@ export async function updateProfile(data: { first_name: string }): Promise<UserP
   return request('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }, true);
 }
 
-export async function linkTelegram(idToken: string): Promise<UserProfile> {
-  return request('/auth/link/telegram', { method: 'POST', body: JSON.stringify({ id_token: idToken }) }, true);
+export async function linkYandex(accessToken: string): Promise<UserProfile> {
+  return request('/auth/link/yandex', { method: 'POST', body: JSON.stringify({ accessToken }) }, true);
 }
 
 export async function linkVk(data: { accessToken: string; userId: string; firstName?: string; lastName?: string; photo200?: string; email?: string; phone?: string }): Promise<UserProfile> {

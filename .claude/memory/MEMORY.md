@@ -20,8 +20,9 @@
 
 ## Фичи
 
-- [Авторизация](feature_auth.md) — Telegram (нативный OIDC) + VK ID (SDK 2.7.1, Expo Module); фикс гонки /auth/refresh; имя не затирается при повторном логине; аватар с любого привязанного провайдера + POST /auth/refresh-avatar
-- [Telegram Login](feature_telegram_login.md) — ✅ работает + телефон (scope=phone). SDK = браузерный OIDC через oauth.telegram.org. 🔴 требует VPN без split-tunnel; ⚠️ release-сборка требует release SHA-256 в BotFather
+- [Авторизация](feature_auth.md) — Яндекс ID + VK ID (оба нативные Expo Modules); Telegram-вход удалён по 199-ФЗ; фикс гонки /auth/refresh; имя не затирается при повторном логине; аватар с любого привязанного провайдера + POST /auth/refresh-avatar
+- [Яндекс ID](feature_yandex_id.md) — authsdk 3.1.3 из mavenCentral, ActivityResultContract, проверка client_id на сервере, yandex_avatar_id в БД
+- [Telegram Login](feature_telegram_login.md) — ⛔ УДАЛЁН (2026-08-25), файл оставлен как история: запрет авторизации через иностранные сервисы, 199-ФЗ
 - [Health Connect](feature_health_connect.md) — ✅ работает на debug; причина бывшего пустого requestPermission — отсутствие Android-14 rationale activity-alias в манифесте, НЕ верификация
 - [Health Sync WorkManager](feature_health_sync.md) — ✅ реализовано: Expo Module health-sync, CoroutineWorker, refreshToken в SharedPreferences, scheduleSync/cancelSync
 - [Push-уведомления](feature_push.md) — ✅ реализовано: FCM HTTP v1 напрямую (без Expo), глобальный + per-habit тогглы, 5 типов пушей

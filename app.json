@@ -45,10 +45,9 @@
       ],
       "react-native-health-connect",
       "./plugins/with-health-permissions.js",
-      "./plugins/with-tg-queries.js",
-      "./plugins/with-telegram-applink.js",
       "./plugins/with-native-maven-repos.js",
       "./plugins/with-vk-manifest-placeholders.js",
+      "./plugins/with-yandex-manifest-placeholders.js",
       [
         "expo-build-properties",
         {

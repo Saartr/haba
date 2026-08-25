@@ -8,11 +8,11 @@ import Button from '@/components/Button';
 import { useColors, colors } from '@/lib/colors';
 import { useSettings } from '@/lib/settings-context';
 import { useAuth } from '@/lib/auth-context';
-import { updateProfile, linkTelegram, linkVk, refreshAvatar } from '@/lib/api';
-import { signInWithTelegram } from '@/modules/telegram-login';
+import { updateProfile, linkYandex, linkVk, refreshAvatar } from '@/lib/api';
+import { signInWithYandex } from '@/modules/yandex-id';
 import { signInWithVK } from '@/modules/vk-id';
 import NavigationBar from '@/components/NavigationBar';
-import TelegramIcon from '@/assets/icons/Telegram.svg';
+import YandexIcon from '@/assets/icons/Yandex.svg';
 import VKIcon from '@/assets/icons/VK.svg';
 import AutorenewIcon from '@/assets/icons/Autorenew.svg';
 
@@ -26,7 +26,7 @@ export default function ProfileSettingsScreen() {
 
   const [name, setName] = useState(user?.first_name ?? '');
   const [saving, setSaving] = useState(false);
-  const [linkingTg, setLinkingTg] = useState(false);
+  const [linkingYandex, setLinkingYandex] = useState(false);
   const [linkingVk, setLinkingVk] = useState(false);
   const [refreshingAvatar, setRefreshingAvatar] = useState(false);
 
@@ -47,18 +47,18 @@ export default function ProfileSettingsScreen() {
     }
   };
 
-  const handleLinkTelegram = async () => {
-    setLinkingTg(true);
+  const handleLinkYandex = async () => {
+    setLinkingYandex(true);
     try {
-      const idToken = await signInWithTelegram();
-      const updated = await linkTelegram(idToken);
+      const token = await signInWithYandex();
+      const updated = await linkYandex(token);
       updateUser(updated);
     } catch (e: any) {
-      if (e?.message !== 'CANCELLED') {
-        Alert.alert('Ошибка', e?.message ?? 'Не удалось привязать Telegram');
+      if (e?.code !== 'YANDEX_AUTH_CANCELLED' && e?.message !== 'CANCELLED') {
+        Alert.alert('Ошибка', e?.message ?? 'Не удалось привязать Яндекс');
       }
     } finally {
-      setLinkingTg(false);
+      setLinkingYandex(false);
     }
   };
 
@@ -89,7 +89,7 @@ export default function ProfileSettingsScreen() {
     }
   };
 
-  const hasTg = !!user?.tg_id;
+  const hasYandex = !!user?.yandex_id;
   const hasVk = !!user?.vk_id;
 
   return (
@@ -124,23 +124,23 @@ export default function ProfileSettingsScreen() {
           </Text>
 
           <View style={{ gap: 12 }}>
-            {hasTg ? (
+            {hasYandex ? (
               <View style={{
                 flexDirection: 'row', alignItems: 'center', gap: 12,
                 backgroundColor: c.surface.input, borderRadius: 16,
                 paddingHorizontal: 20, paddingVertical: 14,
               }}>
-                <TelegramIcon width={24} height={24} color={colors.purple[500]} />
+                <YandexIcon width={24} height={24} color={colors.purple[500]} />
                 <Text weight="semibold" style={{ fontSize: 15, color: c.text.primary }}>
-                  Telegram привязан
+                  Яндекс привязан
                 </Text>
               </View>
             ) : (
               <Button
-                label="Привязать Telegram"
-                icon={<TelegramIcon />}
-                onPress={handleLinkTelegram}
-                loading={linkingTg}
+                label="Привязать Яндекс"
+                icon={<YandexIcon />}
+                onPress={handleLinkYandex}
+                loading={linkingYandex}
               />
             )}
 

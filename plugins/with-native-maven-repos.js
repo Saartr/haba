@@ -4,9 +4,10 @@
 // dependency resolution, and android/ is gitignored + wiped by `prebuild --clean`,
 // so these repos must be (re)added by a config plugin on every prebuild.
 //
-//   - VK ID SDK (com.vk.id:vkid)        -> VK artifactory mirrors
-//   - Telegram Login SDK (org.telegram) -> GitHub Packages (needs gpr.user/gpr.key
-//                                          in ~/.gradle/gradle.properties)
+//   - VK ID SDK (com.vk.id:vkid) -> VK artifactory mirrors
+//
+// Яндекс ID (com.yandex.android:authsdk) здесь не нужен — он лежит в mavenCentral,
+// который уже подключён по умолчанию.
 
 const { withProjectBuildGradle } = require('@expo/config-plugins');
 
@@ -16,13 +17,6 @@ const REPOS_BLOCK = `    ${MARKER}
     maven { url 'https://artifactory-external.vkpartner.ru/artifactory/vkid-sdk-android/' }
     maven { url 'https://artifactory-external.vkpartner.ru/artifactory/maven/' }
     maven { url 'https://artifactory-external.vkpartner.ru/artifactory/vk-id-captcha/android/' }
-    maven {
-      url 'https://maven.pkg.github.com/TelegramMessenger/telegram-login-android'
-      credentials {
-        username = project.findProperty('gpr.user') ?: System.getenv('GITHUB_USERNAME')
-        password = project.findProperty('gpr.key') ?: System.getenv('GITHUB_TOKEN')
-      }
-    }
     // <<< native-maven-repos`;
 
 module.exports = function withNativeMavenRepos(config) {
