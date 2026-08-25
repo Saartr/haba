@@ -203,7 +203,7 @@ export default function DevScreen() {
       <View style={{ height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: borderColor }}>
         <Pressable onPress={() => router.back()} hitSlop={8}>
           {({ pressed }) => (
-            <View style={{ padding: 4, opacity: pressed ? 0.6 : 1 }}>
+            <View collapsable={false} style={{ padding: 4, opacity: pressed ? 0.6 : 1 }}>
               <ArrowBackIcon width={24} height={24} color={c.text.primary} />
             </View>
           )}
@@ -213,7 +213,7 @@ export default function DevScreen() {
         </Text>
         <Pressable onPress={() => updateSettings({ theme: colorScheme === 'dark' ? 'light' : 'dark' })} hitSlop={8}>
           {({ pressed }) => (
-            <View style={{ padding: 4, opacity: pressed ? 0.6 : 1 }}>
+            <View collapsable={false} style={{ padding: 4, opacity: pressed ? 0.6 : 1 }}>
               <AutorenewIcon width={24} height={24} color={c.text.primary} />
             </View>
           )}

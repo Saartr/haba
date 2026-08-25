@@ -29,7 +29,7 @@ export default function LegalScreen() {
       <View style={{ height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
         <Pressable onPress={() => router.back()} hitSlop={8}>
           {({ pressed }) => (
-            <View style={{ padding: 4, opacity: pressed ? 0.6 : 1 }}>
+            <View collapsable={false} style={{ padding: 4, opacity: pressed ? 0.6 : 1 }}>
               <ArrowBackIcon width={24} height={24} color={c.text.primary} />
             </View>
           )}
@@ -42,7 +42,7 @@ export default function LegalScreen() {
         </Text>
         <Pressable onPress={() => setLangMenu(true)} hitSlop={8}>
           {({ pressed }) => (
-            <View style={{ padding: 4, opacity: pressed ? 0.6 : 1 }}>
+            <View collapsable={false} style={{ padding: 4, opacity: pressed ? 0.6 : 1 }}>
               <LanguageIcon width={24} height={24} color={c.text.primary} />
             </View>
           )}

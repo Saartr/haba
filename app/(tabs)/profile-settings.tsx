@@ -123,13 +123,22 @@ export default function ProfileSettingsScreen() {
             Связанные аккаунты
           </Text>
 
+          {/* key на ветках обязателен. Обе ветки дают host-компонент View, но SVG-иконка
+              внутри лежит на РАЗНОЙ глубине: в «привязан» — прямо во View, в Button — на два
+              уровня глубже. Без key React переиспользует внешний View и переносит SVG между
+              уровнями, а Fabric не умеет переподключать RNSVGSvgViewAndroid к новому родителю:
+              «addViewAt: The specified child already has a parent» и краш экрана. С key ветки
+              считаются разными узлами — старая размонтируется целиком, новая монтируется. */}
           <View style={{ gap: 12 }}>
             {hasYandex ? (
-              <View style={{
-                flexDirection: 'row', alignItems: 'center', gap: 12,
-                backgroundColor: c.surface.input, borderRadius: 16,
-                paddingHorizontal: 20, paddingVertical: 14,
-              }}>
+              <View
+                key="yandex-linked"
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 12,
+                  backgroundColor: c.surface.input, borderRadius: 16,
+                  paddingHorizontal: 20, paddingVertical: 14,
+                }}
+              >
                 <YandexIcon width={24} height={24} color={colors.purple[500]} />
                 <Text weight="semibold" style={{ fontSize: 15, color: c.text.primary }}>
                   Яндекс привязан
@@ -137,6 +146,7 @@ export default function ProfileSettingsScreen() {
               </View>
             ) : (
               <Button
+                key="yandex-link"
                 label="Привязать Яндекс"
                 icon={<YandexIcon />}
                 onPress={handleLinkYandex}
@@ -145,11 +155,14 @@ export default function ProfileSettingsScreen() {
             )}
 
             {hasVk ? (
-              <View style={{
-                flexDirection: 'row', alignItems: 'center', gap: 12,
-                backgroundColor: c.surface.input, borderRadius: 16,
-                paddingHorizontal: 20, paddingVertical: 14,
-              }}>
+              <View
+                key="vk-linked"
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 12,
+                  backgroundColor: c.surface.input, borderRadius: 16,
+                  paddingHorizontal: 20, paddingVertical: 14,
+                }}
+              >
                 <VKIcon width={24} height={24} color={colors.purple[500]} />
                 <Text weight="semibold" style={{ fontSize: 15, color: c.text.primary }}>
                   VK привязан
@@ -157,6 +170,7 @@ export default function ProfileSettingsScreen() {
               </View>
             ) : (
               <Button
+                key="vk-link"
                 label="Привязать VK"
                 icon={<VKIcon />}
                 onPress={handleLinkVk}

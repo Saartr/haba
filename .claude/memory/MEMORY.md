@@ -34,6 +34,7 @@
 ## UI-паттерны
 
 - [Модалки и меню](ui_modals.md) — BottomSheet, ConfirmModal/useConfirm, DropdownPopover; единая анимация, elevation:0 на Android
+- [Краш SVG при схлопывании View](ui_svg_view_flattening.md) — «addViewAt: child already has a parent» на «назад»: иконка в обёртке с `opacity: pressed`, лечится `collapsable={false}`
 - [Клавиатура на Android](ui_keyboard.md) — edge-to-edge не ресайзит окно: useKeyboardPadding + «парящая» кнопка на экранах форм
 
 ## Бэклог

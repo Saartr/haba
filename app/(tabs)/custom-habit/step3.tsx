@@ -234,7 +234,7 @@ export default function Step3Screen() {
   const closeButton = (
     <Pressable onPress={handleExit} hitSlop={8}>
       {({ pressed }) => (
-        <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1 }}>
+        <View collapsable={false} style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1 }}>
           <CloseIcon width={24} height={24} color={c.text.primary} />
         </View>
       )}
