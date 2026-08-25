@@ -9,8 +9,7 @@
 - **Фронтенд:** React Native + Expo SDK 55, Expo Router, TypeScript, NativeWind v4, дизайн-система TapaDS (Figma — источник правды)
 - **Бэкенд** (`backend/` в этом репо): Node.js v22, Express 5, PostgreSQL (`postgres` tag-библиотека), PM2 — сервер `bot.mihmih.pro`
 - **Пуши:** FCM HTTP v1 напрямую (без Expo Push Service)
-- **Telegram Bot:** `@Step_Challenges_Bot` (grammy v1)
-- **Нативные модули** (Expo Modules API, `modules/`): `vk-id` (VK ID SDK 2.7.1), `telegram-login` (Telegram Login SDK), `health-sync` (WorkManager-синк шагов)
+- **Нативные модули** (Expo Modules API, `modules/`): `vk-id` (VK ID SDK 2.7.1), `yandex-id` (Яндекс ID authsdk 3.1.3), `health-sync` (WorkManager-синк шагов)
 
 ## Что умеет
 
@@ -21,7 +20,7 @@
 
 **Пуши (5 типов):** напоминание в 19:00, напоминания по кастомному времени цели, вступление в группу, достижение дневной цели, запись в групповой count-цели. Глобальный тоггл + тоггл на цель.
 
-**Авторизация:** Telegram (нативный OIDC) и VK ID (нативный SDK), привязка второго способа со слиянием аккаунтов, аватар подтягивается с любого привязанного провайдера.
+**Авторизация:** Яндекс ID и VK ID (оба — нативные SDK), привязка второго способа со слиянием аккаунтов, аватар подтягивается с любого привязанного провайдера. Вход через Telegram убран 2026-08-25 вместе с ботом шагов: по 199-ФЗ авторизация россиян через иностранные сервисы запрещена.
 
 ## Структура проекта
 
@@ -30,7 +29,7 @@ app/                  — экраны (Expo Router): главный, цель, 
 components/           — дизайн-система (Button, Card, BottomSheet, календари, ...)
 components/habit-screens/ — 4 варианта экрана цели (Solo/Progression/Pullups/Group)
 lib/                  — API-клиент, цвета, статусы целей, контексты, хуки
-modules/              — нативные Expo-модули (vk-id, telegram-login, health-sync)
+modules/              — нативные Expo-модули (vk-id, yandex-id, health-sync)
 plugins/              — config-плагины (переживают prebuild --clean)
 backend/              — Express-сервер: api/, db/ (миграции), push/, jobs/ (cron)
 .claude/memory/       — база знаний проекта (правила, инфра, фичи) — актуальнее README
@@ -45,7 +44,7 @@ $env:REACT_NATIVE_PACKAGER_HOSTNAME="192.168.1.143"; npx expo start
 
 ## Сборка APK
 
-Папка `android/` в `.gitignore` — генерируется локально через prebuild. Перед первой сборкой нужны секреты в `%USERPROFILE%\.gradle\gradle.properties`: `gpr.user`/`gpr.key` (GitHub PAT `read:packages` — для Telegram SDK), `VKIDClientSecret`, и для release — `TAPA_STORE_FILE`/`TAPA_STORE_PASSWORD`/`TAPA_KEY_ALIAS`/`TAPA_KEY_PASSWORD`.
+Папка `android/` в `.gitignore` — генерируется локально через prebuild. Перед первой сборкой нужны секреты в `%USERPROFILE%\.gradle\gradle.properties`: `VKIDClientSecret` и для release — `TAPA_STORE_FILE`/`TAPA_STORE_PASSWORD`/`TAPA_KEY_ALIAS`/`TAPA_KEY_PASSWORD`. Яндекс ID секрета не требует: SDK берёт из mavenCentral, client_id публичный и лежит в config-плагине.
 
 ```powershell
 # Первый раз — генерация нативной папки:
@@ -61,11 +60,9 @@ adb install app\build\outputs\apk\debug\app-debug.apk
 
 > ⚠️ После каждого `npm install` нужно вручную переналожить патч на `react-native-health-connect`: удалить вызов `coroutineContext.cancel()` в `HealthConnectPermissionDelegate.kt` (patch-package не настроен). Без патча запрос разрешений Health Connect ломается после первого вызова.
 
-### Telegram Native Login и подпись
+### Подпись приложения и провайдеры входа
 
-Telegram проверяет SHA-256 fingerprint подписи приложения. В BotFather (Web Login → Native Login → Android) зарегистрированы **оба** ключа — debug и release (`tapa-release.jks`). Если ключ меняется (например, Google Play App Signing) — добавить его SHA-256 в BotFather, иначе Telegram-логин не заработает.
-
-> 🔴 `oauth.telegram.org` блокируется в РФ — для входа через Telegram нужен VPN **без** split-tunneling (иначе вечный лоадер и невозврат в приложение).
+И Яндекс ID, и VK ID проверяют SHA-256 fingerprint подписи. Зарегистрированы **оба** ключа — debug и release (`tapa-release.jks`): на [oauth.yandex.ru](https://oauth.yandex.ru/) для Яндекса и в VK ID Console для VK. Если ключ меняется (например, Google Play App Signing) — добавить его отпечаток в обоих кабинетах, иначе вход перестанет работать.
 
 ## Деплой бэкенда
 
