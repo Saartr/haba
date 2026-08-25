@@ -281,7 +281,10 @@ router.post('/yandex', async (req, res) => {
     const [user] = await sql`
       INSERT INTO users (yandex_id, username, first_name, last_name, email, phone, yandex_avatar_id, last_login_provider)
       VALUES (${yandexId}, ${username}, ${firstName}, ${lastName}, ${emailVal}, ${phoneVal}, ${avatarId}, 'yandex')
-      ON CONFLICT (yandex_id) DO UPDATE SET
+      -- WHERE обязателен: users_yandex_id_unique — ЧАСТИЧНЫЙ индекс, и без повторения его
+      -- предиката Postgres не может его вывести (42P10). У vk_id проблемы нет только потому,
+      -- что там исторически есть ещё и обычный UNIQUE users_vk_id_key.
+      ON CONFLICT (yandex_id) WHERE yandex_id IS NOT NULL DO UPDATE SET
         username   = COALESCE(users.username,   EXCLUDED.username),
         first_name = COALESCE(users.first_name, EXCLUDED.first_name),
         last_name  = COALESCE(users.last_name,  EXCLUDED.last_name),
