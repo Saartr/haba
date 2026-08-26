@@ -1,40 +1,43 @@
 Consent to Personal Data Processing
-Last updated: 09/06/2026
+Last updated: 08/26/2026
 
 This document describes the terms under which you provide consent to the processing of your personal data by the developer of the "Tapa" application — the individual Ivan Mironov (hereinafter — "Developer").
 
 1. Data for Which Consent is Requested
-By registering and using the Application, you consent to the processing of the following data:
-• email address;
+By registering and using the Application through VK ID or Yandex ID, you consent to the processing of the following data:
+• VK ID / Yandex ID account identifier, email address, and phone number (if provided by the respective provider);
 • display name and profile avatar;
-• habit and goal data (names, descriptions, settings);
+• habit and goal data (names, descriptions, settings), including data created within group goals;
 • habit completion statistics;
-• device push token for sending reminders;
-• anonymized analytics data on Application usage.
+• daily step count — only if you separately enabled Android Health Connect sync;
+• device push token for sending reminders.
+We do not collect app-usage analytics data and we do not create passwords — sign-in is done exclusively via VK ID / Yandex ID.
 
 2. Purposes of Processing
 The specified data is processed for the following purposes:
-• providing Application functionality (sync, backup);
+• providing Application functionality (syncing data across devices, group goals);
 • sending push notifications with habit reminders;
-• improving the quality and functionality of the Application;
-• identifying the user upon login;
+• syncing physical activity metrics with Health Connect;
+• identifying the user upon sign-in;
 • communicating for technical support purposes.
 
 3. Third Parties
 Your data may be shared with the following services to ensure Application functionality:
-• Google Firebase (authentication, database, analytics, push notifications) — Privacy Policy: https://firebase.google.com/support/privacy
+• VK ID (VK LLC) and/or Yandex ID (Yandex LLC) — the provider you used to sign in to the Application; it supplies us with an access token and basic profile data;
+• Google Firebase Cloud Messaging (FCM) — delivery of push notifications to your device.
+The Application's database and files are stored on a server controlled by the Developer, not on third-party cloud infrastructure.
 
 4. Duration of Consent
-This consent is effective from the moment it is provided (registration in the Application) until it is withdrawn or the account is deleted.
+This consent is effective from the moment it is provided (signing in to the Application) until it is withdrawn or the account is deleted.
 
 5. How to Withdraw Consent
 You may withdraw this consent at any time. To do so:
 • delete your account via the Application settings; or
-• send a request to: [your@email.com]
+• send a request to: apptapatap@gmail.com
 After withdrawal of consent, data processing will cease and data will be deleted within 30 days.
 
 6. Consequences of Withholding Consent
-Providing certain data is a prerequisite for using the Application. Refusing to provide consent means you will be unable to create an account or use features that require synchronization.
+Providing the data required to sign in via VK ID / Yandex ID is a prerequisite for using the Application — without it, an account cannot be created. Consent for push notifications and Health Connect sync is optional and does not affect your ability to use the rest of the Application's features.
 
 7. Your Rights
 Under applicable law, you have the right to:
@@ -48,4 +51,4 @@ Under applicable law, you have the right to:
 8. Contact Details
 Data Controller:
 Individual: Ivan Mironov
-Email: [your@email.com]
+Email: apptapatap@gmail.com

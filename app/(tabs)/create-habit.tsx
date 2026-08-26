@@ -66,12 +66,12 @@ export default function CreateHabitScreen() {
       <View style={{ flex: 1, padding: 24, gap: 16 }}>
         <ChoiceCard
           title="Готовая цель"
-          subtitle="Выбор из списка доступных целей. Быстрая настройка, подсказки и интеграции с сервисами."
+          subtitle="Преднастроенные цели из списка. Быстрая настройка и готовые интеграции с сервисами."
           onPress={() => router.push('/(tabs)/preset-habits' as any)}
         />
         <ChoiceCard
           title="Своя цель"
-          subtitle="Создание своей цели с нуля. Расширенная настройка, полная кастомизация."
+          subtitle="Полная кастомизация: персональная или групповая цель, с нуля, под любой формат."
           onPress={() => router.push('/(tabs)/custom-habit/step1' as any)}
         />
       </View>
