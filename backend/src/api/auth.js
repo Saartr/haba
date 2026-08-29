@@ -11,8 +11,7 @@ const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'change_me_in_env';
 const ACCESS_TTL = '15m';
 const REFRESH_TTL = '30d';
-const AVATARS_DIR = '/var/www/haba/backend/public/avatars';
-const AVATARS_URL = 'https://bot.mihmih.pro/avatars';
+const { AVATARS_DIR, AVATARS_URL } = require('../config');
 
 // Яндекс ID. Нативный SDK отдаёт готовый OAuth-токен, поэтому обмена code→token на сервере
 // нет — только проверка токена через login.yandex.ru/info. Секрет приложения не нужен.

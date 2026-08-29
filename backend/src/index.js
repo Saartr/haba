@@ -4,6 +4,7 @@ const runMigrations = require('./db/migrate');
 const { scheduleHabitReminders } = require('./jobs/habit-reminders');
 const { scheduleHabitNotificationTimes } = require('./jobs/habit-notification-times');
 const sql = require('./db/client');
+const { AVATARS_DIR } = require('./config');
 const authRouter = require('./api/auth');
 const habitsRouter = require('./api/habits');
 const pushRouter = require('./api/push');
@@ -15,7 +16,7 @@ const pushRouter = require('./api/push');
 
 const app = express();
 app.use(express.json());
-app.use('/avatars', express.static('/var/www/haba/backend/public/avatars'));
+app.use('/avatars', express.static(AVATARS_DIR));
 
 // API v1
 app.use('/api/v1/auth', authRouter);

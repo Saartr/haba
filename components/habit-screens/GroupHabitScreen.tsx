@@ -49,7 +49,7 @@ import {
   HabitDetail,
 } from '@/lib/api';
 import { scheduleSync, cancelSync } from '@/modules/health-sync';
-import { BASE_URL } from '@/lib/config';
+import { BASE_URL, inviteLink as buildInviteLink } from '@/lib/config';
 import {
   isHealthConnectAvailable,
   hasStepsPermission,
@@ -359,7 +359,7 @@ export default function GroupHabitScreen({
     }
   }
 
-  const inviteLink = `https://bot.mihmih.pro/join/${habit.invite_code}`;
+  const inviteLink = buildInviteLink(habit.invite_code);
 
   function handleCopyInvite() {
     Clipboard.setString(inviteLink);
