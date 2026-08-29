@@ -179,132 +179,131 @@ export default function SoloHabitScreen({
         ]}
       />
 
-      {/* Шапка: название и описание */}
-      <View style={{ paddingHorizontal: 24, paddingTop: 24, gap: 8 }}>
-        <Text weight="bold" style={{ fontSize: 24, lineHeight: 36, color: c.text.primary, letterSpacing: 0.2 }}>
-          {habit.name}
-        </Text>
-        {habit.description ? (
-          <Text weight="semibold" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
-            {habit.description}
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 16 }}>
+        {/* Шапка: название и описание */}
+        <View style={{ paddingHorizontal: 24, paddingTop: 24, gap: 8 }}>
+          <Text weight="bold" style={{ fontSize: 24, lineHeight: 36, color: c.text.primary, letterSpacing: 0.2 }}>
+            {habit.name}
           </Text>
-        ) : null}
-      </View>
+          {habit.description ? (
+            <Text weight="semibold" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
+              {habit.description}
+            </Text>
+          ) : null}
+        </View>
 
-      {isCount ? (
-        <View style={{ marginTop: 24, gap: 16 }}>
-          <View style={{ paddingHorizontal: 24 }}>
-            <SegmentedControl
-              options={[{ label: 'Неделя', value: 'week' }, { label: 'Месяц', value: 'month' }]}
-              value={calendarView}
-              onChange={v => { setCalendarView(v as 'week' | 'month'); setSelectedDate(null); }}
-            />
+        {isCount ? (
+          <View style={{ marginTop: 24, gap: 16 }}>
+            <View style={{ paddingHorizontal: 24 }}>
+              <SegmentedControl
+                options={[{ label: 'Неделя', value: 'week' }, { label: 'Месяц', value: 'month' }]}
+                value={calendarView}
+                onChange={v => { setCalendarView(v as 'week' | 'month'); setSelectedDate(null); }}
+              />
+            </View>
+            {calendarView === 'week' ? (
+              <CalendarWeek
+                key={calendarKey}
+                habitId={habit.id}
+                habitCreatedAt={habit.created_at}
+                currentWeekLogs={habit.week_logs.filter(l => l.user_id === selfId)}
+                goalValue={habit.goal_value ?? 1}
+                noMissIndicator={isCountNoGoal}
+                onDateSelect={handleDateSelect}
+              />
+            ) : (
+              <View style={{ paddingHorizontal: 24 }}>
+                <Card style={{ paddingHorizontal: 16, paddingVertical: 16, gap: 0 }}>
+                  <CalendarMonthly
+                    key={calendarKey}
+                    logs={completedDates}
+                    missedDates={missedDates}
+                    periodStart={habit.created_at.slice(0, 10)}
+                    selectedDate={selectedDate ?? undefined}
+                    onDateSelect={handleDateSelect}
+                  />
+                </Card>
+              </View>
+            )}
           </View>
-          {calendarView === 'week' ? (
+        ) : (
+          <View style={{ marginTop: 24 }}>
             <CalendarWeek
               key={calendarKey}
               habitId={habit.id}
               habitCreatedAt={habit.created_at}
               currentWeekLogs={habit.week_logs.filter(l => l.user_id === selfId)}
               goalValue={habit.goal_value ?? 1}
-              noMissIndicator={isCountNoGoal}
               onDateSelect={handleDateSelect}
             />
-          ) : (
-            <View style={{ paddingHorizontal: 24 }}>
-              <Card style={{ paddingHorizontal: 16, paddingVertical: 16, gap: 0 }}>
-                <CalendarMonthly
-                  key={calendarKey}
-                  logs={completedDates}
-                  missedDates={missedDates}
-                  periodStart={habit.created_at.slice(0, 10)}
-                  selectedDate={selectedDate ?? undefined}
-                  onDateSelect={handleDateSelect}
-                />
-              </Card>
-            </View>
-          )}
-        </View>
-      ) : (
-        <View style={{ marginTop: 24 }}>
-          <CalendarWeek
-            key={calendarKey}
-            habitId={habit.id}
-            habitCreatedAt={habit.created_at}
-            currentWeekLogs={habit.week_logs.filter(l => l.user_id === selfId)}
-            goalValue={habit.goal_value ?? 1}
-            onDateSelect={handleDateSelect}
-          />
-        </View>
-      )}
-      {isCountNoGoal ? (
-        <View style={{ paddingHorizontal: 24, paddingTop: 16 }}>
-          <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
-            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-              {`Сделано ${dateLabel}`}
-            </Text>
-            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-              {formatUnit(displayValue, null)}
-            </Text>
-          </Card>
-        </View>
-      ) : checkinType === 'count' ? (
-        // count «с целью»: карточки всегда про сегодня/выбранную дату (чипы Сегодня/Неделя убраны).
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8, gap: 16 }}
-        >
-          <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
-            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-              {unitLabel ? `${genitiveUnit(unitLabel)} ${dateLabel}` : (isViewingPast ? dateLabel : 'Сегодня')}
-            </Text>
-            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-              {displayValue}{habit.goal_value != null ? ` / ${habit.goal_value}` : ''}
-            </Text>
-          </Card>
-          <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
-            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-              Стрик
-            </Text>
-            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-              {habit.streak?.current ?? 0}
-            </Text>
-          </Card>
-          <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
-            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
-              Лучший стрик
-            </Text>
-            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
-              {habit.streak?.max ?? 0}
-            </Text>
-          </Card>
-        </ScrollView>
-      ) : (
-        <View style={{ padding: 24, gap: 16 }}>
-          <View style={{ flexDirection: 'row', gap: 16 }}>
-            <Card style={{ flex: 1, gap: 4 }}>
-              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
-                Текущий стрик
+          </View>
+        )}
+        {isCountNoGoal ? (
+          <View style={{ paddingHorizontal: 24, paddingTop: 16 }}>
+            <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
+              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                {`Сделано ${dateLabel}`}
               </Text>
-              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
-                {habit.streak?.current ?? 0}
-              </Text>
-            </Card>
-            <Card style={{ flex: 1, gap: 4 }}>
-              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
-                Лучший стрик
-              </Text>
-              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
-                {habit.streak?.max ?? 0}
+              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+                {formatUnit(displayValue, null)}
               </Text>
             </Card>
           </View>
-        </View>
-      )}
-
-      {/* Спейсер — отжимает кнопки вниз */}
-      <View style={{ flex: 1 }} />
+        ) : checkinType === 'count' ? (
+          // count «с целью»: карточки всегда про сегодня/выбранную дату (чипы Сегодня/Неделя убраны).
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8, gap: 16 }}
+          >
+            <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
+              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                {unitLabel ? `${genitiveUnit(unitLabel)} ${dateLabel}` : (isViewingPast ? dateLabel : 'Сегодня')}
+              </Text>
+              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+                {displayValue}{habit.goal_value != null ? ` / ${habit.goal_value}` : ''}
+              </Text>
+            </Card>
+            <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
+              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                Стрик
+              </Text>
+              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+                {habit.streak?.current ?? 0}
+              </Text>
+            </Card>
+            <Card style={{ gap: 4, alignSelf: 'flex-start' }}>
+              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary, letterSpacing: 0.2 }}>
+                Лучший стрик
+              </Text>
+              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary, letterSpacing: 0.2 }}>
+                {habit.streak?.max ?? 0}
+              </Text>
+            </Card>
+          </ScrollView>
+        ) : (
+          <View style={{ padding: 24, gap: 16 }}>
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <Card style={{ flex: 1, gap: 4 }}>
+                <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
+                  Текущий стрик
+                </Text>
+                <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
+                  {habit.streak?.current ?? 0}
+                </Text>
+              </Card>
+              <Card style={{ flex: 1, gap: 4 }}>
+                <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
+                  Лучший стрик
+                </Text>
+                <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
+                  {habit.streak?.max ?? 0}
+                </Text>
+              </Card>
+            </View>
+          </View>
+        )}
+      </ScrollView>
 
       {/* Bottom — ветка по checkin_type */}
       {isViewingPast ? (

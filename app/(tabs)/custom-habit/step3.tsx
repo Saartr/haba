@@ -428,6 +428,7 @@ export default function Step3Screen() {
                 value={state.periodStart || null}
                 onChange={(iso) => { set({ periodStart: iso }); setPeriodStartError(''); setPeriodEndError(''); }}
                 error={periodStartError}
+                disabled
               />
             </View>
             <View style={{ flex: 1 }}>

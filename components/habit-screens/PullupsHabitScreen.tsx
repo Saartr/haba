@@ -1,4 +1,4 @@
-import { View, Pressable, StatusBar } from 'react-native';
+import { View, ScrollView, Pressable, StatusBar } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -219,90 +219,89 @@ export default function PullupsHabitScreen({
         ]}
       />
 
-      {/* Шапка: заголовок + описание (если есть) + информация о тренировках */}
-      <View style={{ paddingHorizontal: 24, paddingTop: 24, gap: 8 }}>
-        <Text weight="bold" style={{ fontSize: 24, lineHeight: 36, color: c.text.primary, letterSpacing: 0.2 }}>
-          {habit.name}
-        </Text>
-        {habit.description ? (
-          <Text weight="semibold" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
-            {habit.description}
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 16 }}>
+        {/* Шапка: заголовок + описание (если есть) + информация о тренировках */}
+        <View style={{ paddingHorizontal: 24, paddingTop: 24, gap: 8 }}>
+          <Text weight="bold" style={{ fontSize: 24, lineHeight: 36, color: c.text.primary, letterSpacing: 0.2 }}>
+            {habit.name}
           </Text>
-        ) : null}
-        {goalAchieved ? (
-          <Text weight="bold" style={{ fontSize: 20, lineHeight: 20 * 1.5, color: c.text.primary, letterSpacing: 0.2 }}>
-            Цель достигнута! {targetReps} {pluralWord(targetReps, 'раз', 'раза', 'раз')} за подход
-          </Text>
-        ) : (
-          <Text weight="semibold" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
-            {planDescription}
-          </Text>
-        )}
-      </View>
-
-      <View style={{ paddingTop: 24, gap: 16 }}>
-        <View style={{ paddingHorizontal: 24 }}>
-          <SegmentedControl
-            options={[
-              { label: 'Неделя', value: 'week' },
-              { label: 'Месяц', value: 'month' },
-            ]}
-            value={calendarView}
-            onChange={v => { setCalendarView(v as 'week' | 'month'); setSelectedDate(null); }}
-          />
+          {habit.description ? (
+            <Text weight="semibold" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
+              {habit.description}
+            </Text>
+          ) : null}
+          {goalAchieved ? (
+            <Text weight="bold" style={{ fontSize: 20, lineHeight: 20 * 1.5, color: c.text.primary, letterSpacing: 0.2 }}>
+              Цель достигнута! {targetReps} {pluralWord(targetReps, 'раз', 'раза', 'раз')} за подход
+            </Text>
+          ) : (
+            <Text weight="semibold" style={{ fontSize: 14, lineHeight: 14 * 1.4, color: c.text.secondary, letterSpacing: 0.2 }}>
+              {planDescription}
+            </Text>
+          )}
         </View>
-        {calendarView === 'week' ? (
-          // Без paddingHorizontal-обёртки — CalendarWeek сам управляет шириной FlatList
-          // (пейджинг по полной ширине экрана) и применяет отступ 24 внутри каждой страницы.
-          <CalendarWeek
-            key={calendarKey}
-            habitId={habit.id}
-            habitCreatedAt={habit.created_at}
-            currentWeekLogs={habit.week_logs.filter(l => l.user_id === selfId)}
-            goalValue={1}
-            trainingDays={habit.training_days}
-            totalWeeks={totalWeeks}
-            welcomeAnimation={!weekAnimShownRef.current}
-            onDateSelect={handleDateSelect}
-            allowAnySelect
-            selectedDate={selectedDate}
-          />
-        ) : (
+
+        <View style={{ paddingTop: 24, gap: 16 }}>
           <View style={{ paddingHorizontal: 24 }}>
-            <Card style={{ paddingHorizontal: 16, paddingVertical: 16, gap: 0 }}>
-              <CalendarMonthly
-                key={calendarKey}
-                logs={completedDates}
-                missedDates={missedDates}
-                plannedDates={plannedDates}
-                periodStart={habit.created_at.slice(0, 10)}
-                periodEnd={planEndDate}
-                selectedDate={selectedDate ?? undefined}
-                onDateSelect={handleDateSelect}
-                allowFutureSelect
-              />
+            <SegmentedControl
+              options={[
+                { label: 'Неделя', value: 'week' },
+                { label: 'Месяц', value: 'month' },
+              ]}
+              value={calendarView}
+              onChange={v => { setCalendarView(v as 'week' | 'month'); setSelectedDate(null); }}
+            />
+          </View>
+          {calendarView === 'week' ? (
+            // Без paddingHorizontal-обёртки — CalendarWeek сам управляет шириной FlatList
+            // (пейджинг по полной ширине экрана) и применяет отступ 24 внутри каждой страницы.
+            <CalendarWeek
+              key={calendarKey}
+              habitId={habit.id}
+              habitCreatedAt={habit.created_at}
+              currentWeekLogs={habit.week_logs.filter(l => l.user_id === selfId)}
+              goalValue={1}
+              trainingDays={habit.training_days}
+              totalWeeks={totalWeeks}
+              welcomeAnimation={!weekAnimShownRef.current}
+              onDateSelect={handleDateSelect}
+              allowAnySelect
+              selectedDate={selectedDate}
+            />
+          ) : (
+            <View style={{ paddingHorizontal: 24 }}>
+              <Card style={{ paddingHorizontal: 16, paddingVertical: 16, gap: 0 }}>
+                <CalendarMonthly
+                  key={calendarKey}
+                  logs={completedDates}
+                  missedDates={missedDates}
+                  plannedDates={plannedDates}
+                  periodStart={habit.created_at.slice(0, 10)}
+                  periodEnd={planEndDate}
+                  selectedDate={selectedDate ?? undefined}
+                  onDateSelect={handleDateSelect}
+                  allowFutureSelect
+                />
+              </Card>
+            </View>
+          )}
+        </View>
+
+        {!goalAchieved && (
+          <View style={{ padding: 24, gap: 16 }}>
+            <Card style={{ gap: 4 }}>
+              <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
+                {selectedDate != null ? `План на ${formatDateRu(selectedDate, today).toLowerCase()}` : 'Цель на сегодня'}
+              </Text>
+              <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
+                {displaySession
+                  ? `${displaySession.sets} ${pluralWord(displaySession.sets, 'подход', 'подхода', 'подходов')} по ${displaySession.reps} ${pluralWord(displaySession.reps, 'повторение', 'повторения', 'повторений')}`
+                  : 'Отдых'}
+              </Text>
             </Card>
           </View>
         )}
-      </View>
-
-      {!goalAchieved && (
-        <View style={{ padding: 24, gap: 16 }}>
-          <Card style={{ gap: 4 }}>
-            <Text weight="medium" style={{ fontSize: 14, color: c.text.secondary }}>
-              {selectedDate != null ? `План на ${formatDateRu(selectedDate, today).toLowerCase()}` : 'Цель на сегодня'}
-            </Text>
-            <Text weight="bold" style={{ fontSize: 16, color: c.text.primary }}>
-              {displaySession
-                ? `${displaySession.sets} ${pluralWord(displaySession.sets, 'подход', 'подхода', 'подходов')} по ${displaySession.reps} ${pluralWord(displaySession.reps, 'повторение', 'повторения', 'повторений')}`
-                : 'Отдых'}
-            </Text>
-          </Card>
-        </View>
-      )}
-
-      {/* Спейсер — отжимает кнопки/CTA вниз */}
-      <View style={{ flex: 1 }} />
+      </ScrollView>
 
       {selectedDate != null ? (
         <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>

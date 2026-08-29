@@ -1,13 +1,14 @@
 // Генератор lib/legal-content.ts из текстов в этой папке.
-// RU-файлы — в Windows-1251, EN — в UTF-8. Запуск: node .legal-src/gen.js
+// Все файлы (RU и EN) — в UTF-8. Запуск: node .legal-src/gen.js
+// (Раньше RU-файлы читались как Windows-1251 — легаси от исходного экспорта из Word;
+// перешли на UTF-8 при переписывании текстов под реальный сбор данных, см. history.)
 const fs = require('fs');
 const path = require('path');
 
 const dir = __dirname;
-const dec = new TextDecoder('windows-1251');
 
 function readRu(name) {
-  let t = dec.decode(fs.readFileSync(path.join(dir, name)));
+  let t = fs.readFileSync(path.join(dir, name), 'utf8');
   t = t.replace(/\r\n/g, '\n').replace(/\[Имя Фамилия\]/g, 'Миронов Иван').trim();
   return t;
 }

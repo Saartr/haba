@@ -1,5 +1,5 @@
 Terms of Use
-Last updated: 09/06/2026
+Last updated: 08/26/2026
 
 These Terms of Use ("Terms") govern your use of the mobile application "Tapa" ("Application"), developed by the individual Ivan Mironov ("Developer").
 By downloading or using the Application, you confirm that you have read, understood, and agree to be bound by these Terms.
@@ -8,8 +8,8 @@ By downloading or using the Application, you confirm that you have read, underst
 The Developer grants you a limited, non-exclusive, non-transferable, revocable license to use the Application for personal, non-commercial purposes.
 
 2. Account Registration
-Certain features require creating an account. You agree to:
-• provide accurate information during registration;
+Signing in to the Application is done through the third-party services VK ID or Yandex ID. You agree to:
+• only sign in using a VK or Yandex account that belongs to you;
 • not share your account credentials with third parties;
 • notify the Developer immediately of any unauthorized access to your account.
 
@@ -43,4 +43,4 @@ The Developer may modify these Terms at any time. The current version is always 
 These Terms are governed by the laws of the country of residence of the Developer. Any disputes shall be resolved through negotiation, and if not possible, through the courts at the Developer's place of residence.
 
 11. Contact
-For any questions regarding these Terms, contact us at: [your@email.com]
+For any questions regarding these Terms, contact us at: apptapatap@gmail.com
