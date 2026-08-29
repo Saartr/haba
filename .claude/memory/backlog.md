@@ -29,10 +29,28 @@ metadata:
 
 **How to apply:** если понадобится реальная фильтрация по дате начала — это отдельная фича (бэкенд + видимость), обсуждать заново.
 
-### expo-clipboard — подключить при следующей пересборке APK
-`Clipboard` из `react-native` deprecated. `expo-clipboard` установлен (`npm install` выполнен), но нативный модуль `ExpoClipboard` требует `prebuild`.
-**Что нужно:** при следующем `npx expo prebuild --platform android --clean`:
+### expo-clipboard — prebuild сделан, осталась замена импорта (обновлено 2026-08-29)
+`Clipboard` из `react-native` deprecated. `expo-clipboard` установлен, а `prebuild --clean`
+уже прогнан 2026-08-29 при пересборке под новый домен — значит нативный `ExpoClipboard`
+автолинкнут и лежит в собранном APK. Осталась чисто JS-правка, отдельная пересборка не нужна:
 1. В `app/(tabs)/habit/[id].tsx` заменить `import { Clipboard } from 'react-native'` → `import * as Clipboard from 'expo-clipboard'`
 2. Заменить `Clipboard.setString(...)` → `Clipboard.setStringAsync(...)`
 **Файл:** `app/(tabs)/habit/[id].tsx:14` и `:747` (номера строк сдвигаются по мере правок файла — искать по `import { Clipboard } from 'react-native'` и `Clipboard.setString`)
 
+
+
+### Хвосты переезда на apptapa.ru (2026-08-29, доделать 2026-08-30)
+
+**1. Поставить APK на телефон.** Собран и лежит: `android/app/build/outputs/apk/debug/app-debug.apk`
+(216 МБ, собран из `4540980` — новая иконка + `SERVER_ORIGIN = https://apptapa.ru`). Не установлен
+только потому, что устройство не отвечало: `adb devices` пусто, `adb connect 192.168.1.139:5555`
+отвергнут. Проверять: логин через Яндекс ID, аватар, инвайт-ссылка вида `https://apptapa.ru/join/<код>`.
+Пересобирать не нужно — подпись debug-keystore (`FA:C6:17:45:…`) уже зарегистрирована в консоли
+Яндекс ID, как и release (`5E:3A:2C:58:…`); package `pro.mihmih.haba` не менялся.
+
+**2. Вывести из эксплуатации старый сервер.** Timeweb, Амстердам, `147.45.134.216`, алиас `ssh Haba`
+ещё жив как подстраховка вместе с DNS-записями `bot.`/`kanban.` в зоне `mihmih.pro`. Отключать
+только после того, как приложение проверено на новом адресе. Порядок: убедиться, что на старый
+бэкенд нет трафика → снять записи `bot.`/`kanban.` в `mihmih.pro` → удалить сервер.
+⚠️ Записи `mihmih.pro`/`www`/MX не трогать — это личный сайт и почта, к приложению отношения не имеют.
+База на старый сервер не переносилась и переносить нечего: она была тестовой и очищена перед переездом.

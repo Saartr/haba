@@ -25,6 +25,9 @@ $env:REACT_NATIVE_PACKAGER_HOSTNAME="192.168.1.143"; npx expo start
 #   VKIDClientSecret=<секрет>   — иначе VK-вход не работает в рантайме
 #   (Яндекс ID секретов не требует: SDK из mavenCentral, client_id публичный)
 # После prebuild --clean пересоздать android/local.properties: sdk.dir=<путь к Android SDK текущего пользователя>
+# Путь писать через ПРЯМЫЕ слэши: sdk.dir=C:/Users/<user>/AppData/Local/Android/Sdk
+# С одинарными обратными слэшами Gradle падает на `Invalid file path` при оценке :app —
+# в .properties бэкслэш это escape-символ (2026-08-29).
 
 # Первый раз — генерация нативной папки:
 npx expo prebuild --platform android --clean
