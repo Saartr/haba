@@ -12,7 +12,7 @@
 
 ## Инфраструктура
 
-- [Стек проекта](infra_stack.md) — Expo SDK 55, Express 5, postgres tag, PM2, node-cron, BASE_URL, JWT TTL
+- [Стек проекта](infra_stack.md) — Expo SDK 55, Express 5, postgres tag, PM2, node-cron, BASE_URL, JWT TTL; переезд на Selectel СПб + домен apptapa.ru (2026-08-29)
 - [Окружение разработки](infra_dev_env.md) — IP компьютера/телефона, запуск dev-сервера, Android APK-сборка
 - [База данных](infra_database.md) — схема всех таблиц: users, groups, habits (+кастомные/pullups колонки), habit_members, habit_logs, push_tokens, refresh_tokens
 - [Android нативные SDK](infra_android_native.md) — maven-репо + manifest-placeholders через config-плагины, т.к. `prebuild --clean` стирает `android/`; секреты в `~/.gradle/gradle.properties`

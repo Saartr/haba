@@ -7,7 +7,7 @@ metadata:
   originSessionId: 6f334f79-b33a-4bdb-b852-d3bff627bebf
 ---
 
-PostgreSQL на сервере `bot.mihmih.pro`. Подключение через `DATABASE_URL` (SSL).
+PostgreSQL на сервере `apptapa.ru`. Подключение через `DATABASE_URL` (SSL).
 
 ⛔ **Таблицы бота шагов (`groups`, `group_members`, `goals`, `steps`, `auth_codes`) и колонка
 `users.tg_id` УДАЛЕНЫ 2026-08-25** вместе с ботом `@Step_Challenges_Bot` — см. `migrate_drop_legacy.js`
@@ -65,7 +65,7 @@ push_tokens  — id, user_id → users (ON DELETE CASCADE), token TEXT UNIQUE,
 `source` в `habit_logs`: ручной ввод vs импорт из Health Connect/HealthKit. При upsert значение из трекера не перетирает большее ручное (`CASE WHEN value >= EXCLUDED.value`).
 `health_connected_at` в `users`: ставится при первом успешном импорте из Health Connect.
 
-`avatar_url` — полный URL `https://bot.mihmih.pro/avatars/{userId}.jpg`, null если нет аватара.
+`avatar_url` — полный URL `https://apptapa.ru/avatars/{userId}.jpg`, null если нет аватара.
 Аватары хранятся на сервере: `/var/www/haba/backend/public/avatars/{userId}.jpg` (исключены из git).
 
 **How to apply:** При добавлении новых таблиц или колонок — писать миграцию в `backend/src/db/` (в репо), коммитить, деплоить через `./deploy-backend.ps1`. Использовать `IF NOT EXISTS` и `IF NOT EXISTS column` чтобы не ломать повторные запуски.

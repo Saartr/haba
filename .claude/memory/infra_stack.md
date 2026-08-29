@@ -17,13 +17,13 @@ metadata:
 - Дизайн-система: TapaDS, цвета через `useColors()` из `lib/colors.ts`
 - Шрифт: Manrope (medium/semibold/bold), обёртка `components/Text.tsx`
 
-**Бэкенд** (`/var/www/haba/backend` на `bot.mihmih.pro`, Ubuntu 24.04.4 LTS, в репо в папке `backend/`):
+**Бэкенд** (`/var/www/haba/backend` на `apptapa.ru`, Ubuntu 24.04.4 LTS, в репо в папке `backend/`):
 - Node.js v22, Express 5
 - PostgreSQL (библиотека `postgres` tag, не pg/knex)
 - PM2 (процесс-менеджер, имя процесса `step-bot`)
 - node-cron (пуш-напоминания по целям; дайджесты бота удалены 2026-08-25)
 
-**BASE_URL API:** `https://bot.mihmih.pro/api/v1`
+**BASE_URL API:** `https://apptapa.ru/api/v1`
 
 **Env-переменные сервера:** `PORT` (3000), `DATABASE_URL`, `JWT_SECRET`, `VK_CLIENT_SECRET`, `VK_SERVICE_TOKEN`, `YANDEX_CLIENT_ID`. Мертвы после удаления бота (2026-08-25), можно убрать: `TELEGRAM_TOKEN`, `WEBHOOK_SECRET`, `WEBHOOK_URL`, `TELEGRAM_CLIENT_ID`, `GOOGLE_CLIENT_ID/SECRET`
 
@@ -32,3 +32,26 @@ metadata:
 **Деплой бэкенда:** ручной скрипт `deploy-backend.ps1` в корне репо. Подробности — [[rules-backend-deploy]].
 
 **How to apply:** При написании кода — Expo SDK 55, читать доки на https://docs.expo.dev/versions/v55.0.0/. Бэкенд — Express 5, `postgres` tag-библиотека. Серверные правки коммитить в `backend/`, деплоить через `./deploy-backend.ps1` после пуша в `main`.
+
+## Переезд на новый хостинг (2026-08-29)
+
+Сервер: **Selectel, Санкт-Петербург**, `139.100.238.204`, алиас `ssh Tapa` (ключ тот же —
+`~/.ssh/haba_deploy`). Ubuntu 24.04, 1 vCPU / 2 ГБ RAM / 25 ГБ + swap 2 ГБ.
+
+**Why:** старый сервер стоял в Амстердаме (Timeweb, `147.45.134.216`). Приложение хранит
+персданные россиян, а 152-ФЗ (ст. 18 ч. 5) требует хранить их в базах на территории РФ.
+Та же логика, что и при отказе от Telegram-авторизации по 199-ФЗ.
+
+**Домены:** `apptapa.ru` — бэкенд (API, `/join/<код>`, `/avatars/`), `kanban.apptapa.ru` —
+Planka. Корень выбран под бэкенд намеренно: инвайт-ссылки user-facing, `apptapa.ru/join/abc`
+короче и опрятнее, чем через поддомен `api.`.
+
+**Отличия от старого сервера:**
+- PostgreSQL слушает только `localhost` (на старом торчал в интернет с `0.0.0.0/0` в
+  pg_hba и выключенным ufw)
+- ufw включён, открыты только 22/80/443
+- Бэкапы: `/root/backup-db.sh` ежедневно в 04:00, ротация 14 дней (на старом их не было вовсе)
+
+**Что осталось за пределами кода:** старый сервер и записи `bot.`/`kanban.` в `mihmih.pro`
+пока живы как подстраховка. Записи `mihmih.pro`/`www`/MX трогать нельзя — это личный сайт
+и почта, к приложению отношения не имеют.

@@ -17,16 +17,16 @@ metadata:
 
 1. Отредактировать файл локально: `backend/src/...` (через Edit, не scp)
 2. Закоммитить и запушить в `main` (по явной просьбе — см. [[rules-git-workflow]])
-3. Запустить деплой из PowerShell в `c:\haba`: `./deploy-backend.ps1` — скрипт делает `ssh Haba` → `git pull --ff-only` → `npm install --omit=dev` → `pm2 restart step-bot` → `pm2 list`
-4. Проверить логи если что-то сломалось: `ssh Haba 'pm2 logs step-bot --lines 50 --nostream'`
+3. Запустить деплой из PowerShell в `c:\haba`: `./deploy-backend.ps1` — скрипт делает `ssh Tapa` → `git pull --ff-only` → `npm install --omit=dev` → `pm2 restart step-bot` → `pm2 list`
+4. Проверить логи если что-то сломалось: `ssh Tapa 'pm2 logs step-bot --lines 50 --nostream'`
 
 `.env` и `public/avatars/` НЕ в git — хранятся только на сервере в `/var/www/haba/backend/`.
 
 ## Когда нужен прямой SSH (без правки файлов)
 
-- Просмотр логов: `ssh Haba 'pm2 logs step-bot --lines 50 --nostream'`
-- Проверка статуса: `ssh Haba 'pm2 list'`
-- Перезапуск без деплоя (например, после правки `.env`): `ssh Haba 'pm2 restart step-bot'`
-- Правка `.env` (он не в git): `scp Haba:/var/www/haba/backend/.env C:/tmp/.env` → Edit → `scp C:/tmp/.env Haba:/var/www/haba/backend/.env` → `ssh Haba 'pm2 restart step-bot'`
+- Просмотр логов: `ssh Tapa 'pm2 logs step-bot --lines 50 --nostream'`
+- Проверка статуса: `ssh Tapa 'pm2 list'`
+- Перезапуск без деплоя (например, после правки `.env`): `ssh Tapa 'pm2 restart step-bot'`
+- Правка `.env` (он не в git): `scp Haba:/var/www/haba/backend/.env C:/tmp/.env` → Edit → `scp C:/tmp/.env Haba:/var/www/haba/backend/.env` → `ssh Tapa 'pm2 restart step-bot'`
 
-SSH-ключ: `~/.ssh/haba_deploy` (`C:\Users\Saartr\.ssh\haba_deploy`), сервер: `root@147.45.134.216`, алиас в `~/.ssh/config`: `ssh Haba` (без `-i`).
+SSH-ключ: `~/.ssh/haba_deploy` (`C:\Users\Saartr\.ssh\haba_deploy`), сервер: `root@139.100.238.204`, алиас в `~/.ssh/config`: `ssh Tapa` (без `-i`).

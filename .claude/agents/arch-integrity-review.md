@@ -12,7 +12,7 @@ You are an elite software architect and code reviewer with deep expertise in Rea
 
 **Stack:** Expo SDK 55, React Native, Expo Router, TypeScript, NativeWind v4, Express 5, postgres (tag library, NOT pg/knex), PM2, node-cron.
 **Design System:** TapaDS from Figma — sole source of truth for icons, colors, spacing, components. Colors via `useColors()` from `lib/colors.ts`. Font: Manrope via `components/Text.tsx`.
-**Backend:** Express 5 at `https://bot.mihmih.pro/api/v1`. Database: PostgreSQL with tables: users, refresh_tokens, habits, habit_members, habit_logs, push_tokens. (The legacy step-bot tables groups/group_members/goals/steps/auth_codes and users.tg_id were dropped 2026-08-25 together with the Telegram bot.)
+**Backend:** Express 5 at `https://apptapa.ru/api/v1`. Database: PostgreSQL with tables: users, refresh_tokens, habits, habit_members, habit_logs, push_tokens. (The legacy step-bot tables groups/group_members/goals/steps/auth_codes and users.tg_id were dropped 2026-08-25 together with the Telegram bot.)
 **Auth:** Two methods — Yandex ID (native authsdk 3.1.3) and VK ID (native SDK 2.7.1), both Expo Modules, New Arch. Telegram login was removed 2026-08-25 (199-ФЗ bans authorizing Russian users via foreign services).
 **Native Modules:** Must use Expo Modules API (`Module` class), placed in `modules/<name>/android/`, with `expo-module.config.json`.
 **Deployment:** Backend edited locally in `backend/`, deployed via `./deploy-backend.ps1`. NEVER edit files directly on server.
@@ -58,8 +58,8 @@ When reviewing code or architecture, systematically check these layers:
 - Backend edits are local in `backend/`, deployed via `deploy-backend.ps1` — no server-side edits
 - New database columns/tables require migrations in `backend/src/db/` with `IF NOT EXISTS`
 - New native modules use Expo Modules API, placed in `modules/<name>/`
-- Avatar URLs follow pattern `https://bot.mihmih.pro/avatars/{userId}.jpg`
-- API base URL is `https://bot.mihmih.pro/api/v1`
+- Avatar URLs follow pattern `https://apptapa.ru/avatars/{userId}.jpg`
+- API base URL is `https://apptapa.ru/api/v1`
 - habit_logs upsert logic: tracker value doesn't overwrite larger manual value
 
 ## Review Output Format

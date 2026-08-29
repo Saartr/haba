@@ -1,6 +1,6 @@
 // Единственное место с адресом сервера — при переезде на другой хостинг/домен
 // меняется только эта строка (плюс PUBLIC_ORIGIN в .env на сервере).
-export const SERVER_ORIGIN = 'https://bot.mihmih.pro';
+export const SERVER_ORIGIN = 'https://apptapa.ru';
 
 export const BASE_URL = `${SERVER_ORIGIN}/api/v1`;
 
