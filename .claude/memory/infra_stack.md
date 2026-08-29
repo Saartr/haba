@@ -25,7 +25,12 @@ metadata:
 
 **BASE_URL API:** `https://apptapa.ru/api/v1`
 
-**Env-переменные сервера:** `PORT` (3000), `DATABASE_URL`, `JWT_SECRET`, `VK_CLIENT_SECRET`, `VK_SERVICE_TOKEN`, `YANDEX_CLIENT_ID`. Мертвы после удаления бота (2026-08-25), можно убрать: `TELEGRAM_TOKEN`, `WEBHOOK_SECRET`, `WEBHOOK_URL`, `TELEGRAM_CLIENT_ID`, `GOOGLE_CLIENT_ID/SECRET`
+**Env-переменные сервера** (сверено с `.env` 2026-08-29): `PORT` (3000), `DATABASE_URL`, `JWT_SECRET`,
+`VK_CLIENT_SECRET`, `VK_SERVICE_TOKEN`, `YANDEX_CLIENT_ID`, `FCM_PROJECT_ID`, `PUBLIC_ORIGIN`, `AVATARS_DIR`.
+Переменные бота (`TELEGRAM_TOKEN`, `WEBHOOK_*`, `GOOGLE_CLIENT_*`) на новый сервер не переносились.
+`PUBLIC_ORIGIN`/`AVATARS_DIR` читает `backend/src/config.js` — из них собираются `/avatars`-URL и
+инвайт-ссылки, так что при следующем переезде домена достаточно сменить их и `SERVER_ORIGIN`
+в `lib/config.ts`.
 
 **JWT:** accessToken TTL 15 мин, refreshToken TTL 30 дней (ротируется при использовании)
 
@@ -45,6 +50,11 @@ metadata:
 **Домены:** `apptapa.ru` — бэкенд (API, `/join/<код>`, `/avatars/`), `kanban.apptapa.ru` —
 Planka. Корень выбран под бэкенд намеренно: инвайт-ссылки user-facing, `apptapa.ru/join/abc`
 короче и опрятнее, чем через поддомен `api.`.
+
+**TLS и nginx:** сертификаты Let's Encrypt на `apptapa.ru` + `www` и отдельно на
+`kanban.apptapa.ru`, обновляются сами (`certbot.timer` активен). Конфиги nginx —
+`/etc/nginx/sites-enabled/step-bot` (бэкенд на :3000) и `kanban` (Planka), оба с
+редиректом HTTP→HTTPS.
 
 **Отличия от старого сервера:**
 - PostgreSQL слушает только `localhost` (на старом торчал в интернет с `0.0.0.0/0` в

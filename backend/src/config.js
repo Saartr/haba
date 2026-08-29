@@ -4,7 +4,7 @@
 // если переменные не заданы.
 
 // Публичный origin без завершающего слэша: https://example.ru
-const PUBLIC_ORIGIN = (process.env.PUBLIC_ORIGIN || 'https://bot.mihmih.pro').replace(/\/+$/, '');
+const PUBLIC_ORIGIN = (process.env.PUBLIC_ORIGIN || 'https://apptapa.ru').replace(/\/+$/, '');
 
 // Каталог с аватарами на диске. На новом сервере путь может отличаться.
 const AVATARS_DIR = process.env.AVATARS_DIR || '/var/www/haba/backend/public/avatars';

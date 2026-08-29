@@ -27,6 +27,6 @@ metadata:
 - Просмотр логов: `ssh Tapa 'pm2 logs step-bot --lines 50 --nostream'`
 - Проверка статуса: `ssh Tapa 'pm2 list'`
 - Перезапуск без деплоя (например, после правки `.env`): `ssh Tapa 'pm2 restart step-bot'`
-- Правка `.env` (он не в git): `scp Haba:/var/www/haba/backend/.env C:/tmp/.env` → Edit → `scp C:/tmp/.env Haba:/var/www/haba/backend/.env` → `ssh Tapa 'pm2 restart step-bot'`
+- Правка `.env` (он не в git): `scp Tapa:/var/www/haba/backend/.env C:/tmp/.env` → Edit → `scp C:/tmp/.env Tapa:/var/www/haba/backend/.env` → `ssh Tapa 'pm2 restart step-bot'`
 
 SSH-ключ: `~/.ssh/haba_deploy` (`C:\Users\Saartr\.ssh\haba_deploy`), сервер: `root@139.100.238.204`, алиас в `~/.ssh/config`: `ssh Tapa` (без `-i`).

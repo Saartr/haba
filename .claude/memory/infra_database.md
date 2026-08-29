@@ -7,7 +7,14 @@ metadata:
   originSessionId: 6f334f79-b33a-4bdb-b852-d3bff627bebf
 ---
 
-PostgreSQL на сервере `apptapa.ru`. Подключение через `DATABASE_URL` (SSL).
+PostgreSQL 16 на том же сервере, что и бэкенд (`ssh Tapa`), база `stepbot`. Подключение —
+`DATABASE_URL` вида `postgresql://…@localhost:5432/stepbot`, в `backend/src/db/client.js`
+стоит `ssl: 'require'` (работает и локально — у Ubuntu-сборки PostgreSQL SSL включён).
+
+⚠️ С переездом 2026-08-29 порт 5432 слушается **только на localhost** и закрыт ufw — снаружи,
+в том числе с рабочей машины, подключиться клиентом больше нельзя (на старом сервере было
+`0.0.0.0/0` в pg_hba). Разовые запросы к базе — через `ssh Tapa "sudo -u postgres psql …"`.
+Бэкапы: `/root/backup-db.sh` по крону в 04:00, ротация 14 дней.
 
 ⛔ **Таблицы бота шагов (`groups`, `group_members`, `goals`, `steps`, `auth_codes`) и колонка
 `users.tg_id` УДАЛЕНЫ 2026-08-25** вместе с ботом `@Step_Challenges_Bot` — см. `migrate_drop_legacy.js`
