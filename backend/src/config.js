@@ -13,4 +13,9 @@ const AVATARS_DIR = process.env.AVATARS_DIR || '/var/www/haba/backend/public/ava
 // поэтому при смене домена колонку нужно переписать (см. rules_backend_deploy).
 const AVATARS_URL = `${PUBLIC_ORIGIN}/avatars`;
 
-module.exports = { PUBLIC_ORIGIN, AVATARS_DIR, AVATARS_URL };
+// Каталог со статикой сайта (страница-заглушка на корне и её картинки). Лежит в git,
+// в отличие от avatars/ и download/ внутри него — те наполняются на сервере.
+const path = require('path');
+const PUBLIC_DIR = process.env.PUBLIC_DIR || path.join(__dirname, '..', 'public');
+
+module.exports = { PUBLIC_ORIGIN, AVATARS_DIR, AVATARS_URL, PUBLIC_DIR };

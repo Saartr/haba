@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Страница-заглушка на корне apptapa.ru: отсюда ставится последняя сборка.
+     noindex — сборки тестовые, в поиске им делать нечего. -->
+<meta name="robots" content="noindex">
+<title>Тапа — приложение для привычек</title>
+<style>
+  :root {
+    --brand: #6047ff;
+    --bg: #f5f5f5;
+    --card: #ffffff;
+    --text: #121212;
+    --muted: #757575;
+    --border: #e5e5e5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121212; --card: #1e1e1e; --text: #fafafa; --muted: #9e9e9e; --border: #2e2e2e; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .card {
+    background: var(--card); border-radius: 32px; padding: 32px 24px 28px;
+    width: 100%; max-width: 420px; text-align: center;
+  }
+  img.mascot { width: 180px; height: auto; margin: 0 auto 8px; display: block; }
+  h1 { font-size: 28px; font-weight: 800; margin: 0 0 8px; }
+  .lead { color: var(--muted); font-size: 15px; line-height: 1.5; margin: 0 0 24px; }
+  .btn {
+    display: block; background: var(--brand); color: #fff; text-decoration: none;
+    border-radius: 16px; padding: 18px 24px; font-size: 17px; font-weight: 700;
+  }
+  .btn[aria-disabled="true"] { background: var(--border); color: var(--muted); pointer-events: none; }
+  .meta { color: var(--muted); font-size: 13px; margin-top: 12px; line-height: 1.6; }
+  .hint {
+    margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 13px; line-height: 1.6; text-align: left;
+  }
+  .hint b { color: var(--text); font-weight: 600; }
+  code { font-size: 12px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <img class="mascot" src="/tapa.png" alt="Маскот Тапа">
+    <h1>Тапа</h1>
+    <p class="lead">Приложение для привычек с групповыми целями.<br>Сейчас в разработке — сборки для теста ниже.</p>
+
+    <a class="btn" id="dl" href="/download/tapa-latest.apk" aria-disabled="true">Сборка ещё не выложена</a>
+    <p class="meta" id="meta">Android 8.0 и новее</p>
+
+    <div class="hint">
+      <b>Как установить:</b> скачайте файл на телефон и откройте его.
+      Android спросит разрешение на установку из этого источника — это нормально
+      для сборок мимо Play Store. Обновление ставится поверх, данные сохраняются.
+    </div>
+  </div>
+
+<script>
+  // Метаданные пишет upload-apk.ps1 при загрузке сборки. Если файла нет —
+  // кнопка остаётся неактивной, чтобы не вести на 404.
+  fetch('/download/latest.json', { cache: 'no-store' })
+    .then(function (r) { if (!r.ok) throw new Error('нет сборки'); return r.json(); })
+    .then(function (d) {
+      var btn = document.getElementById('dl');
+      btn.textContent = 'Скачать APK';
+      btn.removeAttribute('aria-disabled');
+      btn.setAttribute('download', '');
+      var parts = [];
+      if (d.version) parts.push('Версия ' + d.version);
+      if (d.sizeMb) parts.push(d.sizeMb + ' МБ');
+      if (d.date) parts.push('от ' + d.date);
+      document.getElementById('meta').textContent = parts.join(' · ') + ' · Android 8.0+';
+    })
+    .catch(function () { /* оставляем состояние «сборки нет» */ });
+</script>
+</body>
+</html>
