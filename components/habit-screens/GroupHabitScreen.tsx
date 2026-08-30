@@ -9,7 +9,7 @@ import {
   Linking,
   Share,
 } from 'react-native';
-import { Clipboard } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -361,8 +361,8 @@ export default function GroupHabitScreen({
 
   const inviteLink = buildInviteLink(habit.invite_code);
 
-  function handleCopyInvite() {
-    Clipboard.setString(inviteLink);
+  async function handleCopyInvite() {
+    await Clipboard.setStringAsync(inviteLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }

@@ -12,7 +12,7 @@
 
 ## Инфраструктура
 
-- [Стек проекта](infra_stack.md) — Expo SDK 55, Express 5, postgres tag, PM2, node-cron, BASE_URL, JWT TTL; переезд на Selectel СПб + домен apptapa.ru (2026-08-29)
+- [Стек проекта](infra_stack.md) — Expo SDK 55, Express 5, postgres tag, PM2, node-cron, BASE_URL, JWT TTL; Selectel СПб + домен apptapa.ru, переезд завершён 2026-08-30
 - [Окружение разработки](infra_dev_env.md) — IP компьютера/телефона, запуск dev-сервера, Android APK-сборка
 - [База данных](infra_database.md) — схема всех таблиц: users, groups, habits (+кастомные/pullups колонки), habit_members, habit_logs, push_tokens, refresh_tokens
 - [Android нативные SDK](infra_android_native.md) — maven-репо + manifest-placeholders через config-плагины, т.к. `prebuild --clean` стирает `android/`; секреты в `~/.gradle/gradle.properties`
@@ -39,7 +39,7 @@
 
 ## Бэклог
 
-- [Отложенное и известные баги](backlog.md) — хвосты переезда на apptapa.ru (поставить APK, погасить старый сервер); expo-clipboard (prebuild уже сделан, осталась замена импорта); карточки «Шаги» показывают стрик
+- [Отложенное и известные баги](backlog.md) — карточки «Шаги» показывают стрик; поле «Дата начала» задизейблено
 
 ## Справочники
 
