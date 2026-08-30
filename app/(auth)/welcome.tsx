@@ -1,4 +1,4 @@
-import { View, Image, useWindowDimensions, Platform } from 'react-native';
+import { View, Image, Platform } from 'react-native';
 import { useState } from 'react';
 import Text from '@/components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,11 +9,12 @@ import { useColors, colors } from '@/lib/colors';
 import { vkAuth, yandexAuth } from '@/lib/api';
 import { saveTokens } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
+import { useContentWidth } from '@/lib/layout';
 import { signInWithVK } from '@/modules/vk-id';
 import { signInWithYandex } from '@/modules/yandex-id';
 
 export default function WelcomeScreen() {
-  const { width } = useWindowDimensions();
+  const width = useContentWidth();
   const c = useColors();
   const { setAuthed } = useAuth();
   const [processing, setProcessing] = useState(false);
@@ -90,6 +91,16 @@ export default function WelcomeScreen() {
       <View className="flex-1" />
 
       <View className="px-6 pb-8 gap-3">
+        {/* Только веб: в приложении скачивать APK неоткуда и незачем.
+            Ведёт на страницу-заглушку со сборкой (слэш в конце обязателен —
+            без него nginx отдаёт SPA, а не страницу). */}
+        {Platform.OS === 'web' && (
+          <Button
+            label="Скачать APK для Android"
+            onPress={() => window.location.assign('/download/')}
+            variant="secondary"
+          />
+        )}
         {(Platform.OS === 'android' || Platform.OS === 'web') && (
           <Button
             label="Войти через Яндекс"

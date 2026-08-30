@@ -1,28 +1,31 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 import { type PropsWithChildren } from 'react';
+import { WEB_MAX_WIDTH } from '@/lib/layout';
 
 // HTML-оболочка для веб-версии. Выполняется только при статическом рендере в
 // Node, не в браузере, поэтому здесь нет ни состояния, ни провайдеров — они
 // живут в корневом layout.
-// Ширина взята из макетов: они рисовались на кадре 393 px (iPhone 14/15),
-// 480 — тот же телефонный формат с небольшим запасом.
-// Фон вокруг рамки задан обеими темами, потому что системная тема на десктопе
-// и в телефоне определяется одинаково — через prefers-color-scheme.
+// Ширина рамки — WEB_MAX_WIDTH из lib/layout: тем же числом ограничивают себя
+// экраны, которые верстаются от ширины (иллюстрация на welcome, страницы-недели
+// календаря). Фон вокруг рамки задан обеими темами, потому что системная тема на
+// десктопе определяется так же, как в телефоне, — через prefers-color-scheme.
 const frameStyles = `
   html, body { background: #e5e5e5; }
   #root {
     width: 100%;
-    max-width: 480px;
+    max-width: ${WEB_MAX_WIDTH}px;
     margin: 0 auto;
     background: #f5f5f5;
+    /* Страховка: вёрстка, посчитанная шире рамки, не должна вылезать наружу */
+    overflow: hidden;
   }
-  @media (min-width: 481px) {
+  @media (min-width: ${WEB_MAX_WIDTH + 1}px) {
     #root { box-shadow: 0 0 24px rgba(0, 0, 0, 0.08); }
   }
   @media (prefers-color-scheme: dark) {
     html, body { background: #000000; }
     #root { background: #121212; }
-    @media (min-width: 481px) {
+    @media (min-width: ${WEB_MAX_WIDTH + 1}px) {
       #root { box-shadow: 0 0 24px rgba(0, 0, 0, 0.48); }
     }
   }
