@@ -79,7 +79,7 @@
       var parts = [];
       if (d.version) parts.push('Версия ' + d.version);
       if (d.sizeMb) parts.push(d.sizeMb + ' МБ');
-      if (d.date) parts.push('от ' + d.date);
+      if (d.date) parts.push('залит ' + d.date);
       document.getElementById('meta').textContent = parts.join(' · ') + ' · Android 8.0+';
     })
     .catch(function () { /* оставляем состояние «сборки нет» */ });

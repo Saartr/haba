@@ -17,18 +17,24 @@ $version = (Get-Content (Join-Path $PSScriptRoot 'app.json') -Raw | ConvertFrom-
 $item    = Get-Item $apk
 $sizeMb  = [math]::Round($item.Length / 1MB, 1)
 $sha     = (Get-FileHash $apk -Algorithm SHA256).Hash.ToLower()
-$date    = Get-Date -Format 'dd.MM.yyyy'
+$date    = Get-Date -Format 'dd.MM.yyyy, HH:mm'
 $dir     = '/var/www/haba/backend/public/download'
 
 Write-Host "Версия $version, $sizeMb МБ, собран $($item.LastWriteTime)" -ForegroundColor Cyan
 
 ssh Tapa "mkdir -p $dir"
 
-# Заливаем во временное имя и переименовываем: пока идёт закачка, со страницы
-# продолжает отдаваться предыдущая сборка, а не полуфайл.
-Write-Host "Загрузка $sizeMb МБ..." -ForegroundColor Cyan
-scp $apk "Tapa:$dir/.tapa-upload.apk"
-ssh Tapa "mv $dir/.tapa-upload.apk $dir/tapa-latest.apk; chmod 644 $dir/tapa-latest.apk"
+# Если на сервере ровно тот же файл, 100 МБ повторно не гоняем.
+$remoteSha = (ssh Tapa "sha256sum $dir/tapa-latest.apk 2>/dev/null | cut -d' ' -f1").Trim()
+if ($remoteSha -eq $sha) {
+    Write-Host "На сайте уже эта сборка — обновляю только метаданные." -ForegroundColor Yellow
+} else {
+    # Заливаем во временное имя и переименовываем: пока идёт закачка, со страницы
+    # продолжает отдаваться предыдущая сборка, а не полуфайл.
+    Write-Host "Загрузка $sizeMb МБ..." -ForegroundColor Cyan
+    scp $apk "Tapa:$dir/.tapa-upload.apk"
+    ssh Tapa "mv $dir/.tapa-upload.apk $dir/tapa-latest.apk; chmod 644 $dir/tapa-latest.apk"
+}
 
 # Метаданные для страницы. Готовим локально и копируем файлом — так не надо
 # экранировать кавычки JSON внутри ssh-команды. Пишем последними: если заливка
