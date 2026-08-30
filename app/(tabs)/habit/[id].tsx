@@ -60,6 +60,9 @@ export default function HabitScreen() {
   // Обновляем экран при получении foreground-уведомления по этой цели
   // (новый участник вступил или кто-то внёс данные).
   useEffect(() => {
+    // Пуши только на Android: на вебе часть API expo-notifications не
+    // реализована и падает при вызове (см. lib/notifications.ts).
+    if (Platform.OS !== 'android') return;
     const N = getNotificationsModule();
     if (!N) return;
     const sub = N.addNotificationReceivedListener((notification: any) => {

@@ -24,10 +24,14 @@ SplashScreen.preventAutoHideAsync();
 import AutorenewIcon from '@/assets/icons/Autorenew.svg';
 import ErrorScreen from '@/components/ErrorScreen';
 
-export function ErrorBoundary({ retry }: { error: Error; retry: () => void }) {
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
+  // Сюда попадают падения на клиенте, а не ошибки сервера — прежний текст
+  // «Внутренняя ошибка сервера» уводил диагностику не туда. Показываем причину:
+  // приложение ещё не в проде, и на вебе это единственный способ увидеть ошибку
+  // без DevTools.
   return (
     <ErrorScreen
-      message="Внутренняя ошибка сервера"
+      message={error?.message ? `Что-то сломалось: ${error.message}` : 'Что-то сломалось'}
       actions={[
         {
           label: 'Обновить',

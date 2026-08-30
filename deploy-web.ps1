@@ -10,7 +10,12 @@ $remote = '/var/www/haba/web'
 
 Write-Host "Сборка веб-версии..." -ForegroundColor Cyan
 Remove-Item -Recurse -Force "$PSScriptRoot\dist" -ErrorAction SilentlyContinue
+# Expo пишет предупреждения в stderr, а PowerShell 5.1 при ErrorActionPreference=Stop
+# считает это ошибкой нативной команды и обрывает скрипт. Успех сборки проверяем
+# ниже по наличию dist/index.html, а не по потоку ошибок.
+$ErrorActionPreference = 'Continue'
 npx expo export --platform web
+$ErrorActionPreference = 'Stop'
 if (-not (Test-Path "$PSScriptRoot\dist\index.html")) {
     Write-Host "Сборка не создала dist/index.html — деплой отменён" -ForegroundColor Red
     exit 1

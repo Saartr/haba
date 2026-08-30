@@ -77,10 +77,15 @@ export function addTokenRotationListener() {
   }
 }
 
-// Безопасная обёртка useLastNotificationResponse для Expo Go.
+// Безопасная обёртка useLastNotificationResponse для Expo Go и веба.
 // Функция выбирается один раз при загрузке модуля — хук всегда один и тот же,
 // правило hooks не нарушается.
 const _useLastNotifResponse: () => any = (() => {
+  // На вебе модуль загружается нормально, но getLastNotificationResponse в нём
+  // не реализован, и хук падает на первом же рендере, роняя всё приложение через
+  // ErrorBoundary. try/catch ниже это не ловит: модуль-то есть. Пуши всё равно
+  // только на Android, поэтому везде кроме него — пустышка.
+  if (Platform.OS !== 'android') return () => undefined;
   try {
     return require('expo-notifications').useLastNotificationResponse;
   } catch {
