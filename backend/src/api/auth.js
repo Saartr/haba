@@ -11,7 +11,7 @@ const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'change_me_in_env';
 const ACCESS_TTL = '15m';
 const REFRESH_TTL = '30d';
-const { AVATARS_DIR, AVATARS_URL } = require('../config');
+const { AVATARS_DIR, AVATARS_URL, PUBLIC_ORIGIN } = require('../config');
 
 // Яндекс ID. Нативный SDK отдаёт готовый OAuth-токен, поэтому обмена code→token на сервере
 // нет — только проверка токена через login.yandex.ru/info. Секрет приложения не нужен.
@@ -186,7 +186,9 @@ async function verifyVkToken(accessToken, userId) {
 }
 
 // POST /api/v1/auth/vk
-router.post('/vk', async (req, res) => {
+// Тело вынесено в именованную функцию: тот же вход используется веб-флоу
+// (/vk/web), который сначала меняет код на токен, а дальше всё идентично.
+async function vkSignIn(req, res) {
   const { accessToken, userId, firstName: clientFirstName, lastName: clientLastName, photo200, email, phone } = req.body;
   if (!accessToken || !userId) {
     return res.status(400).json({ message: 'accessToken и userId обязательны' });
@@ -248,11 +250,12 @@ router.post('/vk', async (req, res) => {
     console.error('vk auth error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
-});
+}
+router.post('/vk', vkSignIn);
 
 // POST /api/v1/auth/yandex — нативный Яндекс ID SDK отдаёт готовый OAuth-токен.
 // Сервер меняет его на профиль через login.yandex.ru/info (там же сверяется client_id).
-router.post('/yandex', async (req, res) => {
+async function yandexSignIn(req, res) {
   const { accessToken: yandexToken } = req.body;
   if (!yandexToken) return res.status(400).json({ message: 'accessToken обязателен' });
 
@@ -322,6 +325,92 @@ router.post('/yandex', async (req, res) => {
   } catch (e) {
     console.error('yandex auth error:', e);
     res.status(500).json({ message: 'Ошибка сервера' });
+  }
+}
+router.post('/yandex', yandexSignIn);
+
+// ── Веб-флоу авторизации ────────────────────────────────────────────────────
+// В приложении вход идёт через нативные SDK, которые сами отдают готовый
+// OAuth-токен. В браузере так нельзя: оба провайдера работают только через
+// redirect + authorization code (implicit-флоу Яндекс не поддерживает вовсе,
+// VK ID использует OAuth 2.1, где PKCE обязателен).
+//
+// Обмен кода на токен делаем здесь, а не в браузере: токен провайдера не
+// попадает в JS страницы, а дальше переиспользуются те же vkSignIn/yandexSignIn,
+// что и у мобильного приложения — вся логика upsert'а, аватара и
+// last_login_provider остаётся одна на оба клиента.
+
+const YANDEX_TOKEN_URL = 'https://oauth.yandex.ru/token';
+// Домены и путь взяты из самого @vkid/sdk (constants.js: VKID_DOMAIN = id.vk.ru,
+// обмен идёт на /oauth2/auth) — документация VK из РФ отдаётся не всегда.
+const VK_TOKEN_URL = 'https://id.vk.ru/oauth2/auth';
+
+function webRedirectUri(provider) {
+  return `${PUBLIC_ORIGIN}/auth/${provider}/callback`;
+}
+
+// POST /api/v1/auth/yandex/web { code, codeVerifier }
+router.post('/yandex/web', async (req, res) => {
+  const { code, codeVerifier } = req.body;
+  if (!code || !codeVerifier) {
+    return res.status(400).json({ message: 'code и codeVerifier обязательны' });
+  }
+  try {
+    // PKCE вместо client_secret: секрет приложения не нужен ни браузеру, ни серверу.
+    const body = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      client_id: YANDEX_CLIENT_ID,
+      code_verifier: codeVerifier,
+      redirect_uri: webRedirectUri('yandex'),
+    });
+    const r = await fetch(YANDEX_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    });
+    const data = await r.json();
+    if (!data.access_token) {
+      console.error('yandex code exchange failed:', data);
+      return res.status(401).json({ message: 'Не удалось обменять код Яндекса' });
+    }
+    req.body = { accessToken: data.access_token };
+    return yandexSignIn(req, res);
+  } catch (e) {
+    console.error('yandex web auth error:', e);
+    return res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// POST /api/v1/auth/vk/web { code, codeVerifier, deviceId, state }
+router.post('/vk/web', async (req, res) => {
+  const { code, codeVerifier, deviceId, state } = req.body;
+  if (!code || !codeVerifier || !deviceId) {
+    return res.status(400).json({ message: 'code, codeVerifier и deviceId обязательны' });
+  }
+  try {
+    const params = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      code_verifier: codeVerifier,
+      client_id: VK_CLIENT_ID,
+      device_id: deviceId,
+      redirect_uri: webRedirectUri('vk'),
+      ...(state ? { state } : {}),
+    });
+    const r = await fetch(`${VK_TOKEN_URL}?${params}`, { method: 'POST' });
+    const data = await r.json();
+    if (!data.access_token || !data.user_id) {
+      console.error('vk code exchange failed:', data);
+      return res.status(401).json({ message: 'Не удалось обменять код VK' });
+    }
+    // Дальше — тот же путь, что у мобильного клиента: verifyVkToken + upsert.
+    // Имя и фото не передаём: их подтянет ensureAvatar/VK API по user_id.
+    req.body = { accessToken: data.access_token, userId: String(data.user_id) };
+    return vkSignIn(req, res);
+  } catch (e) {
+    console.error('vk web auth error:', e);
+    return res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
 
