@@ -5,6 +5,7 @@
 ## Правила работы
 
 - [Git-процесс](rules_git_workflow.md) — коммитить/пушить только по явной просьбе, сообщения по-русски; перед коммитом актуализировать память
+- [Выкладка релиза](rules_release_publish.md) — собрал release APK → сразу `./upload-apk.ps1` на apptapa.ru; versionCode в app.json, лишние разрешения через blockedPermissions
 - [Деплой бэкенда](rules_backend_deploy.md) — серверный код правится только локально в `backend/`, ручной деплой `./deploy-backend.ps1` (нет автодеплоя); прямой SSH — только логи/рестарт/.env
 - [Figma — источник правды](rules_figma.md) — иконки/цвета/компоненты/отступы только из TapaDS; в SVG `fill="currentColor"` можно править без спроса
 - [Дизайн-система](rules_design_system.md) — не хардкодить цвета (colors.ts/useColors), готовые компоненты вместо примитивов; карточки/подложки без теней

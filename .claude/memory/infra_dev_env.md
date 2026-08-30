@@ -44,6 +44,9 @@ $env:ANDROID_HOME="$env:USERPROFILE\AppData\Local\Android\Sdk"  # раньше �
 .\gradlew assembleDebug
 adb install app\build\outputs\apk\debug\app-debug.apk
 ```
+**Release-сборка:** `./gradlew assembleRelease` (подпись — ключ из `~/.gradle/gradle.properties`),
+после сборки ОБЯЗАТЕЛЬНО `./upload-apk.ps1` — см. [[rules-release-publish]].
+
 APK: `android/app/build/outputs/apk/debug/app-debug.apk`
 Первая сборка ~7 минут, повторные 1-2 минуты.
 
