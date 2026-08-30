@@ -25,13 +25,13 @@ import AutorenewIcon from '@/assets/icons/Autorenew.svg';
 import ErrorScreen from '@/components/ErrorScreen';
 
 export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
-  // Сюда попадают падения на клиенте, а не ошибки сервера — прежний текст
-  // «Внутренняя ошибка сервера» уводил диагностику не туда. Показываем причину:
-  // приложение ещё не в проде, и на вебе это единственный способ увидеть ошибку
-  // без DevTools.
+  // На вебе показываем саму причину: это единственный способ увидеть ошибку без
+  // DevTools, пока веб-версия в разработке. В приложении текст оставлен прежним,
+  // чтобы разработка веба не меняла то, что видят пользователи Android.
+  const detailed = Platform.OS === 'web' && error?.message;
   return (
     <ErrorScreen
-      message={error?.message ? `Что-то сломалось: ${error.message}` : 'Что-то сломалось'}
+      message={detailed ? `Что-то сломалось: ${error.message}` : 'Внутренняя ошибка сервера'}
       actions={[
         {
           label: 'Обновить',
@@ -129,9 +129,16 @@ function RootLayoutNav() {
     const inAuth = segments[0] === '(auth)';
     const inTabs = segments[0] === '(tabs)';
     const inDev = segments[0] === 'dev';
+    // Страница возврата из OAuth (веб): на неё попадают ещё неавторизованными,
+    // и именно там код меняется на токены. Без этого исключения гвард уносил
+    // на welcome раньше, чем обмен успевал произойти, и вход не завершался.
+    // На Android сюда не ведёт ни один переход — условие там никогда не истинно.
+    // segments типизирован по сгенерированному списку маршрутов (.expo/types),
+    // который обновляет dev-сервер и где этого веб-роута ещё нет — сравниваем строкой.
+    const inOAuthCallback = String(segments[0]) === 'auth';
     if (authed && !inTabs && !inDev) {
       router.replace('/(tabs)');
-    } else if (!authed && !inAuth) {
+    } else if (!authed && !inAuth && !inOAuthCallback) {
       router.replace('/(auth)/welcome');
     }
   }, [ready, fontsLoaded, checked, authed, segments]);
