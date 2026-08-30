@@ -62,6 +62,15 @@ export async function yandexAuth(accessToken: string): Promise<AuthResult> {
   });
 }
 
+/** Веб-вход через Яндекс: сервер сам меняет код на токен провайдера
+ *  (см. modules/yandex-id/index.web.ts). */
+export async function yandexWebAuth(code: string, codeVerifier: string): Promise<AuthResult> {
+  return request('/auth/yandex/web', {
+    method: 'POST',
+    body: JSON.stringify({ code, codeVerifier }),
+  });
+}
+
 export async function vkAuth(data: { accessToken: string; userId: string; firstName?: string; lastName?: string; photo200?: string; email?: string; phone?: string }): Promise<AuthResult> {
   return request('/auth/vk', {
     method: 'POST',

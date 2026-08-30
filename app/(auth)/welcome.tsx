@@ -90,22 +90,25 @@ export default function WelcomeScreen() {
       <View className="flex-1" />
 
       <View className="px-6 pb-8 gap-3">
+        {(Platform.OS === 'android' || Platform.OS === 'web') && (
+          <Button
+            label="Войти через Яндекс"
+            onPress={handleYandexLogin}
+            loading={processing}
+            icon={<YandexIcon />}
+          />
+        )}
+        {/* VK ID — только в приложении. У приложения VK ID платформа жёстко
+            Android, веб-вход потребовал бы отдельного приложения со своими
+            ключами; решено не заводить (2026-08-30). */}
         {Platform.OS === 'android' && (
-          <>
-            <Button
-              label="Войти через Яндекс"
-              onPress={handleYandexLogin}
-              loading={processing}
-              icon={<YandexIcon />}
-            />
-            <Button
-              label="Войти через VK ID"
-              onPress={handleVkLogin}
-              loading={processing}
-              variant="secondary"
-              icon={<VKIcon />}
-            />
-          </>
+          <Button
+            label="Войти через VK ID"
+            onPress={handleVkLogin}
+            loading={processing}
+            variant="secondary"
+            icon={<VKIcon />}
+          />
         )}
       </View>
     </SafeAreaView>

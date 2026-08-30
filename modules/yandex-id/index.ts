@@ -15,3 +15,11 @@ export function signInWithYandex(): Promise<string> {
   }
   return YandexIdModule.signIn();
 }
+
+/** Есть только в веб-версии (index.web.ts), где вход идёт редиректом и
+ *  промежуточные значения PKCE лежат в sessionStorage. В приложении вход
+ *  завершает нативный SDK, ничего сохранять между шагами не нужно —
+ *  заглушка держит одинаковый интерфейс модуля на обеих платформах. */
+export function takeStoredAuthRequest(): { codeVerifier: string | null; state: string | null } {
+  return { codeVerifier: null, state: null };
+}
