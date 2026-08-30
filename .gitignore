@@ -48,8 +48,10 @@ modules/*/android/.gradle/
 # backend
 backend/.env
 backend/public/avatars/
-# Сборки APK: заливаются скриптом upload-apk.ps1, в git не хранятся (100+ МБ)
-backend/public/download/
+# Сборки APK заливаются скриптом upload-apk.ps1 и в git не хранятся (100+ МБ),
+# а страница-заглушка рядом с ними — хранится.
+backend/public/download/*.apk
+backend/public/download/latest.json
 backend/*.log
 
 # Firebase (FCM push) — секреты, не в git

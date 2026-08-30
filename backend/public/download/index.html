@@ -6,9 +6,9 @@
 <!-- Страница-заглушка на корне apptapa.ru: отсюда ставится последняя сборка.
      noindex — сборки тестовые, в поиске им делать нечего. -->
 <meta name="robots" content="noindex">
-<link rel="icon" href="/favicon.png" sizes="48x48">
+<link rel="icon" href="favicon.png" sizes="48x48">
 <!-- iOS не использует favicon для ярлыка на домашнем экране — ему нужен свой размер -->
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#6047ff">
 <title>Тапа — приложение для привычек</title>
 <style>
@@ -52,11 +52,11 @@
 </head>
 <body>
   <div class="card">
-    <img class="mascot" src="/tapa.png" alt="Маскот Тапа">
+    <img class="mascot" src="tapa.png" alt="Маскот Тапа">
     <h1>Тапа</h1>
     <p class="lead">Приложение для привычек с групповыми целями.<br>Сейчас в разработке — сборки для теста ниже.</p>
 
-    <a class="btn" id="dl" href="/download/tapa-latest.apk" aria-disabled="true">Сборка ещё не выложена</a>
+    <a class="btn" id="dl" href="tapa-latest.apk" aria-disabled="true">Сборка ещё не выложена</a>
     <p class="meta" id="meta">Android 8.0 и новее</p>
 
     <div class="hint">
@@ -69,7 +69,7 @@
 <script>
   // Метаданные пишет upload-apk.ps1 при загрузке сборки. Если файла нет —
   // кнопка остаётся неактивной, чтобы не вести на 404.
-  fetch('/download/latest.json', { cache: 'no-store' })
+  fetch('latest.json', { cache: 'no-store' })
     .then(function (r) { if (!r.ok) throw new Error('нет сборки'); return r.json(); })
     .then(function (d) {
       var btn = document.getElementById('dl');
