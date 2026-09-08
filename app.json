@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "pro.mihmih.haba",
-      "versionCode": 2,
+      "versionCode": 3,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#6047ff",
