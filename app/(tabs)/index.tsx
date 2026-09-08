@@ -1,7 +1,7 @@
 import { View, Pressable, Image, StatusBar, ActivityIndicator, RefreshControl, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from "expo-router/react-navigation";
 import { useCallback, useRef, useState } from 'react';
 import Text from '@/components/Text';
 import HabitTag from '@/components/HabitTag';

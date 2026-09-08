@@ -7,11 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "haba",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "pro.mihmih.haba"
@@ -66,7 +61,18 @@
         }
       ],
       "expo-font",
-      "./plugins/with-signing-config.js"
+      "./plugins/with-signing-config.js",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

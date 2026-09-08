@@ -2,7 +2,7 @@ import { Alert, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState, useCallback } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from "expo-router/react-navigation";
 import { useConfirm } from '@/components/ConfirmModal';
 import { useSnackbar } from '@/lib/snackbar-context';
 import DeleteForeverIcon from '@/assets/icons/DeleteForever.svg';
