@@ -22,18 +22,22 @@ $dir     = '/var/www/haba/backend/public/download'
 
 Write-Host "Версия $version, $sizeMb МБ, собран $($item.LastWriteTime)" -ForegroundColor Cyan
 
-ssh Tapa "mkdir -p $dir"
+ssh.exe Tapa "mkdir -p $dir"
 
 # Если на сервере ровно тот же файл, 100 МБ повторно не гоняем.
-$remoteSha = (ssh Tapa "sha256sum $dir/tapa-latest.apk 2>/dev/null | cut -d' ' -f1").Trim()
+# Без конвейера и без .Trim() на результате напрямую: PowerShell 5.1 не пускает ssh.exe через
+# пайп (CantActivateDocumentInPipeline), а если ssh.exe ничего не вернул, результат null и
+# .Trim() роняет скрипт. Интерполяция в строку решает оба случая.
+$remoteShaRaw = ssh.exe Tapa "sha256sum $dir/tapa-latest.apk 2>/dev/null | cut -d' ' -f1"
+$remoteSha = "$remoteShaRaw".Trim()
 if ($remoteSha -eq $sha) {
     Write-Host "На сайте уже эта сборка — обновляю только метаданные." -ForegroundColor Yellow
 } else {
     # Заливаем во временное имя и переименовываем: пока идёт закачка, со страницы
     # продолжает отдаваться предыдущая сборка, а не полуфайл.
     Write-Host "Загрузка $sizeMb МБ..." -ForegroundColor Cyan
-    scp $apk "Tapa:$dir/.tapa-upload.apk"
-    ssh Tapa "mv $dir/.tapa-upload.apk $dir/tapa-latest.apk; chmod 644 $dir/tapa-latest.apk"
+    scp.exe $apk "Tapa:$dir/.tapa-upload.apk"
+    ssh.exe Tapa "mv $dir/.tapa-upload.apk $dir/tapa-latest.apk; chmod 644 $dir/tapa-latest.apk"
 }
 
 # Метаданные для страницы. Готовим локально и копируем файлом — так не надо
@@ -42,11 +46,11 @@ if ($remoteSha -eq $sha) {
 $json    = @{ version = $version; sizeMb = $sizeMb; date = $date; sha256 = $sha } | ConvertTo-Json -Compress
 $tmpJson = Join-Path $env:TEMP 'tapa-latest.json'
 [System.IO.File]::WriteAllText($tmpJson, $json, (New-Object System.Text.UTF8Encoding($false)))
-scp $tmpJson "Tapa:$dir/latest.json"
+scp.exe $tmpJson "Tapa:$dir/latest.json"
 Remove-Item $tmpJson
 
 Write-Host "Проверка..." -ForegroundColor Cyan
-ssh Tapa "curl -sI https://apptapa.ru/download/tapa-latest.apk | head -2"
+ssh.exe Tapa "curl -sI https://apptapa.ru/download/tapa-latest.apk | head -2"
 
 Write-Host "Готово: https://apptapa.ru/" -ForegroundColor Green
 Write-Host "APK:    https://apptapa.ru/download/tapa-latest.apk"

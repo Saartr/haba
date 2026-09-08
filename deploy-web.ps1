@@ -26,11 +26,11 @@ Write-Host "Загрузка ($size)..." -ForegroundColor Cyan
 
 # Заливаем в соседний каталог и меняем местами: пока идёт копирование,
 # сайт продолжает отдавать предыдущую сборку целиком, а не вперемешку с новой.
-ssh Tapa "rm -rf $remote.new; mkdir -p $remote.new"
-scp -q -r "$PSScriptRoot\dist\*" "Tapa:$remote.new/"
-ssh Tapa "rm -rf $remote.old; if [ -d $remote ]; then mv $remote $remote.old; fi; mv $remote.new $remote; rm -rf $remote.old"
+ssh.exe Tapa "rm -rf $remote.new; mkdir -p $remote.new"
+scp.exe -q -r "$PSScriptRoot\dist\*" "Tapa:$remote.new/"
+ssh.exe Tapa "rm -rf $remote.old; if [ -d $remote ]; then mv $remote $remote.old; fi; mv $remote.new $remote; rm -rf $remote.old"
 
 Write-Host "Проверка..." -ForegroundColor Cyan
-ssh Tapa "curl -sI https://apptapa.ru/ | head -1; curl -sI https://apptapa.ru/auth/yandex/callback | head -1"
+ssh.exe Tapa "curl -sI https://apptapa.ru/ | head -1; curl -sI https://apptapa.ru/auth/yandex/callback | head -1"
 
 Write-Host "Готово: https://apptapa.ru/" -ForegroundColor Green
