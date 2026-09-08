@@ -6,12 +6,12 @@ import YandexIcon from '@/assets/icons/Yandex.svg';
 import VKIcon from '@/assets/icons/VK.svg';
 import Button from '@/components/Button';
 import { useColors, colors } from '@/lib/colors';
-import { vkAuth, yandexAuth } from '@/lib/api';
+import { vkAuth, yandexAuth, yandexWebAuth } from '@/lib/api';
 import { saveTokens } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
 import { useContentWidth } from '@/lib/layout';
 import { signInWithVK } from '@/modules/vk-id';
-import { signInWithYandex } from '@/modules/yandex-id';
+import { signInWithYandex, signInWithYandexCode } from '@/modules/yandex-id';
 
 export default function WelcomeScreen() {
   const width = useContentWidth();
@@ -24,8 +24,15 @@ export default function WelcomeScreen() {
     setError(null);
     setProcessing(true);
     try {
-      const token = await signInWithYandex();
-      const result = await yandexAuth(token);
+      // На Android нативный SDK сразу отдаёт токен. На iOS его нет: там системная
+      // веб-сессия возвращает код, а на токен его меняет сервер — как на вебе.
+      let result;
+      if (Platform.OS === 'ios') {
+        const { code, codeVerifier } = await signInWithYandexCode();
+        result = await yandexWebAuth(code, codeVerifier);
+      } else {
+        result = await yandexAuth(await signInWithYandex());
+      }
       await saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken });
       setAuthed(true, result.user);
     } catch (e: any) {
@@ -101,14 +108,12 @@ export default function WelcomeScreen() {
             variant="secondary"
           />
         )}
-        {(Platform.OS === 'android' || Platform.OS === 'web') && (
-          <Button
-            label="Войти через Яндекс"
-            onPress={handleYandexLogin}
-            loading={processing}
-            icon={<YandexIcon />}
-          />
-        )}
+        <Button
+          label="Войти через Яндекс"
+          onPress={handleYandexLogin}
+          loading={processing}
+          icon={<YandexIcon />}
+        />
         {/* VK ID — только в приложении. У приложения VK ID платформа жёстко
             Android, веб-вход потребовал бы отдельного приложения со своими
             ключами; решено не заводить (2026-08-30). */}

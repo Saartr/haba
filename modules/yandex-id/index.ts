@@ -23,3 +23,12 @@ export function signInWithYandex(): Promise<string> {
 export function takeStoredAuthRequest(): { codeVerifier: string | null; state: string | null } {
   return { codeVerifier: null, state: null };
 }
+
+/** Есть только в iOS-версии модуля (index.ios.ts), где вход идёт через системную
+ *  веб-сессию и возвращает код авторизации. Заглушка держит одинаковый интерфейс
+ *  модуля на всех платформах. */
+export function signInWithYandexCode(): Promise<{ code: string; codeVerifier: string }> {
+  return Promise.reject(new Error('signInWithYandexCode доступен только на iOS'));
+}
+
+export const NATIVE_STATE_PREFIX = 'app.';

@@ -7,7 +7,7 @@ import { useColors } from '@/lib/colors';
 import { yandexWebAuth } from '@/lib/api';
 import { saveTokens } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
-import { takeStoredAuthRequest } from '@/modules/yandex-id';
+import { takeStoredAuthRequest, NATIVE_STATE_PREFIX } from '@/modules/yandex-id';
 
 // Страница возврата из Яндекс OAuth (только веб — в приложении вход идёт через
 // нативный SDK и сюда никто не попадает). Забирает код из query, меняет его на
@@ -27,6 +27,20 @@ export default function YandexCallbackScreen() {
     let cancelled = false;
 
     (async () => {
+      // Вход из мобильного приложения: Яндекс редиректит сюда, потому что этот
+      // адрес зарегистрирован в консоли, но код нужен приложению, а не браузеру.
+      // Перебрасываем его в приложение по схеме haba:// — системная веб-сессия на
+      // этом закрывается и отдаёт код нативному коду. Обмен делает приложение,
+      // здесь ничего не сохраняем.
+      if (typeof params.state === 'string' && params.state.startsWith(NATIVE_STATE_PREFIX)) {
+        const query = new URLSearchParams();
+        if (params.code) query.set('code', params.code);
+        if (params.state) query.set('state', params.state);
+        if (params.error) query.set('error', params.error);
+        window.location.replace(`haba://auth/yandex/callback?${query}`);
+        return;
+      }
+
       const stored = takeStoredAuthRequest();
       if (params.error) {
         setError('Вход через Яндекс отменён');
