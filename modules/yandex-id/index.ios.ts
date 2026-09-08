@@ -16,9 +16,34 @@ import { SERVER_ORIGIN, YANDEX_CLIENT_ID } from '@/lib/config';
 
 const AUTHORIZE_URL = 'https://oauth.yandex.ru/authorize';
 const WEB_REDIRECT = `${SERVER_ORIGIN}/auth/yandex/callback`;
-const APP_REDIRECT = 'haba://auth/yandex/callback';
 /** Помечает state, чтобы страница-callback поняла: возвращать надо в приложение. */
 export const NATIVE_STATE_PREFIX = 'app.';
+
+/** Куда возвращаться из браузера. В собранном приложении это haba://, а в Expo Go —
+ *  exp://<хост-туннеля>/--/…, поэтому адрес нельзя зашивать: Linking.createURL даёт
+ *  правильный для текущего окружения. Он же кладётся в state, чтобы страница-callback
+ *  знала, куда перебрасывать. */
+function appRedirect(): string {
+  return Linking.createURL('auth/yandex/callback');
+}
+
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+
+/** base64url без паддинга. Своя реализация, а не btoa: его в React Native может не быть
+ *  (см. соседний комментарий про code_verifier). Вход — URL, то есть только ASCII. */
+function encodeReturnUrl(url: string): string {
+  let out = '';
+  for (let i = 0; i < url.length; i += 3) {
+    const a = url.charCodeAt(i);
+    const b = i + 1 < url.length ? url.charCodeAt(i + 1) : NaN;
+    const c = i + 2 < url.length ? url.charCodeAt(i + 2) : NaN;
+    out += B64[a >> 2];
+    out += B64[((a & 3) << 4) | (isNaN(b) ? 0 : b >> 4)];
+    if (!isNaN(b)) out += B64[((b & 15) << 2) | (isNaN(c) ? 0 : c >> 6)];
+    if (!isNaN(c)) out += B64[c & 63];
+  }
+  return out;
+}
 
 function base64UrlFromBase64(b64: string): string {
   return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -38,7 +63,8 @@ export type YandexAuthCode = { code: string; codeVerifier: string };
  *  Обмен кода на токены делает вызывающий через yandexWebAuth(). */
 export async function signInWithYandexCode(): Promise<YandexAuthCode> {
   const codeVerifier = randomHex(32);
-  const state = NATIVE_STATE_PREFIX + randomHex(8);
+  const redirect = appRedirect();
+  const state = NATIVE_STATE_PREFIX + encodeReturnUrl(redirect) + '.' + randomHex(8);
   const challenge = base64UrlFromBase64(
     await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, codeVerifier, {
       encoding: Crypto.CryptoEncoding.BASE64,
@@ -54,7 +80,7 @@ export async function signInWithYandexCode(): Promise<YandexAuthCode> {
     state,
   });
 
-  const result = await WebBrowser.openAuthSessionAsync(`${AUTHORIZE_URL}?${params}`, APP_REDIRECT);
+  const result = await WebBrowser.openAuthSessionAsync(`${AUTHORIZE_URL}?${params}`, redirect);
   if (result.type !== 'success' || !result.url) {
     const e: any = new Error('Вход через Яндекс отменён');
     e.code = 'YANDEX_AUTH_CANCELLED';

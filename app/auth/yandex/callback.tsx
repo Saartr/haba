@@ -12,6 +12,17 @@ import { takeStoredAuthRequest, NATIVE_STATE_PREFIX } from '@/modules/yandex-id'
 // Страница возврата из Яндекс OAuth (только веб — в приложении вход идёт через
 // нативный SDK и сюда никто не попадает). Забирает код из query, меняет его на
 // наши токены через сервер и уводит в приложение.
+/** Обратное преобразование к encodeReturnUrl из modules/yandex-id/index.ios.ts.
+ *  atob здесь допустим — код выполняется только в браузере. */
+function decodeReturnUrl(encoded: string): string | null {
+  try {
+    const b64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    return atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4));
+  } catch {
+    return null;
+  }
+}
+
 export default function YandexCallbackScreen() {
   const c = useColors();
   const router = useRouter();
@@ -29,15 +40,24 @@ export default function YandexCallbackScreen() {
     (async () => {
       // Вход из мобильного приложения: Яндекс редиректит сюда, потому что этот
       // адрес зарегистрирован в консоли, но код нужен приложению, а не браузеру.
-      // Перебрасываем его в приложение по схеме haba:// — системная веб-сессия на
-      // этом закрывается и отдаёт код нативному коду. Обмен делает приложение,
-      // здесь ничего не сохраняем.
+      // Перебрасываем его обратно в приложение — системная веб-сессия на этом
+      // закрывается и отдаёт код нативному коду. Обмен делает приложение, здесь
+      // ничего не сохраняем.
       if (typeof params.state === 'string' && params.state.startsWith(NATIVE_STATE_PREFIX)) {
+        // В state приложение положило адрес, по которому его можно вернуть: в собранной
+        // версии это haba://, в Expo Go — exp://<хост>/--/…, заранее его знать нельзя.
+        const encoded = params.state.slice(NATIVE_STATE_PREFIX.length).split('.')[0];
+        const target = decodeReturnUrl(encoded);
+        // Открытый редирект здесь недопустим: уходим только в приложение, больше никуда.
+        if (!target || !/^(haba|exp):\/\//.test(target)) {
+          setError('Не удалось вернуться в приложение');
+          return;
+        }
         const query = new URLSearchParams();
         if (params.code) query.set('code', params.code);
         if (params.state) query.set('state', params.state);
         if (params.error) query.set('error', params.error);
-        window.location.replace(`haba://auth/yandex/callback?${query}`);
+        window.location.replace(`${target}?${query}`);
         return;
       }
 
