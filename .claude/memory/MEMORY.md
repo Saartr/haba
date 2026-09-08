@@ -20,6 +20,7 @@
 - [База данных](infra_database.md) — схема всех таблиц: users, groups, habits (+кастомные/pullups колонки), habit_members, habit_logs, push_tokens, refresh_tokens
 - [Android нативные SDK](infra_android_native.md) — maven-репо + manifest-placeholders через config-плагины, т.к. `prebuild --clean` стирает `android/`; секреты в `~/.gradle/gradle.properties`
 - [iOS план](infra_ios_plan.md) — постоянное направление; сборка под симулятор работает, вход через Яндекс есть; блокирует Apple Developer Account
+- [iOS: что осталось перенести](infra_ios_feature_parity.md) — инвентарь 21 платформенной ветки: пуши, шаги/фоновый синк, вход через VK; что чем заблокировано и в каком порядке
 - [Обновление SDK 55 → 57](infra_sdk57_upgrade.md) — план: целевая expo@57.0.21 (не ниже 57.0.9 из-за регрессии Hermes), что ломается, обязательный прогон по Android
 
 ## Фичи
