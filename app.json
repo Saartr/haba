@@ -70,6 +70,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a15a2250-75ca-4ea7-9c7e-cf9699f0ab20"
+      }
+    },
+    "owner": "saartr"
   }
 }
