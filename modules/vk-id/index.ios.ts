@@ -61,7 +61,9 @@ export async function signInWithVKCode(): Promise<VkAuthCode> {
     code_challenge: challenge,
     code_challenge_method: 'S256',
     state,
-    scope: 'email phone',
+    // scope намеренно не запрашиваем: базовые данные (имя, фото) VK отдаёт всегда,
+    // а email и phone включаются тумблерами в консоли (вкладка Access) — запрос
+    // невключённого скоупа VK отклоняет. Понадобятся — включить там и добавить сюда.
   });
 
   const result = await WebBrowser.openAuthSessionAsync(`${AUTHORIZE_URL}?${params}`, redirect);
