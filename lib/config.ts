@@ -15,8 +15,14 @@ export function inviteLink(code: string): string {
  *  нативной сборке до запуска JS, поэтому одним местом обойтись не выходит. */
 export const YANDEX_CLIENT_ID = '1e466a3264584e3aaf95945ce4a25449';
 
-/** ID приложения в VK ID. Публичное значение, не секрет. Дублируется в
- *  plugins/with-vk-manifest-placeholders.js — там он нужен нативной сборке Android
- *  до запуска JS. Если под веб/iOS заведут отдельное приложение VK, здесь появится
- *  второй идентификатор, а на сервере — VK_WEB_CLIENT_ID в .env. */
+/** ID приложения в VK ID для Android — нативный SDK. Публичное значение, не секрет.
+ *  Дублируется в plugins/with-vk-manifest-placeholders.js: там он нужен нативной
+ *  сборке до запуска JS. */
 export const VK_CLIENT_ID = '54615454';
+
+/** ID приложения VK ID с платформой «Веб-сайт» (создано 2026-09-08). Используется
+ *  входом на iOS: консоль VK заводит отдельное приложение на каждую платформу, и
+ *  наш redirect https://apptapa.ru/auth/vk/callback зарегистрирован именно у этого.
+ *  Ему же соответствуют VK_WEB_CLIENT_SECRET и VK_WEB_SERVICE_TOKEN в .env сервера —
+ *  secure.checkToken проверяет токен против выдавшего приложения. */
+export const VK_WEB_CLIENT_ID = '54761714';

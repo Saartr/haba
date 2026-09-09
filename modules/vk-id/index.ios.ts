@@ -1,7 +1,7 @@
 import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
 import * as Linking from 'expo-linking';
-import { SERVER_ORIGIN, VK_CLIENT_ID } from '@/lib/config';
+import { SERVER_ORIGIN, VK_WEB_CLIENT_ID } from '@/lib/config';
 
 // Вход через VK ID на iOS. Нативного SDK под iOS у нас нет, поэтому используется
 // OAuth 2.1 с PKCE (VK его требует) через системную ASWebAuthenticationSession.
@@ -56,7 +56,7 @@ export async function signInWithVKCode(): Promise<VkAuthCode> {
 
   const params = new URLSearchParams({
     response_type: 'code',
-    client_id: VK_CLIENT_ID,
+    client_id: VK_WEB_CLIENT_ID,
     redirect_uri: WEB_REDIRECT,
     code_challenge: challenge,
     code_challenge_method: 'S256',
