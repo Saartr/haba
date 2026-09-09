@@ -1,7 +1,6 @@
 @AGENTS.md
 @.claude/memory/MEMORY.md
 @.claude/memory/rules_read_memory_first.md
-@.claude/memory/rules_web_scope.md
 @.claude/memory/infra_stack.md
 @.claude/memory/infra_dev_env.md
 @.claude/memory/infra_database.md

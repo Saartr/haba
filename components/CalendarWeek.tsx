@@ -1,11 +1,10 @@
 import { useRef, useState, useEffect } from 'react';
-import { View, Pressable, FlatList, ActivityIndicator, Animated, Easing } from 'react-native';
+import { View, Pressable, FlatList, ActivityIndicator, Animated, Easing, useWindowDimensions } from 'react-native';
 import Text from '@/components/Text';
 import CheckCircleIcon from '@/assets/icons/CheckCircle.svg';
 import DoNotDisturbIcon from '@/assets/icons/DoNotDisturb.svg';
 import CircleOutlineIcon from '@/assets/icons/Circle.svg';
 import { useSettings } from '@/lib/settings-context';
-import { useContentWidth } from '@/lib/layout';
 import { colors } from '@/lib/colors';
 import { getHabitLogs, HabitLog } from '@/lib/api';
 
@@ -333,7 +332,7 @@ export default function CalendarWeek({ habitId, habitCreatedAt, currentWeekLogs,
   const currentIndex = weekOffsets.indexOf(0);
 
   const listRef = useRef<FlatList>(null);
-  const screenWidth = useContentWidth();
+  const { width: screenWidth } = useWindowDimensions();
   const pageWidth = pageWidthProp ?? screenWidth;
 
   // Active-подсветка (TapaDS Calendar/Item, Selected=on) — единый стейт на весь календарь

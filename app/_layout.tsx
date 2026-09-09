@@ -24,14 +24,10 @@ SplashScreen.preventAutoHideAsync();
 import AutorenewIcon from '@/assets/icons/Autorenew.svg';
 import ErrorScreen from '@/components/ErrorScreen';
 
-export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
-  // На вебе показываем саму причину: это единственный способ увидеть ошибку без
-  // DevTools, пока веб-версия в разработке. В приложении текст оставлен прежним,
-  // чтобы разработка веба не меняла то, что видят пользователи Android.
-  const detailed = Platform.OS === 'web' && error?.message;
+export function ErrorBoundary({ retry }: { error: Error; retry: () => void }) {
   return (
     <ErrorScreen
-      message={detailed ? `Что-то сломалось: ${error.message}` : 'Внутренняя ошибка сервера'}
+      message="Внутренняя ошибка сервера"
       actions={[
         {
           label: 'Обновить',

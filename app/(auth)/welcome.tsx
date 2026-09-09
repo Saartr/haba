@@ -1,4 +1,4 @@
-import { View, Image, Platform } from 'react-native';
+import { View, Image, useWindowDimensions, Platform } from 'react-native';
 import { useState } from 'react';
 import Text from '@/components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,12 +9,11 @@ import { useColors, colors } from '@/lib/colors';
 import { vkAuth, vkWebAuth, yandexAuth, yandexWebAuth } from '@/lib/api';
 import { saveTokens } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
-import { useContentWidth } from '@/lib/layout';
 import { signInWithVK, signInWithVKCode } from '@/modules/vk-id';
 import { signInWithYandex, signInWithYandexCode } from '@/modules/yandex-id';
 
 export default function WelcomeScreen() {
-  const width = useContentWidth();
+  const { width } = useWindowDimensions();
   const c = useColors();
   const { setAuthed } = useAuth();
   const [processing, setProcessing] = useState(false);
@@ -108,35 +107,21 @@ export default function WelcomeScreen() {
       <View className="flex-1" />
 
       <View className="px-6 pb-8 gap-3">
-        {/* Только веб: в приложении скачивать APK неоткуда и незачем.
-            Ведёт на страницу-заглушку со сборкой (слэш в конце обязателен —
-            без него nginx отдаёт SPA, а не страницу). */}
-        {Platform.OS === 'web' && (
-          <Button
-            label="Скачать APK для Android"
-            onPress={() => window.location.assign('/download/')}
-            variant="secondary"
-          />
-        )}
         <Button
           label="Войти через Яндекс"
           onPress={handleYandexLogin}
           loading={processing}
           icon={<YandexIcon />}
         />
-        {/* VK ID — только в приложении. В веб-версии его нет намеренно: у
-            приложения VK ID платформа зафиксирована как Android, и веб-вход
-            потребовал бы отдельного приложения (решено 2026-08-30). На iOS вход
-            идёт тем же приёмом, что у Яндекса, — через системную веб-сессию. */}
-        {Platform.OS !== 'web' && (
-          <Button
-            label="Войти через VK ID"
-            onPress={handleVkLogin}
-            loading={processing}
-            variant="secondary"
-            icon={<VKIcon />}
-          />
-        )}
+        {/* На Android вход идёт через нативный SDK, на iOS — через системную
+            веб-сессию: нативного SDK под iOS у нас нет. */}
+        <Button
+          label="Войти через VK ID"
+          onPress={handleVkLogin}
+          loading={processing}
+          variant="secondary"
+          icon={<VKIcon />}
+        />
       </View>
     </SafeAreaView>
   );

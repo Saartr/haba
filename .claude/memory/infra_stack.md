@@ -7,7 +7,8 @@ metadata:
   originSessionId: 6f334f79-b33a-4bdb-b852-d3bff627bebf
 ---
 
-Мобильное приложение (iOS + Android) для отслеживания привычек с групповым соревнованием.
+Мобильное приложение (Android + iOS) для отслеживания привычек с групповым соревнованием.
+Веб-версия была экспериментом и убрана 2026-09-08 — см. [[feature-web-version]].
 
 **Фронтенд** (`C:\haba`):
 - React Native + Expo SDK 55, Expo Router, TypeScript

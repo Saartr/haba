@@ -7,7 +7,6 @@
 - [Сначала читать память](rules_read_memory_first.md) — перед выполнением задачи открыть индекс и файлы по её теме, потом браться за работу
 - [Git-процесс](rules_git_workflow.md) — коммитить/пушить только по явной просьбе, сообщения по-русски; перед коммитом актуализировать память
 - [Выкладка релиза](rules_release_publish.md) — собрал release APK → сразу `./upload-apk.ps1` на apptapa.ru; versionCode в app.json, лишние разрешения через blockedPermissions
-- [Веб не трогает Android](rules_web_scope.md) — веб-версия это параллельный эксперимент; правки ради неё обязаны быть инертны для приложения, спорные — спрашивать
 - [Деплой бэкенда](rules_backend_deploy.md) — серверный код правится только локально в `backend/`, ручной деплой `./deploy-backend.ps1` (нет автодеплоя); прямой SSH — только логи/рестарт/.env
 - [Figma — источник правды](rules_figma.md) — иконки/цвета/компоненты/отступы только из TapaDS; в SVG `fill="currentColor"` можно править без спроса
 - [Дизайн-система](rules_design_system.md) — не хардкодить цвета (colors.ts/useColors), готовые компоненты вместо примитивов; карточки/подложки без теней
@@ -31,7 +30,7 @@
 - [Health Connect](feature_health_connect.md) — ✅ работает на debug; причина бывшего пустого requestPermission — отсутствие Android-14 rationale activity-alias в манифесте, НЕ верификация
 - [Health Sync WorkManager](feature_health_sync.md) — ✅ реализовано: Expo Module health-sync, CoroutineWorker, refreshToken в SharedPreferences, scheduleSync/cancelSync
 - [Push-уведомления](feature_push.md) — ✅ реализовано: FCM HTTP v1 напрямую (без Expo), глобальный + per-habit тогглы, 5 типов пушей
-- [Веб-версия](feature_web_version.md) — apptapa.ru, вход только через Яндекс (PKCE + callback-роут), статика через nginx, платформенные заглушки; как проверять, что android цел
+- [Веб-версия](feature_web_version.md) — ⛔ убрана 2026-09-08 после теста; остались только страницы возврата OAuth, на них держится вход на iOS
 - [Главный экран](feature_main_screen.md) — параллакс шапки при скролле, empty state на Toolbar, фон neutral[75], иллюстрации из Figma (welcome/error/splash/success)
 - [Цель «Подтягивания»](feature_pullups.md) — ✅ реализовано: колонки в habits + сохранённый план, формула прогрессии, Multiselect, календарь Неделя/Месяц, тап по дате → модалка плана, solo-only
 - [Групповая count-цель](feature_group_count_goal.md) — безлимитная (goal_value NULL), пуш на каждую запись, entry_totals/«Общая статистика», кнопка +1, календарь без красного
