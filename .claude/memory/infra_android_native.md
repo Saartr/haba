@@ -22,7 +22,9 @@ metadata:
 **Секреты НЕ в гите — в `~/.gradle/gradle.properties` (глобально, вне репо):**
 ```
 gpr.user=Saartr
-gpr.key=<github PAT с read:packages>   # ⚠️ был засвечен в чате — отозвать/перевыпустить
+gpr.key=<github PAT с read:packages>   # ⚠️ БОЛЬШЕ НЕ НУЖЕН: репозиторий GitHub Packages
+                                       # использовал только Telegram SDK, удалённый 2026-08-25.
+                                       # Токен был засвечен в чате — отозвать и убрать строку.
 VKIDClientSecret=<vk client secret>
 ```
 Плагины читают их через `project.findProperty(...)`. На новой машине/CI эти строки надо добавить вручную.
