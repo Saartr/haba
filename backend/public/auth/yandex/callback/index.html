@@ -26,14 +26,34 @@
 (function () {
   var q = new URLSearchParams(location.search);
   var state = q.get('state') || '';
-  var PREFIX = 'app.';
+  var PREFIX = 'app';
+  var NONCE_LEN = 16;
   function fail(text) { document.getElementById('msg').textContent = text; }
 
-  if (state.indexOf(PREFIX) !== 0) {
+  // Разделителей в state нет: VK не вернул state с точками — в редиректе его
+  // просто не оказалось. После префикса идут NONCE_LEN случайных символов,
+  // дальше base64url адреса возврата.
+  var encoded = null;
+  if (state.indexOf(PREFIX) === 0) {
+    encoded = state.slice(PREFIX.length + NONCE_LEN);
+  }
+  if (!encoded) {
+    // Запасной путь: провайдер потерял state, но код прислал. В собранном
+    // приложении схема всегда haba://, так что вернуться можно и без state.
+    // В Expo Go схема другая — там это не сработает, и человек увидит ошибку.
+    if (q.get('code')) {
+      var fallback = 'haba://auth/yandex/callback';
+      var out0 = new URLSearchParams();
+      ['code', 'state', 'device_id', 'error'].forEach(function (k) {
+        var v = q.get(k);
+        if (v) out0.set(k, v);
+      });
+      location.replace(fallback + '?' + out0.toString());
+      return;
+    }
     fail('Эта страница открывается только при входе из приложения.');
     return;
   }
-  var encoded = state.slice(PREFIX.length).split('.')[0];
   var target;
   try {
     var b64 = encoded.replace(/-/g, '+').replace(/_/g, '/');

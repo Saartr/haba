@@ -12,7 +12,11 @@ import { SERVER_ORIGIN, VK_WEB_CLIENT_ID } from '@/lib/config';
 
 const AUTHORIZE_URL = 'https://id.vk.ru/authorize';
 const WEB_REDIRECT = `${SERVER_ORIGIN}/auth/vk/callback`;
-export const NATIVE_STATE_PREFIX = 'app.';
+export const NATIVE_STATE_PREFIX = 'app';
+/** Длина случайной части state сразу после префикса. Разделителей в state нет
+ *  намеренно: VK не вернул state, содержавший точки, — в редиректе его просто не
+ *  оказалось (проверено по логам nginx 2026-09-09). */
+const STATE_NONCE_LEN = 16;
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 
@@ -44,7 +48,7 @@ export type VkAuthCode = { code: string; codeVerifier: string; deviceId: string 
 export async function signInWithVKCode(): Promise<VkAuthCode> {
   const codeVerifier = randomHex(32);
   const redirect = Linking.createURL('auth/vk/callback');
-  const state = NATIVE_STATE_PREFIX + encodeReturnUrl(redirect) + '.' + randomHex(8);
+  const state = NATIVE_STATE_PREFIX + randomHex(STATE_NONCE_LEN / 2) + encodeReturnUrl(redirect);
   const challenge = (
     await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, codeVerifier, {
       encoding: Crypto.CryptoEncoding.BASE64,
@@ -80,7 +84,12 @@ export async function signInWithVKCode(): Promise<VkAuthCode> {
   if (!code) throw new Error('VK не вернул код авторизации');
   // device_id обязателен при обмене кода в OAuth 2.1 у VK
   if (!deviceId) throw new Error('VK не вернул device_id');
-  if (returnedState !== state) throw new Error('Ответ VK не совпал с запросом');
+  // VK возвращает state не всегда (в наших редиректах его не было вовсе — см. логи
+  // 2026-09-09). Если вернул — сверяем; если нет, полагаемся на PKCE: код без нашего
+  // code_verifier обменять невозможно, так что подмена ответа ничего не даёт.
+  if (returnedState && returnedState !== state) {
+    throw new Error('Ответ VK не совпал с запросом');
+  }
 
   return { code, codeVerifier, deviceId };
 }

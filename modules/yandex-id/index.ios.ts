@@ -17,7 +17,11 @@ import { SERVER_ORIGIN, YANDEX_CLIENT_ID } from '@/lib/config';
 const AUTHORIZE_URL = 'https://oauth.yandex.ru/authorize';
 const WEB_REDIRECT = `${SERVER_ORIGIN}/auth/yandex/callback`;
 /** Помечает state, чтобы страница-callback поняла: возвращать надо в приложение. */
-export const NATIVE_STATE_PREFIX = 'app.';
+export const NATIVE_STATE_PREFIX = 'app';
+/** Длина случайной части state сразу после префикса. Разделителей в state нет
+ *  намеренно: VK не вернул state, содержавший точки, — в редиректе его просто не
+ *  оказалось (проверено по логам nginx 2026-09-09). */
+const STATE_NONCE_LEN = 16;
 
 /** Куда возвращаться из браузера. В собранном приложении это haba://, а в Expo Go —
  *  exp://<хост-туннеля>/--/…, поэтому адрес нельзя зашивать: Linking.createURL даёт
@@ -64,7 +68,7 @@ export type YandexAuthCode = { code: string; codeVerifier: string };
 export async function signInWithYandexCode(): Promise<YandexAuthCode> {
   const codeVerifier = randomHex(32);
   const redirect = appRedirect();
-  const state = NATIVE_STATE_PREFIX + encodeReturnUrl(redirect) + '.' + randomHex(8);
+  const state = NATIVE_STATE_PREFIX + randomHex(STATE_NONCE_LEN / 2) + encodeReturnUrl(redirect);
   const challenge = base64UrlFromBase64(
     await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, codeVerifier, {
       encoding: Crypto.CryptoEncoding.BASE64,
