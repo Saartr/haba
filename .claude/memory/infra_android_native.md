@@ -15,7 +15,6 @@ metadata:
 - `plugins/with-native-maven-repos.js` (`withProjectBuildGradle`) — добавляет в `allprojects.repositories` VK artifactory (3 URL). Яндекс ID сюда не нужен: `com.yandex.android:authsdk` лежит в mavenCentral.
 - `plugins/with-vk-manifest-placeholders.js` (`withAppBuildGradle`) — добавляет в `defaultConfig.manifestPlaceholders`: `VKIDClientID=54615454`, `VKIDRedirectHost=vk.com`, `VKIDRedirectScheme=vk54615454`, `VKIDClientSecret` (читается из gradle-проперти, НЕ хардкод).
 - `plugins/with-yandex-manifest-placeholders.js` — `YANDEX_CLIENT_ID` в `defaultConfig.manifestPlaceholders` (client_id публичный, лежит в плагине).
-- `plugins/with-tg-queries.js` — `<queries>` для схемы `tg` в манифесте (Android 11+ package visibility) — без этого `Linking.openURL('tg://...')` молча не срабатывает.
 - `plugins/with-health-permissions.js` — `READ_STEPS` permission + Android-14 rationale `activity-alias`, см. [[feature-health-connect]].
 - `plugins/with-signing-config.js` — release-подпись APK из `~/.gradle/gradle.properties` (`TAPA_STORE_FILE` и т.д.), фоллбэк на debug-подпись если свойств нет (CI/чужая машина).
 

@@ -1,4 +1,8 @@
 ---
+
+⚠️ Ниже описан **нативный SDK под Android**. На iOS нативного модуля нет вовсе: там вход идёт
+через системную веб-сессию (`ASWebAuthenticationSession` + PKCE, `modules/yandex-id/index.ios.ts`),
+и он работает — проверено на живом iPhone 2026-09-08. Подробности — [[infra-ios-plan]].
 name: feature-yandex-id
 description: "✅ Реализовано: вход через Яндекс ID вместо Telegram (нативный SDK + /auth/yandex)"
 metadata:

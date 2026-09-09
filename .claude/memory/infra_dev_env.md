@@ -31,9 +31,9 @@ $env:REACT_NATIVE_PACKAGER_HOSTNAME="192.168.1.143"; npx expo start
 
 # Первый раз — генерация нативной папки:
 npx expo prebuild --platform android --clean
-# android/ в .gitignore — генерируется локально. Текущая версия Gradle wrapper: 9.0.0
+# android/ в .gitignore — генерируется локально. Текущая версия Gradle wrapper: 9.3.1 (сверено 2026-09-09)
 # (distributionUrl в android/gradle/wrapper/gradle-wrapper.properties)
-# Обновление wrapper: ./gradlew wrapper --gradle-version 9.0.0 --distribution-type bin
+# Обновление wrapper: ./gradlew wrapper --gradle-version <версия> --distribution-type bin
 # Если daemon падает с native OOM при первой сборке на новой версии Gradle — освободить RAM
 # (закрыть эмулятор/Metro/Chrome), при необходимости rm -rf ~/.gradle/caches/<version> и повторить.
 
