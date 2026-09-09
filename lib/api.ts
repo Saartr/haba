@@ -71,6 +71,15 @@ export async function yandexWebAuth(code: string, codeVerifier: string): Promise
   });
 }
 
+/** Веб-вход через VK (браузер и iOS): сервер сам меняет код на токен провайдера,
+ *  см. modules/vk-id/index.ios.ts. */
+export async function vkWebAuth(code: string, codeVerifier: string, deviceId: string): Promise<AuthResult> {
+  return request('/auth/vk/web', {
+    method: 'POST',
+    body: JSON.stringify({ code, codeVerifier, deviceId }),
+  });
+}
+
 export async function vkAuth(data: { accessToken: string; userId: string; firstName?: string; lastName?: string; photo200?: string; email?: string; phone?: string }): Promise<AuthResult> {
   return request('/auth/vk', {
     method: 'POST',

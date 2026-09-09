@@ -23,3 +23,13 @@ export function signInWithVK(): Promise<VkAuthResult> {
   }
   return VkIdModule.signIn();
 }
+
+/** Есть только в iOS-версии модуля (index.ios.ts), где вход идёт через системную
+ *  веб-сессию и возвращает код авторизации. Заглушка держит одинаковый интерфейс. */
+export function signInWithVKCode(): Promise<{ code: string; codeVerifier: string; deviceId: string }> {
+  return Promise.reject(new Error('signInWithVKCode доступен только на iOS'));
+}
+
+/** Помечает state, чтобы страница-callback поняла: возвращать код надо в приложение.
+ *  Значение должно совпадать с index.ios.ts. */
+export const NATIVE_STATE_PREFIX = 'app.';

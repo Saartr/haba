@@ -6,11 +6,11 @@ import YandexIcon from '@/assets/icons/Yandex.svg';
 import VKIcon from '@/assets/icons/VK.svg';
 import Button from '@/components/Button';
 import { useColors, colors } from '@/lib/colors';
-import { vkAuth, yandexAuth, yandexWebAuth } from '@/lib/api';
+import { vkAuth, vkWebAuth, yandexAuth, yandexWebAuth } from '@/lib/api';
 import { saveTokens } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
 import { useContentWidth } from '@/lib/layout';
-import { signInWithVK } from '@/modules/vk-id';
+import { signInWithVK, signInWithVKCode } from '@/modules/vk-id';
 import { signInWithYandex, signInWithYandexCode } from '@/modules/yandex-id';
 
 export default function WelcomeScreen() {
@@ -48,19 +48,29 @@ export default function WelcomeScreen() {
     setError(null);
     setProcessing(true);
     try {
-      const vkResult = await signInWithVK();
-      const result = await vkAuth({
-        accessToken: vkResult.accessToken,
-        userId: vkResult.userId,
-        firstName: vkResult.firstName,
-        lastName: vkResult.lastName,
-        photo200: vkResult.photo200,
-        email: vkResult.email,
-        phone: vkResult.phone,
-      });
+      // На Android нативный SDK сразу отдаёт токен и профиль. На iOS его нет:
+      // системная веб-сессия возвращает код, а на токен его меняет сервер.
+      let result;
+      if (Platform.OS === 'ios') {
+        const { code, codeVerifier, deviceId } = await signInWithVKCode();
+        result = await vkWebAuth(code, codeVerifier, deviceId);
+      } else {
+        const vkResult = await signInWithVK();
+        result = await vkAuth({
+          accessToken: vkResult.accessToken,
+          userId: vkResult.userId,
+          firstName: vkResult.firstName,
+          lastName: vkResult.lastName,
+          photo200: vkResult.photo200,
+          email: vkResult.email,
+          phone: vkResult.phone,
+        });
+      }
       await saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken });
       setAuthed(true, result.user);
     } catch (e: any) {
+      // Отмену входа за ошибку не считаем — как в ветке Яндекса.
+      if (e?.code === 'VK_AUTH_CANCELLED') return;
       setError(e.message ?? 'Ошибка авторизации через VK');
     } finally {
       setProcessing(false);
@@ -114,10 +124,11 @@ export default function WelcomeScreen() {
           loading={processing}
           icon={<YandexIcon />}
         />
-        {/* VK ID — только в приложении. У приложения VK ID платформа жёстко
-            Android, веб-вход потребовал бы отдельного приложения со своими
-            ключами; решено не заводить (2026-08-30). */}
-        {Platform.OS === 'android' && (
+        {/* VK ID — только в приложении. В веб-версии его нет намеренно: у
+            приложения VK ID платформа зафиксирована как Android, и веб-вход
+            потребовал бы отдельного приложения (решено 2026-08-30). На iOS вход
+            идёт тем же приёмом, что у Яндекса, — через системную веб-сессию. */}
+        {Platform.OS !== 'web' && (
           <Button
             label="Войти через VK ID"
             onPress={handleVkLogin}

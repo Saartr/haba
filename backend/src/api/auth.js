@@ -168,12 +168,27 @@ async function ensureAvatar(user, freshProviderPhotoUrl) {
 const VK_SERVICE_TOKEN = process.env.VK_SERVICE_TOKEN;
 const VK_CLIENT_ID = '54615454';
 
-async function verifyVkToken(accessToken, userId) {
+// Платформа у приложения VK ID фиксируется при создании, поэтому веб-флоу может
+// потребовать отдельного приложения со своими ключами. Если переменные заданы —
+// используются они, иначе всё работает через основное приложение, как раньше.
+const VK_WEB_CLIENT_ID = process.env.VK_WEB_CLIENT_ID || VK_CLIENT_ID;
+const VK_WEB_CREDENTIALS = {
+  clientSecret: process.env.VK_WEB_CLIENT_SECRET || process.env.VK_CLIENT_SECRET,
+  serviceToken: process.env.VK_WEB_SERVICE_TOKEN || VK_SERVICE_TOKEN,
+};
+
+// secure.checkToken проверяет токен против выдавшего приложения, поэтому ключи
+// передаются, а не берутся из модуля: у мобильного и веб-флоу они могут отличаться.
+async function verifyVkToken(accessToken, userId, credentials) {
+  const { clientSecret, serviceToken } = credentials ?? {
+    clientSecret: process.env.VK_CLIENT_SECRET,
+    serviceToken: VK_SERVICE_TOKEN,
+  };
   // secure.checkToken не привязан к IP в отличие от users.get с user access token
   const params = new URLSearchParams({
     token: accessToken,
-    client_secret: process.env.VK_CLIENT_SECRET,
-    access_token: VK_SERVICE_TOKEN,
+    client_secret: clientSecret,
+    access_token: serviceToken,
     v: '5.199',
   });
   const url = `https://api.vk.com/method/secure.checkToken?${params}`;
@@ -195,7 +210,7 @@ async function vkSignIn(req, res) {
   }
 
   try {
-    await verifyVkToken(accessToken, userId);
+    await verifyVkToken(accessToken, userId, req.vkCredentials);
   } catch (e) {
     console.error('VK token verify error:', e.message);
     return res.status(401).json({ message: 'Не удалось верифицировать VK токен' });
@@ -344,6 +359,9 @@ router.post('/yandex', yandexSignIn);
 // last_login_provider остаётся одна на оба клиента.
 
 const YANDEX_TOKEN_URL = 'https://oauth.yandex.ru/token';
+// Домен и путь взяты из самого @vkid/sdk (constants.js: VKID_DOMAIN = id.vk.ru,
+// обмен идёт на /oauth2/auth) — документация VK из РФ отдаётся не всегда.
+const VK_TOKEN_URL = 'https://id.vk.ru/oauth2/auth';
 
 function webRedirectUri(provider) {
   return `${PUBLIC_ORIGIN}/auth/${provider}/callback`;
@@ -378,6 +396,42 @@ router.post('/yandex/web', async (req, res) => {
     return yandexSignIn(req, res);
   } catch (e) {
     console.error('yandex web auth error:', e);
+    return res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+// POST /api/v1/auth/vk/web { code, codeVerifier, deviceId, state }
+// Вход через VK из браузера и с iOS: там нет нативного SDK, поэтому используется
+// OAuth 2.1 с PKCE (VK его требует), а код на токен меняется здесь — токен
+// провайдера в приложение не попадает.
+router.post('/vk/web', async (req, res) => {
+  const { code, codeVerifier, deviceId, state } = req.body;
+  if (!code || !codeVerifier || !deviceId) {
+    return res.status(400).json({ message: 'code, codeVerifier и deviceId обязательны' });
+  }
+  try {
+    const params = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      code_verifier: codeVerifier,
+      client_id: VK_WEB_CLIENT_ID,
+      device_id: deviceId,
+      redirect_uri: webRedirectUri('vk'),
+      ...(state ? { state } : {}),
+    });
+    const r = await fetch(`${VK_TOKEN_URL}?${params}`, { method: 'POST' });
+    const data = await r.json();
+    if (!data.access_token || !data.user_id) {
+      console.error('vk code exchange failed:', data);
+      return res.status(401).json({ message: 'Не удалось обменять код VK' });
+    }
+    // Дальше тот же путь, что у мобильного клиента: verifyVkToken + upsert.
+    // Имя и фото не передаём — их подтянет ensureAvatar по user_id.
+    req.body = { accessToken: data.access_token, userId: String(data.user_id) };
+    req.vkCredentials = VK_WEB_CREDENTIALS;
+    return vkSignIn(req, res);
+  } catch (e) {
+    console.error('vk web auth error:', e);
     return res.status(500).json({ message: 'Ошибка сервера' });
   }
 });

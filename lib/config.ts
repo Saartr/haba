@@ -14,3 +14,9 @@ export function inviteLink(code: string): string {
  *  Дублируется в plugins/with-yandex-manifest-placeholders.js — там он нужен
  *  нативной сборке до запуска JS, поэтому одним местом обойтись не выходит. */
 export const YANDEX_CLIENT_ID = '1e466a3264584e3aaf95945ce4a25449';
+
+/** ID приложения в VK ID. Публичное значение, не секрет. Дублируется в
+ *  plugins/with-vk-manifest-placeholders.js — там он нужен нативной сборке Android
+ *  до запуска JS. Если под веб/iOS заведут отдельное приложение VK, здесь появится
+ *  второй идентификатор, а на сервере — VK_WEB_CLIENT_ID в .env. */
+export const VK_CLIENT_ID = '54615454';
