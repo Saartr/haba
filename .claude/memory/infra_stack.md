@@ -11,7 +11,7 @@ metadata:
 Веб-версия была экспериментом и убрана 2026-09-08 — см. [[feature-web-version]].
 
 **Фронтенд** (`C:\haba`):
-- React Native + Expo SDK 55, Expo Router, TypeScript
+- React Native 0.86 + Expo SDK 57, Expo Router, TypeScript (обновление с 55 — см. [[infra-sdk57-upgrade]])
 - NativeWind v4 (Tailwind CSS для RN)
 - expo-secure-store (хранение JWT)
 - react-native-svg (SVG-иконки)
@@ -37,7 +37,7 @@ metadata:
 
 **Деплой бэкенда:** ручной скрипт `deploy-backend.ps1` в корне репо. Подробности — [[rules-backend-deploy]].
 
-**How to apply:** При написании кода — Expo SDK 55, читать доки на https://docs.expo.dev/versions/v55.0.0/. Бэкенд — Express 5, `postgres` tag-библиотека. Серверные правки коммитить в `backend/`, деплоить через `./deploy-backend.ps1` после пуша в `main`.
+**How to apply:** При написании кода — Expo SDK 57, читать доки на https://docs.expo.dev/versions/v57.0.0/. Бэкенд — Express 5, `postgres` tag-библиотека. Серверные правки коммитить в `backend/`, деплоить через `./deploy-backend.ps1` после пуша в `main`.
 
 ## Переезд на новый хостинг (2026-08-29)
 
