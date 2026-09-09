@@ -1,0 +1,19 @@
+diff --git a/node_modules/react-native-health-connect/android/src/main/java/dev/matinzd/healthconnect/permissions/HealthConnectPermissionDelegate.kt b/node_modules/react-native-health-connect/android/src/main/java/dev/matinzd/healthconnect/permissions/HealthConnectPermissionDelegate.kt
+index 5ec3641..bc6b383 100644
+--- a/node_modules/react-native-health-connect/android/src/main/java/dev/matinzd/healthconnect/permissions/HealthConnectPermissionDelegate.kt
++++ b/node_modules/react-native-health-connect/android/src/main/java/dev/matinzd/healthconnect/permissions/HealthConnectPermissionDelegate.kt
+@@ -29,14 +29,12 @@ object HealthConnectPermissionDelegate {
+     requestPermission = activity.registerForActivityResult(contract) {
+       coroutineScope.launch {
+         permissionsChannel.send(it)
+-        coroutineContext.cancel()
+       }
+     }
+ 
+     requestRoutePermission = activity.registerForActivityResult(exerciseRouteRequestContract) {
+       coroutineScope.launch {
+         exerciseRouteChannel.send(it)
+-        coroutineContext.cancel()
+       }
+     }
+   }
