@@ -419,7 +419,13 @@ router.post('/vk/web', async (req, res) => {
       redirect_uri: webRedirectUri('vk'),
       ...(state ? { state } : {}),
     });
-    const r = await fetch(`${VK_TOKEN_URL}?${params}`, { method: 'POST' });
+    // Параметры именно в теле: на query VK отвечает invalid_grant с явным
+    // «pass it in the request body and not in the query» (проверено 2026-09-09).
+    const r = await fetch(VK_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params,
+    });
     const data = await r.json();
     if (!data.access_token || !data.user_id) {
       console.error('vk code exchange failed:', data);
