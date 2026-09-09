@@ -3,7 +3,10 @@
 # Pulls latest from main on server, installs deps if changed, restarts PM2.
 # Сервер: Tapa (139.100.238.204, Selectel СПб). Старый Haba выведен из эксплуатации 2026-08-29.
 
-$ErrorActionPreference = 'Stop'
+# Continue, а не Stop: git и ssh пишут обычные сообщения в stderr, а PowerShell 5.1
+# считает любой вывод нативной команды в stderr ошибкой и обрывает скрипт. Успех
+# проверяем по маркеру done_pull и по выводу pm2 ниже.
+$ErrorActionPreference = 'Continue'
 
 Write-Host "Deploying backend to apptapa.ru..." -ForegroundColor Cyan
 
