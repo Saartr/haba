@@ -442,6 +442,92 @@ router.post('/vk/web', async (req, res) => {
   }
 });
 
+// ── Служебный вход для проверки магазинами приложений ───────────────────────
+// Google Play требует данные для входа, которые работают всегда, из любой страны и без
+// SMS-кодов (того же ждёт App Store). Вход через VK/Яндекс с нового устройства из-за рубежа
+// упирается в подтверждение по SMS, поэтому модераторам выдаются отдельные логин и пароль.
+// Они пускают ровно в один демо-аккаунт (users.is_review) — к данным пользователей доступа
+// нет. Логин и пароль лежат только в .env; если их нет, маршрут отвечает 404.
+const REVIEW_LOGIN = process.env.REVIEW_LOGIN;
+const REVIEW_PASSWORD = process.env.REVIEW_PASSWORD;
+// От перебора защищает длина случайного пароля, а не счётчик попыток: блокировка после
+// неудачных попыток позволила бы кому угодно закрыть вход модератору посреди проверки.
+const REVIEW_ENABLED = Boolean(REVIEW_LOGIN) && (REVIEW_PASSWORD?.length ?? 0) >= 20;
+if (REVIEW_PASSWORD && !REVIEW_ENABLED) {
+  console.error('REVIEW_PASSWORD короче 20 символов или нет REVIEW_LOGIN — служебный вход выключен');
+}
+
+// Сравнение за постоянное время. Хеши выравнивают длину: timingSafeEqual на буферах
+// разной длины бросает исключение, а сама длина была бы подсказкой.
+function safeEqual(a, b) {
+  const ha = crypto.createHash('sha256').update(a).digest();
+  const hb = crypto.createHash('sha256').update(b).digest();
+  return crypto.timingSafeEqual(ha, hb);
+}
+
+// POST /api/v1/auth/review { login, password }
+router.post('/review', async (req, res) => {
+  if (!REVIEW_ENABLED) return res.status(404).json({ message: 'Не найдено' });
+
+  const { login, password } = req.body ?? {};
+  if (typeof login !== 'string' || typeof password !== 'string') {
+    return res.status(400).json({ message: 'login и password обязательны' });
+  }
+  // Оба сравнения выполняются всегда: при коротком замыкании по времени ответа было бы
+  // видно, угадан ли логин.
+  const loginOk = safeEqual(login.trim(), REVIEW_LOGIN);
+  const passwordOk = safeEqual(password, REVIEW_PASSWORD);
+  if (!loginOk || !passwordOk) {
+    return res.status(401).json({ message: 'Неверный логин или пароль' });
+  }
+
+  try {
+    // Модераторы проверяют и удаление аккаунта, так что демо-пользователя может уже не быть —
+    // тогда он заводится заново. Второго не появится: на is_review частичный уникальный индекс.
+    let [user] = await sql`
+      SELECT id, username, first_name, last_name, avatar_url, vk_id, yandex_id, last_login_provider
+      FROM users WHERE is_review
+    `;
+    if (!user) {
+      [user] = await sql`
+        INSERT INTO users (first_name, is_review)
+        VALUES ('Reviewer', true)
+        ON CONFLICT (is_review) WHERE is_review DO UPDATE SET is_review = true
+        RETURNING id, username, first_name, last_name, avatar_url, vk_id, yandex_id, last_login_provider
+      `;
+    }
+
+    const accessToken = makeAccessToken(user.id);
+    const refreshToken = makeRefreshToken(user.id);
+    const refreshExp = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    // В отличие от обычного входа, чужие сессии не сбрасываются: аккаунтом могут
+    // одновременно пользоваться несколько модераторов. Чистятся только истёкшие.
+    await sql`DELETE FROM refresh_tokens WHERE user_id = ${user.id} AND expires_at < now()`;
+    await sql`
+      INSERT INTO refresh_tokens (user_id, token, expires_at)
+      VALUES (${user.id}, ${refreshToken}, ${refreshExp})
+    `;
+
+    res.json({
+      accessToken,
+      refreshToken,
+      user: {
+        username:   user.username || null,
+        first_name: user.first_name || null,
+        last_name:  user.last_name  || null,
+        avatar_url: user.avatar_url || null,
+        vk_id:      user.vk_id || null,
+        yandex_id:  user.yandex_id || null,
+        last_login_provider: user.last_login_provider || null,
+      },
+    });
+  } catch (e) {
+    console.error('review auth error:', e);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
 // POST /api/v1/auth/refresh
 router.post('/refresh', async (req, res) => {
   const { refreshToken } = req.body;

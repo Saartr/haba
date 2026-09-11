@@ -28,7 +28,8 @@ metadata:
 
 **Env-переменные сервера** (сверено с `.env` 2026-09-09): `PORT` (3000), `DATABASE_URL`, `JWT_SECRET`,
 `VK_CLIENT_SECRET`, `VK_SERVICE_TOKEN`, `YANDEX_CLIENT_ID`, `FCM_PROJECT_ID`, `PUBLIC_ORIGIN`, `AVATARS_DIR`,
-`VK_WEB_CLIENT_ID`, `VK_WEB_CLIENT_SECRET`, `VK_WEB_SERVICE_TOKEN` (ключи веб-приложения VK для входа с iOS,
+`VK_WEB_CLIENT_ID`, `VK_WEB_CLIENT_SECRET`, `VK_WEB_SERVICE_TOKEN` (ключи веб-приложения VK для входа с iOS), `REVIEW_LOGIN`, `REVIEW_PASSWORD`
+(служебный вход модераторов магазинов, добавлены 2026-09-11;
 см. [[feature-auth]]).
 Переменные бота (`TELEGRAM_TOKEN`, `WEBHOOK_*`, `GOOGLE_CLIENT_*`) на новый сервер не переносились.
 `PUBLIC_ORIGIN`/`AVATARS_DIR` читает `backend/src/config.js` — из них собираются `/avatars`-URL и

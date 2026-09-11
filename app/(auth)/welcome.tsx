@@ -1,12 +1,14 @@
-import { View, Image, useWindowDimensions, Platform } from 'react-native';
+import { View, Image, Pressable, useWindowDimensions, Platform } from 'react-native';
 import { useState } from 'react';
 import Text from '@/components/Text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import YandexIcon from '@/assets/icons/Yandex.svg';
 import VKIcon from '@/assets/icons/VK.svg';
 import Button from '@/components/Button';
+import BottomSheet from '@/components/BottomSheet';
+import Input from '@/components/Input';
 import { useColors, colors } from '@/lib/colors';
-import { vkAuth, vkWebAuth, yandexAuth, yandexWebAuth } from '@/lib/api';
+import { vkAuth, vkWebAuth, yandexAuth, yandexWebAuth, reviewAuth } from '@/lib/api';
 import { saveTokens } from '@/lib/auth';
 import { useAuth } from '@/lib/auth-context';
 import { signInWithVK, signInWithVKCode } from '@/modules/vk-id';
@@ -18,6 +20,15 @@ export default function WelcomeScreen() {
   const { setAuthed } = useAuth();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Служебный вход для модераторов магазинов приложений (POST /auth/review): им нужен вход
+  // без SMS-кодов, а VK и Яндекс с чужого устройства из-за рубежа их спрашивают. Шторка
+  // открывается долгим нажатием на иллюстрацию — обычному пользователю она ни к чему.
+  const [reviewVisible, setReviewVisible] = useState(false);
+  const [reviewLogin, setReviewLogin] = useState('');
+  const [reviewPassword, setReviewPassword] = useState('');
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   async function handleYandexLogin() {
     setError(null);
@@ -76,17 +87,43 @@ export default function WelcomeScreen() {
     }
   }
 
+  async function handleReviewLogin() {
+    setReviewError(null);
+    setReviewLoading(true);
+    try {
+      const result = await reviewAuth(reviewLogin.trim(), reviewPassword);
+      await saveTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken });
+      setReviewVisible(false);
+      setAuthed(true, result.user);
+    } catch (e: any) {
+      setReviewError(e.message ?? 'Не удалось войти');
+    } finally {
+      setReviewLoading(false);
+    }
+  }
+
+  function closeReview() {
+    if (reviewLoading) return;
+    setReviewVisible(false);
+    setReviewPassword('');
+    setReviewError(null);
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.surface.default }}>
       {/* Иллюстрация шире экрана (bleed за края) — как в макете (441 на кадр 393 шириной,
           примерно поровну слева/справа), поэтому alignSelf:'center' без горизонтального
           паддинга родителя. marginTop — в макете иллюстрация начинается не сразу под
-          статус-баром, а с отступом (~100px при ширине кадра 393). */}
-      <Image
-        source={require('@/assets/images/tapa_welcome.png')}
-        style={{ width: width * (441 / 393), height: width * (372 / 393), alignSelf: 'center', marginTop: width * (100 / 393) }}
-        resizeMode="contain"
-      />
+          статус-баром, а с отступом (~100px при ширине кадра 393).
+          Долгое нажатие открывает служебный вход; accessible={false} — чтобы экранный
+          диктор не объявлял иллюстрацию кнопкой. */}
+      <Pressable onLongPress={() => setReviewVisible(true)} delayLongPress={1000} accessible={false}>
+        <Image
+          source={require('@/assets/images/tapa_welcome.png')}
+          style={{ width: width * (441 / 393), height: width * (372 / 393), alignSelf: 'center', marginTop: width * (100 / 393) }}
+          resizeMode="contain"
+        />
+      </Pressable>
 
       {/* Текст начинается практически вплотную к иллюстрации (в макете зазора нет) —
           без отступа сверху, в отличие от старой векторной иллюстрации. */}
@@ -123,6 +160,33 @@ export default function WelcomeScreen() {
           icon={<VKIcon />}
         />
       </View>
+
+      <BottomSheet visible={reviewVisible} title="Вход для проверки" onClose={closeReview}>
+        <View style={{ gap: 16 }}>
+          <Input
+            label="Логин"
+            value={reviewLogin}
+            onChangeText={(t) => { setReviewLogin(t); if (reviewError) setReviewError(null); }}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Input
+            label="Пароль"
+            value={reviewPassword}
+            onChangeText={(t) => { setReviewPassword(t); if (reviewError) setReviewError(null); }}
+            error={reviewError ?? undefined}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Button
+            label="Войти"
+            onPress={handleReviewLogin}
+            loading={reviewLoading}
+            disabled={!reviewLogin.trim() || !reviewPassword}
+          />
+        </View>
+      </BottomSheet>
     </SafeAreaView>
   );
 }

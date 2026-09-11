@@ -1,5 +1,5 @@
 Privacy Policy
-Last updated: 08/26/2026
+Last updated: 09/11/2026
 
 This Privacy Policy explains how the developer of the "Tapa" application (hereinafter — "Application", "we", "developer") collects, uses, and protects personal data of its users.
 
@@ -8,7 +8,7 @@ The Application is developed and maintained by an individual: Ivan Mironov.
 Contact email: apptapatap@gmail.com
 
 2. Data We Collect
-The Application does not use email/password registration — sign-in is done exclusively via VK ID or Yandex ID. We never create or store user passwords.
+The Application does not use email/password registration — users sign in via VK ID or Yandex ID. We never create or store user passwords. The only exception is a service account used by app stores (Google Play, App Store) to review the Application: it is accessed with a username and password provided to the reviewers and is not linked to any user data.
 When you use the Application, we may collect the following categories of data:
 • Account data: received from VK ID and/or Yandex ID upon sign-in — account identifier, name, email address, and phone number (if provided by the respective provider and you granted the corresponding permission).
 • Profile data: avatar (either pulled from VK/Yandex or stored on our own server), display name.

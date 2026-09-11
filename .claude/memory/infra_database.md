@@ -27,7 +27,9 @@ users          — id, vk_id TEXT,
                  email TEXT, phone TEXT,
                  yandex_id TEXT, yandex_avatar_id TEXT,   -- Яндекс ID (см. feature_yandex_id)
                  avatar_url, health_connected_at TIMESTAMPTZ, created_at,
-                 last_login_provider TEXT NULL ('yandex'|'vk')
+                 last_login_provider TEXT NULL ('yandex'|'vk'),
+                 is_review BOOLEAN NOT NULL DEFAULT false  -- демо-аккаунт модераторов магазинов, см. feature_auth
+               partial UNIQUE INDEX users_review_unique ON (is_review) WHERE is_review
                partial UNIQUE INDEX users_vk_id_unique ON (vk_id) WHERE vk_id IS NOT NULL
                partial UNIQUE INDEX users_yandex_id_unique ON (yandex_id) WHERE yandex_id IS NOT NULL
 refresh_tokens — id, user_id → users, token UNIQUE, expires_at, created_at

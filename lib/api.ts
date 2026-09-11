@@ -87,6 +87,15 @@ export async function vkAuth(data: { accessToken: string; userId: string; firstN
   });
 }
 
+/** Служебный вход для модераторов магазинов приложений: логин и пароль выдаются им в
+ *  Play Console, пускает только в демо-аккаунт (см. POST /auth/review на сервере). */
+export async function reviewAuth(login: string, password: string): Promise<AuthResult> {
+  return request('/auth/review', {
+    method: 'POST',
+    body: JSON.stringify({ login, password }),
+  });
+}
+
 export type UserProfile = {
   username: string | null;
   first_name: string | null;

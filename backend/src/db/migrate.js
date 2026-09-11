@@ -38,6 +38,15 @@ async function runMigrations() {
   // Способ последнего входа ('yandex'|'vk') — для иконки сервиса на главном экране
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_provider TEXT`;
 
+  // Демо-аккаунт для модераторов магазинов приложений (POST /auth/review). Частичный
+  // уникальный индекс — такой пользователь может быть только один.
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_review BOOLEAN NOT NULL DEFAULT false`;
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS users_review_unique
+      ON users (is_review)
+      WHERE is_review
+  `;
+
   const migrateYandex = require('./migrate_yandex');
   await migrateYandex();
 

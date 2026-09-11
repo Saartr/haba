@@ -24,7 +24,7 @@
 
 ## Фичи
 
-- [Авторизация](feature_auth.md) — Яндекс ID + VK ID (оба нативные Expo Modules); Telegram-вход удалён по 199-ФЗ; фикс гонки /auth/refresh; имя не затирается при повторном логине; аватар с любого привязанного провайдера + POST /auth/refresh-avatar
+- [Авторизация](feature_auth.md) — Яндекс ID + VK ID (оба нативные Expo Modules); Telegram-вход удалён по 199-ФЗ; фикс гонки /auth/refresh; имя не затирается при повторном логине; аватар с любого привязанного провайдера + POST /auth/refresh-avatar; служебный вход модераторов магазинов (POST /auth/review, долгое нажатие на Тапу)
 - [Яндекс ID](feature_yandex_id.md) — authsdk 3.1.3 из mavenCentral, ActivityResultContract, проверка client_id на сервере, yandex_avatar_id в БД
 - [Telegram Login](feature_telegram_login.md) — ⛔ УДАЛЁН (2026-08-25), файл оставлен как история: запрет авторизации через иностранные сервисы, 199-ФЗ
 - [Health Connect](feature_health_connect.md) — ✅ работает на debug; причина бывшего пустого requestPermission — отсутствие Android-14 rationale activity-alias в манифесте, НЕ верификация
