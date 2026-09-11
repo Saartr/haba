@@ -30,7 +30,9 @@
 - [Health Connect](feature_health_connect.md) — ✅ работает на debug; причина бывшего пустого requestPermission — отсутствие Android-14 rationale activity-alias в манифесте, НЕ верификация
 - [Health Sync WorkManager](feature_health_sync.md) — ✅ реализовано: Expo Module health-sync, CoroutineWorker, refreshToken в SharedPreferences, scheduleSync/cancelSync
 - [Push-уведомления](feature_push.md) — ✅ реализовано: FCM HTTP v1 напрямую (без Expo), глобальный + per-habit тогглы, 5 типов пушей
+- [Юридические тексты и страницы](feature_legal_pages.md) — `.legal-src/*.txt` → приложение + apptapa.ru/privacy, /terms, /consent, /delete-account (Google Play); в приложении текст меняется только сборкой
 - [Веб-версия](feature_web_version.md) — ⛔ убрана 2026-09-08 после теста; остались только страницы возврата OAuth, на них держится вход на iOS
+- [Лимит трат на месяц](feature_spending_limit.md) — 🚧 ждём макеты: общий лимит на группу, без доходов и пушей, траты видны всем, категории фикс+свои
 - [Главный экран](feature_main_screen.md) — параллакс шапки при скролле, empty state на Toolbar, фон neutral[75], иллюстрации из Figma (welcome/error/splash/success)
 - [Цель «Подтягивания»](feature_pullups.md) — ✅ реализовано: колонки в habits + сохранённый план, формула прогрессии, Multiselect, календарь Неделя/Месяц, тап по дате → модалка плана, solo-only
 - [Групповая count-цель](feature_group_count_goal.md) — безлимитная (goal_value NULL), пуш на каждую запись, entry_totals/«Общая статистика», кнопка +1, календарь без красного

@@ -1,0 +1,27 @@
+Account and Data Deletion
+Tapa app · developer: Ivan Mironov
+
+You can delete your account right in the app or by sending a request by email. Data associated with your account is deleted together with it.
+
+1. Delete your account in the app
+• Open Tapa and sign in.
+• On the main screen, tap the profile icon.
+• At the bottom of the profile screen, tap «Удалить аккаунт» ("Delete account") and confirm.
+Your data is deleted immediately. Deletion cannot be undone.
+
+2. Request deletion without the app
+If you have already uninstalled the app or cannot sign in, email apptapatap@gmail.com with the subject "Account deletion". Tell us which service you used to sign in (VK ID or Yandex ID) and the name in your profile so we can find your account. We process requests within 30 days and will reply to confirm.
+
+3. Data that is deleted
+• account data: VK ID and Yandex ID identifiers, name, email address and phone number (if they were received at sign-in);
+• your avatar stored on our server;
+• your goal check-ins, including steps imported from Health Connect;
+• your group memberships;
+• goals in which you are the only member;
+• sign-in sessions and push tokens of your devices.
+
+4. Data that is kept, and for how long
+• Group goals that have other members stay with them: creator rights pass to the next member. Your check-ins and name are removed from these goals.
+• Database backups are kept for no longer than 15 days and then deleted automatically.
+• Web server logs containing IP addresses are kept for no longer than 15 days.
+• Data that must be retained by law is kept for the period required by law.
