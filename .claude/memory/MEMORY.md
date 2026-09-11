@@ -6,7 +6,7 @@
 
 - [Сначала читать память](rules_read_memory_first.md) — перед выполнением задачи открыть индекс и файлы по её теме, потом браться за работу
 - [Git-процесс](rules_git_workflow.md) — коммитить/пушить только по явной просьбе, сообщения по-русски; перед коммитом актуализировать память
-- [Выкладка релиза](rules_release_publish.md) — собрал release APK → сразу `./upload-apk.ps1` на apptapa.ru; versionCode в app.json, лишние разрешения через blockedPermissions
+- [Выкладка релиза](rules_release_publish.md) — собрал release APK → сразу `./upload-apk.ps1` на apptapa.ru; `/release` собирает и AAB для Google Play (загрузка вручную); versionCode один на все каналы, в app.json; лишние разрешения через blockedPermissions
 - [Деплой бэкенда](rules_backend_deploy.md) — серверный код правится только локально в `backend/`, ручной деплой `./deploy-backend.ps1` (нет автодеплоя); прямой SSH — только логи/рестарт/.env
 - [Figma — источник правды](rules_figma.md) — иконки/цвета/компоненты/отступы только из TapaDS; в SVG `fill="currentColor"` можно править без спроса
 - [Дизайн-система](rules_design_system.md) — не хардкодить цвета (colors.ts/useColors), готовые компоненты вместо примитивов; карточки/подложки без теней
@@ -18,6 +18,7 @@
 - [Окружение разработки](infra_dev_env.md) — IP компьютера/телефона, запуск dev-сервера, Android APK-сборка
 - [База данных](infra_database.md) — схема всех таблиц: users, groups, habits (+кастомные/pullups колонки), habit_members, habit_logs, push_tokens, refresh_tokens
 - [Android нативные SDK](infra_android_native.md) — maven-репо + manifest-placeholders через config-плагины, т.к. `prebuild --clean` стирает `android/`; секреты в `~/.gradle/gradle.properties`
+- [Google Play](infra_google_play.md) — публикация начата 2026-09-11: политика, удаление аккаунта, служебный вход, AAB готовы; висят подпись (Play App Signing + отпечатки в Яндексе/VK), имя разработчика, неточность в политике
 - [iOS план](infra_ios_plan.md) — постоянное направление; сборка под симулятор работает, вход через Яндекс есть; блокирует Apple Developer Account
 - [iOS: что осталось перенести](infra_ios_feature_parity.md) — инвентарь 21 платформенной ветки: пуши, шаги/фоновый синк, вход через VK; что чем заблокировано и в каком порядке
 - [Обновление SDK 55 → 57](infra_sdk57_upgrade.md) — план: целевая expo@57.0.21 (не ниже 57.0.9 из-за регрессии Hermes), что ломается, обязательный прогон по Android
@@ -46,7 +47,7 @@
 
 ## Бэклог
 
-- [Отложенное и известные баги](backlog.md) — ручной лог не проверяет value (можно накрутить лидерборд групповой цели)
+- [Отложенное и известные баги](backlog.md) — ручной лог не проверяет value (можно накрутить лидерборд групповой цели); `.env` на сервере с правами 644; pm2-логи без ротации
 
 ## Справочники
 
