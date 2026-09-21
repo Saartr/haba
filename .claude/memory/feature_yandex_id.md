@@ -18,8 +18,9 @@ metadata:
 
 ## Регистрация приложения
 
-oauth.yandex.ru, платформа Android, package `pro.mihmih.haba`, права `login:info`,
-`login:email`, `login:avatar`.
+oauth.yandex.ru, платформа Android, пакеты `pro.mihmih.haba` и `ru.apptapa.app` (второй
+добавлен 2026-09-21 при смене пакета — [[rules-naming]]; старый не удалять, пока у людей стоит
+старая версия), права `login:info`, `login:email`, `login:avatar`.
 
 - **client_id:** `1e466a3264584e3aaf95945ce4a25449` (публичный, лежит в git)
 - **Секрет приложения НЕ нужен** — нативный SDK отдаёт готовый OAuth-токен, обмена

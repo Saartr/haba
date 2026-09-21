@@ -9,6 +9,8 @@ metadata:
 
 FCM HTTP v1 без Expo Push Service. Бэкенд сам ходит в Google FCM API по service account (`service-account.json` на сервере, `/var/www/haba/backend/service-account.json`, НЕ в git). Только Android (iOS отложен — [[infra-ios-plan]]).
 
+**Firebase-проект `tapa-e67cf` создан под Google-аккаунтом Петра** — у Михаила доступа к нему нет (выяснено 2026-09-21, кто есть кто — [[team]]). Всё, что делается в консоли Firebase (новое Android-приложение, `google-services.json`), идёт через Петра. Новый проект не заводить: сервисный аккаунт `firebase-adminsdk-fbsvc@tapa-e67cf.iam.gserviceaccount.com` на сервере привязан к этому.
+
 **Why:** Приложение для РФ, не хочется зависеть от Expo серверов в США. FCM работает у 95%+ пользователей в РФ.
 
 **Файлы:**

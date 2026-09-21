@@ -51,7 +51,8 @@ metadata:
 - `modules/vk-id/index.ts` — JS-обёртка `signInWithVK()`
 - Manifest placeholders: `VKIDClientID=54615454`, `VKIDClientSecret`, `VKIDRedirectHost=vk.com`, `VKIDRedirectScheme=vk54615454`
 
-**VK ID Console:** app ID `54615454`, Android, SHA-1 debug keystore зарегистрирован.
+**VK ID Console:** app ID `54615454`, Android; пакеты `pro.mihmih.haba` и `ru.apptapa.app`
+(второй добавлен 2026-09-21 при смене пакета — [[rules-naming]]), SHA-1 релизного и отладочного ключей.
 
 **Env на сервере:** `VK_CLIENT_SECRET`, `VK_SERVICE_TOKEN` добавлены в `.env`.
 
