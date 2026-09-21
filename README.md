@@ -2,7 +2,7 @@
 
 Мобильное приложение (Android) для отслеживания привычек — соло и в группе с друзьями, с пушами, календарями прогресса и импортом шагов из Health Connect.
 
-> **Имя приложения:** Тапа. В коде и системных идентификаторах — `haba` / `tapa` (scheme `haba://`, package `pro.mihmih.haba`, SecureStore keys остаются `haba` для обратной совместимости).
+> **Имя приложения:** Тапа. В коде и системных идентификаторах — `haba` / `tapa` (scheme `haba://`, SecureStore keys остаются `haba` для обратной совместимости). Android-пакет — `ru.apptapa.app` (до 2026-09-21 был `pro.mihmih.haba`: имя `ru.apptapa.app` закрепила за приложением Google Play Console).
 
 ## Стек
 

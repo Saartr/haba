@@ -12,7 +12,7 @@
       "bundleIdentifier": "pro.mihmih.haba"
     },
     "android": {
-      "package": "pro.mihmih.haba",
+      "package": "ru.apptapa.app",
       "versionCode": 4,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {

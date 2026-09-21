@@ -8,8 +8,8 @@
 // the SDK returns an OAuth token directly and the backend validates it against
 // login.yandex.ru/info, so there is no server-side code-for-token exchange.
 //
-// Get it at https://oauth.yandex.ru/ — platform "Android", package pro.mihmih.haba,
-// plus the SHA-256 fingerprints of the debug and release keystores.
+// Get it at https://oauth.yandex.ru/ — platform "Android", the package from app.json
+// (android.package), plus the SHA-256 fingerprints of every key that signs the app.
 // A gradle property (YandexClientID in ~/.gradle/gradle.properties) overrides it, which
 // is handy for building against a separate test app without touching git.
 
@@ -42,10 +42,12 @@ module.exports = function withYandexManifestPlaceholders(config) {
         ]
         // <<< yandex-manifest-placeholders`;
 
-    // Insert at the top of defaultConfig, right after applicationId.
-    const anchor = "applicationId 'pro.mihmih.haba'";
-    if (!contents.includes(anchor)) {
-      throw new Error('with-yandex-manifest-placeholders: applicationId anchor not found in app/build.gradle');
+    // Insert at the top of defaultConfig, right after applicationId. The package comes
+    // from app.json — it used to be hardcoded here, so changing it broke prebuild.
+    const pkg = cfg.android?.package;
+    const anchor = `applicationId '${pkg}'`;
+    if (!pkg || !contents.includes(anchor)) {
+      throw new Error(`with-yandex-manifest-placeholders: "${anchor}" not found in app/build.gradle`);
     }
     contents = contents.replace(anchor, `${anchor}\n${placeholdersBlock}`);
     cfg.modResults.contents = contents;

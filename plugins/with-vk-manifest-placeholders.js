@@ -26,10 +26,12 @@ module.exports = function withVkManifestPlaceholders(config) {
     let contents = cfg.modResults.contents;
     if (contents.includes(MARKER)) return cfg;
 
-    // Insert at the top of defaultConfig, right after applicationId.
-    const anchor = "applicationId 'pro.mihmih.haba'";
-    if (!contents.includes(anchor)) {
-      throw new Error('with-vk-manifest-placeholders: applicationId anchor not found in app/build.gradle');
+    // Insert at the top of defaultConfig, right after applicationId. The package comes
+    // from app.json — it used to be hardcoded here, so changing it broke prebuild.
+    const pkg = cfg.android?.package;
+    const anchor = `applicationId '${pkg}'`;
+    if (!pkg || !contents.includes(anchor)) {
+      throw new Error(`with-vk-manifest-placeholders: "${anchor}" not found in app/build.gradle`);
     }
     contents = contents.replace(anchor, `${anchor}\n${PLACEHOLDERS_BLOCK}`);
     cfg.modResults.contents = contents;
